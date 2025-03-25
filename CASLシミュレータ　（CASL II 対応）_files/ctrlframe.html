@@ -1,0 +1,255 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0051)https://www.officedaytime.com/dcaslj/ctrlframe.html -->
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=Shift_JIS">
+
+<meta http-equiv="Content-Language" content="ja">
+<title>無題 1</title>
+<style type="text/css">
+.wordvalue {
+	width: 35pt;
+	font-family: "ＭＳ ゴシック", "Courier New", monospace;
+	font-size: 10pt;
+}
+.bitvalue {
+	width: 15pt;
+	font-family: "ＭＳ ゴシック", "Courier New", monospace;
+	font-size: 10pt;
+}
+input {
+	font-family: "ＭＳ Ｐゴシック", Arial, sans-serif;
+	font-size: 10pt;
+}
+body {
+	font-family: "ＭＳ Ｐゴシック", Arial, sans-serif;
+	font-size: 10pt;
+	background-color: #D0E0FF;
+}
+h1 {
+	font-size: 13pt; 
+	background-color: #408080; 
+	color:#FFFFFF; 
+	padding: 2pt; 
+	margin: 0px;
+}
+form {
+	margin-top: 10pt;
+	margin-bottom: 10pt;
+}
+</style>
+<script type="text/javascript" src="./script.js.ダウンロード">
+</script>
+<script type="text/javascript" src="./casl.js.ダウンロード">
+</script>
+<script type="text/javascript">
+if (!defined(top.ctrlframe))
+	location.pathname = "index.html";
+
+var lineHeight = 15;
+var spInit = 0xFFFF;
+
+function onLoad()
+{
+	setState(STATE_NONE);
+	// ソース初期値の指定があれば動的スクリプト埋め込み
+	{
+		var prog = getParam(top.window.location.search, "onload");
+		if (prog)
+		{
+			var elem = document.createElement("script");
+			elem.type = "text/javascript";
+			elem.src = decodeURI(prog);
+			document.getElementById("body1").appendChild(elem);
+		}
+	}		
+}
+
+function onAssemble()
+{
+	setState(STATE_NONE);
+	var ta = document.getElementById("textarea_source");
+	var arLines = ta.value.split("\n");
+	
+	var tab = (document.getElementById("check_tab8").checked) ? 8 : 4;
+	lineHeight = document.getElementById("input_lineheight").value - 0 + 1;
+	var mainName = document.getElementById("input_main_name").value;
+	var locationInit = fromHex(document.getElementById("input_location_init").value);
+	spInit = fromHex(document.getElementById("input_spinit").value);
+	
+	var nErrors = assemble(arLines, locationInit, tab, mainName);
+	
+	if (nErrors < 0)
+		return;
+	else if (nErrors > 0)
+	{
+		alert("アセンブルでエラーが発生しました");
+		return;
+	}
+	
+	setState(STATE_BREAK);
+	initializeRegMem();
+}
+
+function writeMailAddress(domain, name)
+{
+	document.write('<a href="mailto:' + name + '@' + domain + '">' + name + '@' + domain + '</a>');
+}
+
+</script>
+</head>
+
+<body style="font-family: &#39;ＭＳ Ｐゴシック&#39;, Arial, sans-serif; font-size: 10pt" onload="onLoad(); " id="body1">
+	<h1>CASLシミュレータ （CASL II 対応）</h1>
+
+<form method="post" action="https://www.officedaytime.com/dcaslj/ctrlframe.html">
+	<label id="Label1">ソース</label><br>
+	<textarea name="TextArea1" cols="45" rows="10" wrap="off" style="font-family: &#39;ＭＳ ゴシック&#39;, &#39;Courier New&#39;, monospace; font-size: 10pt;" id="textarea_source"></textarea><br>
+	<input name="Button1" type="button" value="アセンブル" onclick="onAssemble();">
+</form>
+<form method="post" action="javascript:alert(&#39;a&#39;);">
+	<button name="Abutton1" type="button" id="button_go" onclick="go(); return false;" disabled="">
+	<img src="./go_disabled.gif" alt="実行" id="buttonimage_go"></button>
+	<button name="Abutton2" id="button_pause" type="button" onclick="pause(); return false;" disabled="">
+	<img src="./pause_disabled.gif" alt="中断" id="buttonimage_pause"></button>
+	<button name="Abutton3" type="button" onclick="stepIn(); return false;" id="button_stepin" disabled="">
+	<img src="./stepin_disabled.gif" alt="ステップイン" id="buttonimage_stepin"></button>
+	<button name="Abutton4" id="button_stepover" type="button" onclick="stepOver(); return false;" disabled="">
+	<img src="./stepover_disabled.gif" alt="ステップオーバー" id="buttonimage_stepover"></button>
+	<button name="Abutton5" id="button_stepout" type="button" onclick="stepOut(); return false;" disabled="">
+	<img src="./stepout_disabled.gif" alt="ステップアウト" id="buttonimage_stepout"></button>
+	<br>
+	<input name="Button2" type="button" value="すべてのブレークポイントを削除" id="button_clear_break" onclick="clearAllBreakPoints();" disabled="disabled"><input name="Button3" type="button" value="中止" id="button_stop" onclick="stop(); return false;" disabled=""></form>
+<form method="post" action="https://www.officedaytime.com/dcaslj/ctrlframe.html">
+<input name="radix" type="radio" checked="checked" id="radix_hex" onclick="onClickRadix();"><label id="Label2">16進</label><input name="radix" type="radio" id="radix_unsigned" onclick="onClickRadix();"><label id="Label3">10進符号なし</label><input name="radix" type="radio" id="radix_signed" onclick="onClickRadix();"><label id="Label4">10進符号付き</label><table>
+	<tbody><tr>
+		<td>GR0</td>
+		<td>
+		<input type="text" class="wordvalue" id="GR0" readonly=""></td>
+		<td>GR1</td>
+		<td>
+		<input type="text" class="wordvalue" id="GR1" readonly=""></td>
+		<td>GR2</td>
+		<td>
+		<input type="text" class="wordvalue" id="GR2" readonly=""></td>
+		<td>GR3</td>
+		<td>
+		<input type="text" class="wordvalue" id="GR3" readonly=""></td>
+	</tr>
+	<tr>
+		<td>GR4</td>
+		<td>
+		<input type="text" class="wordvalue" id="GR4" readonly=""></td>
+		<td>GR5</td>
+		<td>
+		<input type="text" class="wordvalue" id="GR5" readonly=""></td>
+		<td>GR6</td>
+		<td>
+		<input type="text" class="wordvalue" id="GR6" readonly=""></td>
+		<td>GR7</td>
+		<td>
+		<input type="text" class="wordvalue" id="GR7" readonly=""></td>
+	</tr>
+	<tr>
+		<td>PR</td>
+		<td><input type="text" class="wordvalue" id="PR" readonly=""></td>
+		<td>SP</td>
+		<td><input type="text" class="wordvalue" id="SP" readonly=""></td>
+		<td colspan="4" style="padding: 0px">
+			<table style="margin: 0px">
+				<tbody><tr>
+					<td>ZF</td>
+					<td><input type="text" class="bitvalue" id="ZF" readonly=""></td>
+					<td>SF</td>
+					<td><input type="text" class="bitvalue" id="SF" readonly=""></td>
+					<td>OF</td>
+					<td><input type="text" class="bitvalue" id="OF" readonly=""></td>
+				</tr>
+			</tbody></table>
+		</td>
+	</tr>
+</tbody></table>
+</form>
+<form method="post" action="javascript:onChangeAddress();">
+	<table>
+		<tbody><tr>
+			<td>アドレス(16進)</td>
+			<td>
+			<input type="text" class="wordvalue" id="address"><input name="Submit1" type="submit" value="表示"></td>
+		</tr>
+	</tbody></table>
+</form>
+<form method="post" action="https://www.officedaytime.com/dcaslj/ctrlframe.html">
+	<table>
+		<tbody><tr>
+			<td id="addr_0">0000</td>
+			<td><input type="text" class="wordvalue" id="mem_0" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_1" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_2" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_3" readonly=""></td>
+		</tr>
+		<tr>
+			<td id="addr_4">0004</td>
+			<td><input type="text" class="wordvalue" id="mem_4" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_5" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_6" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_7" readonly=""></td>
+		</tr>
+		<tr>
+			<td id="addr_8">0008</td>
+			<td><input type="text" class="wordvalue" id="mem_8" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_9" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_10" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_11" readonly=""></td>
+		</tr>
+		<tr>
+			<td id="addr_12">000C</td>
+			<td><input type="text" class="wordvalue" id="mem_12" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_13" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_14" readonly=""></td>
+			<td><input type="text" class="wordvalue" id="mem_15" readonly=""></td>
+		</tr>
+	</tbody></table>
+</form>
+<form method="post" action="https://www.officedaytime.com/dcaslj/ctrlframe.html">
+	以下は次回アセンブル時に有効になります
+	<table>
+		<tbody><tr>
+			<td>タブ位置</td>
+			<td>
+			<input name="Radio2" type="radio" checked="checked" id="check_tab8">8<input name="Radio2" type="radio"><label id="Label5">4</label></td>
+		</tr>
+		<tr>
+			<td>フォントサイズ(px)</td>
+			<td>
+			<input name="Text1" type="text" value="12" id="input_lineheight"></td>
+		</tr>
+		<tr>
+			<td>実行開始ラベル</td>
+			<td><input name="Text33" type="text" id="input_main_name"></td>
+		</tr>
+		<tr>
+			<td>配置開始アドレス</td>
+			<td>
+			<input name="Text32" type="text" class="wordvalue" id="input_location_init" value="0000"></td>
+		</tr>
+		<tr>
+			<td>SP初期値</td>
+			<td>
+			<input name="Text34" type="text" class="wordvalue" id="input_spinit" value="FFFF"></td>
+		</tr>
+		</tbody></table>
+</form>
+<hr style="color: #808080; height: 1px" noshade="noshade">
+<p style="margin-top: 0px"><a href="https://www.officedaytime.com/dcaslj/help.html" target="_blank">ヘルプ</a>&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="https://www.officedaytime.com/dcasl2/pguide/index.html" target="_blank">CASL II 入門講座</a><br>
+動作確認： IE 6/7, Firefox 2, Opera 9<br>
+もっと使いやすいのがほしい方 → <a href="https://www.officedaytime.com/dcasl2/index.html" target="_blank">DCasl2</a>をおすすめします。<br>
+Version 1.01&nbsp;
+(C) Daytime 2007. All rights reserved.<br>
+<script type="text/javascript">
+writeMailAddress("officedaytime.com", "daytime");
+</script><a href="mailto:daytime@officedaytime.com">daytime@officedaytime.com</a>
+</p>
+
+
+
+<script type="text/javascript" src="./chapter1.js.ダウンロード"></script></body></html>
