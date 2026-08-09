@@ -45,9 +45,10 @@
   .wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  .back { font-size: 12px; }
-  .back a { color: var(--accent); text-decoration: none; }
-  .back a:hover, .back a:focus-visible { text-decoration: underline; }
+  .back-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .back-row a { color: var(--accent); text-decoration: none; }
+  .back-row a:hover, .back-row a:focus-visible { text-decoration: underline; }
+  .ref-inline { font-family: ui-monospace, Consolas, monospace; color: var(--sub); }
 
   .eyebrow { font-size: 11px; letter-spacing: .18em; color: var(--sub); text-transform: uppercase; margin: 14px 0 3px; }
   h1 { font-size: 21px; margin: 0 0 3px; text-wrap: balance; }
@@ -110,7 +111,10 @@
 </head>
 <body>
 <div class="wrap">
-  <p class="back"><a href="../">&larr; 戻る</a></p>
+  <div class="back-row">
+    <a href="../">&larr; 戻る</a>
+    <span class="ref-inline">c1 ・ ba-264</span>
+  </div>
 
   <div>
     <p class="eyebrow">b1/run — たたき台 / 未実装</p>
