@@ -3,39 +3,242 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>c1 / 準備中</title>
+<title>c1 / b1/run 仮設計メモ</title>
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <style>
-  /* aa/src/w/s1.htmlの雰囲気(器・配色)だけを踏襲。担当者色やAPI連携など、
-     中身が空の今は使わない機能寄りの変数・要素は持ち込んでいない。 */
-  :root{
-    --bg:#14171a; --card:#1c2024; --ink:#e7ebe9; --sub:#98a0a0; --line:#2c3237;
-    --accent:#7ce0c4;
+  /* 元のc1.htmlプレースホルダー(--bg/--card/--ink/--sub/--line/--accent、
+     Hiragino/Yu Gothic/Meiryoスタック)をそのまま踏襲。
+     accentだけ、元のままだとlight面でほぼ読めない(mint #7ce0c4 on #fbfaf6)ため、
+     light側は深めのteal(#0a6c96、index.htmlのaccentと同系統)に寄せている。 */
+  :root {
+    --bg: #14171a;
+    --card: #1c2024;
+    --ink: #e7ebe9;
+    --sub: #98a0a0;
+    --line: #2c3237;
+    --accent: #7ce0c4;
+    --ok: #7ce0c4;
+    --warn: #e0a97c;
   }
-  @media (prefers-color-scheme: light){
-    :root{ --bg:#f3f1ea; --card:#fbfaf6; --ink:#23262b; --sub:#6b7160; --line:#dcd8cc; }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f3f1ea;
+      --card: #fbfaf6;
+      --ink: #23262b;
+      --sub: #6b7160;
+      --line: #dcd8cc;
+      --accent: #0a6c96;
+      --ok: #227a5b;
+      --warn: #a85d2c;
+    }
   }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);
-    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",system-ui,sans-serif;
-    padding:18px 14px 60px;line-height:1.55}
-  .wrap{max-width:640px;margin:0 auto}
-  .back{font-size:12px}
-  .back a{color:var(--accent)}
-  .eyebrow{font-size:11px;letter-spacing:.18em;color:var(--sub);text-transform:uppercase;margin:14px 0 3px}
-  h1{font-size:21px;margin:0 0 3px}
-  .lede{color:var(--sub);font-size:12.5px;margin:0 0 14px}
-  .empty{color:var(--sub);font-size:13px;text-align:center;padding:40px 0;
-    border:1px dashed var(--line);border-radius:12px;background:var(--card)}
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+    padding: 18px 14px 60px;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .back { font-size: 12px; }
+  .back a { color: var(--accent); text-decoration: none; }
+  .back a:hover, .back a:focus-visible { text-decoration: underline; }
+
+  .eyebrow { font-size: 11px; letter-spacing: .18em; color: var(--sub); text-transform: uppercase; margin: 14px 0 3px; }
+  h1 { font-size: 21px; margin: 0 0 3px; text-wrap: balance; }
+  .lede { color: var(--sub); font-size: 12.5px; margin: 0; max-width: 52ch; }
+  .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .tag { font-size: 10.5px; padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--sub); }
+
+  section { display: flex; flex-direction: column; gap: 10px; }
+  h2 { font-size: 14px; margin: 0; font-weight: 700; }
+  h2 .num { color: var(--accent); }
+  p.muted { color: var(--sub); font-size: 12.5px; margin: 0; max-width: 56ch; }
+
+  .cmdlist { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--card); }
+  .cmdlist-row {
+    display: grid; grid-template-columns: 1.6rem 6.5rem 1fr auto; gap: 8px; align-items: center;
+    padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 12px;
+  }
+  .cmdlist-row:last-child { border-bottom: none; }
+  .cmdlist-row .n { color: var(--sub); font-variant-numeric: tabular-nums; }
+  .cmdlist-row .name { font-weight: 700; }
+  .cmdlist-row .desc { color: var(--sub); }
+  .status { font-size: 10px; padding: 2px 7px; border-radius: 99px; white-space: nowrap; border: 1px solid var(--line); }
+  .status.done { color: var(--ok); }
+  .status.draft { color: var(--sub); border-style: dashed; }
+
+  .data-table-wrap { overflow-x: auto; border-radius: 10px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .data-table th, .data-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .data-table th { color: var(--sub); font-weight: 600; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .id-chip { font-weight: 700; color: var(--accent); }
+
+  .terminal { background: #0e1012; color: #d6dbd8; border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+  .terminal .bar { padding: 7px 12px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--sub); font-family: ui-monospace, Consolas, monospace; }
+  .terminal pre { margin: 0; padding: 12px 14px 14px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; line-height: 1.6; white-space: pre; }
+  .t-ok { color: #8fe3c0; }
+  .t-warn { color: #e6a184; }
+  .t-muted { color: #7c8c85; }
+
+  .flow-wrap { overflow-x: auto; }
+  .flow-caption { color: var(--sub); font-size: 11.5px; }
+  svg text { font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif; }
+  .flow-box-fill { fill: var(--card); }
+  .flow-box-stroke { stroke: var(--line); }
+  .flow-label { fill: var(--ink); font-size: 11px; font-weight: 700; }
+  .flow-sub { fill: var(--sub); font-size: 9px; }
+  .flow-arrow { stroke: var(--sub); stroke-width: 1.2; fill: none; marker-end: url(#arrowhead2); }
+  .flow-arrowhead { fill: var(--sub); }
+  .flow-accent-stroke { stroke: var(--accent); }
+
+  .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); gap: 10px; }
+  .compare-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--card); display: flex; flex-direction: column; gap: 6px; }
+  .compare-card h3 { margin: 0; font-size: 12.5px; }
+  .compare-card ul { margin: 0; padding-left: 1.1rem; font-size: 11.5px; color: var(--sub); display: flex; flex-direction: column; gap: 3px; }
+  .fit-a h3 { color: var(--accent); }
+  .fit-a { border-color: var(--accent); }
+
+  footer.page { border-top: 1px solid var(--line); padding-top: 14px; color: var(--sub); font-size: 11.5px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <p class="back"><a href="../">&larr; 戻る</a></p>
-  <p class="eyebrow">roreki · c1</p>
-  <h1>c1</h1>
-  <p class="lede">まだ実体はありません。</p>
-  <div class="empty">準備中</div>
+
+  <div>
+    <p class="eyebrow">b1/run — たたき台 / 未実装</p>
+    <h1>idlist・servicelist・azure コマンドの仮イメージ</h1>
+    <p class="lede">「学習のためのAzureカタログ」という前提で組んだ場合、データと出力がどう見えるかを仮でモックにしました。名称・項目は全部仮置きです。中の値も実在のリソース名ではなく説明用のダミーです。</p>
+    <div class="tag-row">
+      <span class="tag">解釈A（手入力カタログ）で仮組み</span>
+      <span class="tag">実装なし・見た目のみ</span>
+    </div>
+  </div>
+
+  <section>
+    <h2>コマンド一覧（仮）</h2>
+    <div class="cmdlist">
+      <div class="cmdlist-row"><span class="n">0</span><span class="name">help</span><span class="desc">このヘルプを表示する</span><span class="status done">実装済み</span></div>
+      <div class="cmdlist-row"><span class="n">1</span><span class="name">card</span><span class="desc">隣接リポジトリのcard.jsonを読み書きする</span><span class="status done">実装済み</span></div>
+      <div class="cmdlist-row"><span class="n">2</span><span class="name">idlist</span><span class="desc">「どこを見るか」の識別子を登録・一覧する</span><span class="status draft">たたき台</span></div>
+      <div class="cmdlist-row"><span class="n">3</span><span class="name">servicelist</span><span class="desc">各idに対して「何を確認するか」を登録する</span><span class="status draft">たたき台</span></div>
+      <div class="cmdlist-row"><span class="n">4</span><span class="name">azure</span><span class="desc">idlist/servicelistを見て、実際のAzure状態と突き合わせる</span><span class="status draft">たたき台</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">2.</span> idlist — 「どこを見るか」を手で登録</h2>
+    <p class="muted">card.jsonと同じ発想。1件＝1つの対象。値は自分で棚卸ししながら登録するイメージ。</p>
+    <div class="terminal">
+      <div class="bar">&gt; b1\run 2.idlist show</div>
+      <pre><span class="t-muted">[<span class="t-ok">aa-storage </span>] kind: storage_account</span>
+    value: stexampleacct
+    note : aaのメインAzureストレージ
+
+<span class="t-muted">[<span class="t-ok">aa-rg      </span>] kind: resource_group</span>
+    value: rg-example
+    note : aaのリソースグループ
+
+<span class="t-muted">[<span class="t-ok">aa-func    </span>] kind: function_app</span>
+    value: func-example-app
+    note : aaのAPI(Function App)</pre>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>id</th><th>kind</th><th>value</th><th>note</th></tr></thead>
+        <tbody>
+          <tr><td><span class="id-chip">aa-storage</span></td><td>storage_account</td><td>stexampleacct</td><td>aaのメインAzureストレージ</td></tr>
+          <tr><td><span class="id-chip">aa-rg</span></td><td>resource_group</td><td>rg-example</td><td>aaのリソースグループ</td></tr>
+          <tr><td><span class="id-chip">aa-func</span></td><td>function_app</td><td>func-example-app</td><td>aaのAPI(Function App)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">3.</span> servicelist — 各idに対して「何を確認するか」</h2>
+    <p class="muted">idlistの1件に対して、期待するテーブル/リソースを紐づける。学習用に自分で維持する手元カタログ。</p>
+    <div class="terminal">
+      <div class="bar">&gt; b1\run 3.servicelist show aa-storage</div>
+      <pre><span class="t-muted">[id: <span class="t-ok">aa-storage</span>]</span>
+  service: table   expected: ExampleScores    memo: スコア記録
+  service: table   expected: ExampleBaLog     memo: ba台帳
+  service: table   expected: ExampleSessions  memo: セッション管理</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">4.</span> azure — idlist/servicelistを見て実物と突き合わせる</h2>
+    <p class="muted">rbookのrun_azure.pyを薄く呼ぶだけにして、実装は増やさない方針。</p>
+    <div class="terminal">
+      <div class="bar">&gt; b1\run 4.azure aa-storage</div>
+      <pre><span class="t-ok">[OK] ExampleScores     </span> (12件)  — スコア記録
+<span class="t-ok">[OK] ExampleBaLog      </span> (263件) — ba台帳
+<span class="t-warn">[!]  ExampleSessions   </span> (想定されているが見つからない)
+
+<span class="t-muted">aa-storageのテーブル: 想定3件 / 実際2件、missing 1件</span></pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>データの流れ（仮）</h2>
+    <div class="flow-wrap">
+      <svg viewBox="0 0 620 130" width="620" height="130" role="img" aria-label="idlist.json と servicelist.json が 4.azure に渡り、rbookのrun_azure.py経由でaz CLIを呼ぶ流れ図">
+        <defs>
+          <marker id="arrowhead2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path class="flow-arrowhead" d="M0,0 L6,3 L0,6 Z" />
+          </marker>
+        </defs>
+        <rect x="8" y="16" width="112" height="42" rx="8" class="flow-box-fill flow-box-stroke" stroke-width="1"/>
+        <text x="64" y="34" text-anchor="middle" class="flow-label">idlist</text>
+        <text x="64" y="48" text-anchor="middle" class="flow-sub">対象を登録</text>
+
+        <rect x="8" y="74" width="112" height="42" rx="8" class="flow-box-fill flow-box-stroke" stroke-width="1"/>
+        <text x="64" y="92" text-anchor="middle" class="flow-label">servicelist</text>
+        <text x="64" y="106" text-anchor="middle" class="flow-sub">期待値を登録</text>
+
+        <path class="flow-arrow" d="M120,38 C160,38 160,80 202,73"/>
+        <path class="flow-arrow" d="M120,95 C160,95 160,80 202,84"/>
+
+        <rect x="206" y="46" width="112" height="42" rx="8" class="flow-box-fill flow-accent-stroke" stroke-width="1.4"/>
+        <text x="262" y="64" text-anchor="middle" class="flow-label">4.azure</text>
+        <text x="262" y="78" text-anchor="middle" class="flow-sub">薄い橋渡し</text>
+
+        <path class="flow-arrow" d="M318,67 L400,67"/>
+
+        <rect x="404" y="46" width="112" height="42" rx="8" class="flow-box-fill flow-box-stroke" stroke-width="1"/>
+        <text x="460" y="64" text-anchor="middle" class="flow-label">rbook</text>
+        <text x="460" y="78" text-anchor="middle" class="flow-sub">run_azure.py</text>
+
+        <path class="flow-arrow" d="M516,67 L600,67"/>
+        <text x="608" y="71" text-anchor="end" class="flow-label" font-size="11">az CLI</text>
+      </svg>
+    </div>
+    <p class="flow-caption">idlist/servicelistは静的な定義ファイル、4.azureは新しいAzure呼び出しロジックを持たない想定。</p>
+  </section>
+
+  <section>
+    <h2>まだ決まっていないところ</h2>
+    <div class="compare">
+      <div class="compare-card fit-a">
+        <h3>解釈A（このモックの前提）</h3>
+        <ul><li>idlist/servicelistは自分で棚卸し</li><li>4.azureは登録範囲だけ見る</li><li>学習目的と相性が良い</li></ul>
+      </div>
+      <div class="compare-card">
+        <h3>解釈B</h3>
+        <ul><li>idlist/servicelist自体もaz呼び出しで埋まる</li><li>実質4.azureの一部を先出し</li><li>サブスクリプション全体の棚卸しに近い</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page">仮モック・実装なし。項目名(kind/value/note等)も置き換え前提です。</footer>
 </div>
 </body>
 </html>
