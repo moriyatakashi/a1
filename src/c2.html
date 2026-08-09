@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>c2 / idlistキー命名 仮案</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../base.css">
+<style>
+  /* c2.html固有の見た目のみ。トークン・eyebrow/lede/back-row等はbase.css側(../base.css)。
+     tag-row/data-table等はc1.htmlと同じ構成をそのまま踏襲(役割の異なるページだが
+     見た目の血筋は合わせる方針)。 */
+
+  .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .tag { font-size: 10.5px; padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--sub); }
+
+  section { display: flex; flex-direction: column; gap: 10px; }
+  h2 { font-size: 14px; margin: 0; font-weight: 700; }
+  h2 .num { color: var(--accent); }
+  p.muted { color: var(--sub); font-size: 12.5px; margin: 0; max-width: 56ch; }
+
+  .data-table-wrap { overflow-x: auto; border-radius: 10px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .data-table th, .data-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .data-table th { color: var(--sub); font-weight: 600; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .id-chip { font-weight: 700; color: var(--accent); font-family: ui-monospace, Consolas, monospace; }
+  .key-chip { font-family: ui-monospace, Consolas, monospace; }
+
+  .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); gap: 10px; }
+  .compare-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--card); display: flex; flex-direction: column; gap: 6px; }
+  .compare-card h3 { margin: 0; font-size: 12.5px; color: var(--accent); }
+  .compare-card p { margin: 0; font-size: 11.5px; color: var(--sub); }
+
+  footer.page { border-top: 1px solid var(--line); padding-top: 14px; color: var(--sub); font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="back-row">
+    <a href="../">&larr; 戻る</a>
+    <span class="ref-inline">c2 ・ ba-266</span>
+  </div>
+
+  <div>
+    <p class="eyebrow">b1/run — idlistのキー命名 / たたき台</p>
+    <h1>idlistのキー、親子ID案と①②の切り分け</h1>
+    <p class="lede">「課金単位」のつもりで整理していたら、実際に確認できたのは「ID/クレデンシャル単位」だった、という気づきをもとに親子構造を仮に組みました。ここは現状のスナップショットだけで、経緯・具体例はba-266に厚く残しています。</p>
+    <div class="tag-row">
+      <span class="tag">たたき台</span>
+      <span class="tag">未確定</span>
+      <span class="tag">idlist</span>
+    </div>
+  </div>
+
+  <section>
+    <h2><span class="num">1.</span> 親子ID案（仮）</h2>
+    <p class="muted">azure/githubは子を作らずフラット。googleだけ、別々のID/クレデンシャルを使っているため3つに分岐。並び順はアルファベット順で番号を振るルール。</p>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>id</th><th>key</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td><span class="id-chip">1_0_0</span></td><td><span class="key-chip">azure</span></td><td>Azure Functions / Table Storage</td></tr>
+          <tr><td><span class="id-chip">2_0_0</span></td><td><span class="key-chip">github</span></td><td>このリポジトリ(aa)のActions/Pages</td></tr>
+          <tr><td><span class="id-chip">3_1_0</span></td><td><span class="key-chip">drivecal</span></td><td>Google Drive+Calendar共用OAuthクライアント</td></tr>
+          <tr><td><span class="id-chip">3_2_0</span></td><td><span class="key-chip">firestore</span></td><td>Firestore(ca_laneの書き込み先)</td></tr>
+          <tr><td><span class="id-chip">3_3_0</span></td><td><span class="key-chip">signin</span></td><td>Google Sign-In(One Tap)クライアント</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">2.</span> ①②の切り分け</h2>
+    <p class="muted">キーの名前に関する違和感は、実は別の2軸だった、という整理。</p>
+    <div class="compare">
+      <div class="compare-card">
+        <h3>① 表示の問題</h3>
+        <p>drivecal・signinは単体だと意味不明。親を添える(<code>google:drivecal</code>等)ことで、少なくとも「googleの何か」とは伝わる。</p>
+      </div>
+      <div class="compare-card">
+        <h3>② 命名の問題</h3>
+        <p>azure・github・firestoreは製品・プラットフォーム全体を指す名前に見えるが、実際に管理したい範囲はごく一部。親を添えても直らない、名前の範囲自体の話。</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page">たたき台・未確定。経緯・具体例・検討過程はba-266を参照。</footer>
+</div>
+</body>
+</html>
