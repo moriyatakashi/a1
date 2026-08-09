@@ -42,6 +42,8 @@
       padding: 24px;
     }
 
+    #cards { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+
     .heading { text-align: center; }
     h1 { margin: 0 0 8px; font-size: 1.6rem; font-weight: 700; }
     .tagline { margin: 0; color: var(--ink-soft); font-size: 0.95rem; }
@@ -96,13 +98,48 @@
     <h1>路歴（a1）</h1>
     <p class="tagline">路歴は、まだ続く。</p>
   </div>
-  <a class="card" href="https://moriyatakashi.github.io/aa/">
-    <div class="card-head">
-      <div class="badge">a</div>
-      <div class="card-title">aa</div>
-    </div>
-    <div class="card-desc">日々の記録や気づきを、少しずつ積み重ねています。</div>
-    <div class="card-foot">moriyatakashi.github.io/aa <span class="arrow">→</span></div>
-  </a>
+  <div id="cards"></div>
+  <script>
+    // card.json(b1/run 1.card が読み書きするのと同じファイル)を読んで、そのままカードを組み立てる。
+    // 表示ロジックをこの1箇所に一本化しているので、card.jsonの中身が増えても書き換え不要。
+    fetch("data/card.json")
+      .then((res) => res.json())
+      .then((cards) => {
+        const container = document.getElementById("cards");
+        for (const card of cards) {
+          const a = document.createElement("a");
+          a.className = "card";
+          a.href = card.url;
+
+          const head = document.createElement("div");
+          head.className = "card-head";
+
+          const badge = document.createElement("div");
+          badge.className = "badge";
+          badge.textContent = card.title.charAt(0);
+
+          const title = document.createElement("div");
+          title.className = "card-title";
+          title.textContent = card.title;
+
+          head.append(badge, title);
+
+          const desc = document.createElement("div");
+          desc.className = "card-desc";
+          desc.textContent = card.message;
+
+          const foot = document.createElement("div");
+          foot.className = "card-foot";
+          foot.textContent = card.url.replace(/^https?:\/\//, "").replace(/\/$/, "") + " ";
+          const arrow = document.createElement("span");
+          arrow.className = "arrow";
+          arrow.textContent = "→";
+          foot.append(arrow);
+
+          a.append(head, desc, foot);
+          container.append(a);
+        }
+      });
+  </script>
 </body>
 </html>
