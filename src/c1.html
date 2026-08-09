@@ -5,54 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>c1 / b1/run 仮設計メモ</title>
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../base.css">
 <style>
-  /* 元のc1.htmlプレースホルダー(--bg/--card/--ink/--sub/--line/--accent、
-     Hiragino/Yu Gothic/Meiryoスタック)をそのまま踏襲。
-     accentだけ、元のままだとlight面でほぼ読めない(mint #7ce0c4 on #fbfaf6)ため、
-     light側は深めのteal(#0a6c96、index.htmlのaccentと同系統)に寄せている。 */
-  :root {
-    --bg: #14171a;
-    --card: #1c2024;
-    --ink: #e7ebe9;
-    --sub: #98a0a0;
-    --line: #2c3237;
-    --accent: #7ce0c4;
-    --ok: #7ce0c4;
-    --warn: #e0a97c;
-  }
+  /* c1.html固有の見た目のみ。トークン・eyebrow/lede/back-row等はbase.css側(../base.css)。
+     --okだけはc1固有のステータス色でbase.cssには無いため、ここで追加定義する
+     (フォールバック値に頼るとlightモードでの視認性が崩れるため、明示的に light/dark両方を持つ)。 */
+  :root { --ok: #7ce0c4; }
   @media (prefers-color-scheme: light) {
-    :root {
-      --bg: #f3f1ea;
-      --card: #fbfaf6;
-      --ink: #23262b;
-      --sub: #6b7160;
-      --line: #dcd8cc;
-      --accent: #0a6c96;
-      --ok: #227a5b;
-      --warn: #a85d2c;
-    }
+    :root { --ok: #227a5b; }
   }
 
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
-    padding: 18px 14px 60px;
-    line-height: 1.55;
-  }
-  .wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-  .back-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
-  .back-row a { color: var(--accent); text-decoration: none; }
-  .back-row a:hover, .back-row a:focus-visible { text-decoration: underline; }
-  .ref-inline { font-family: ui-monospace, Consolas, monospace; color: var(--sub); }
-
-  .eyebrow { font-size: 11px; letter-spacing: .18em; color: var(--sub); text-transform: uppercase; margin: 14px 0 3px; }
-  h1 { font-size: 21px; margin: 0 0 3px; text-wrap: balance; }
-  .lede { color: var(--sub); font-size: 12.5px; margin: 0; max-width: 52ch; }
   .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
   .tag { font-size: 10.5px; padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--sub); }
 

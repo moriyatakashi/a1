@@ -1,0 +1,48 @@
+/* a1/base.css — index.html/c1.htmlで共通の(または今後src/配下のページと共有する)
+   トークン・基本要素だけを置く。ページ固有の見た目(index.htmlの.card系、
+   c1.htmlの.terminal/.cmdlist系等)は引き続き各ファイルのインラインstyleに残す
+   (aa/src/common/base.cssと同じ方針: 本当に重複するものだけを切り出す)。
+
+   トークンの値はaa/src/common/base.css(--paper/--ink-soft系)とは別系統で、
+   aa/src/w/s1.html等で使われている--bg/--card/--sub系を踏襲している
+   (c1.htmlが元々そちらの血筋を継いでいたため)。 */
+
+:root {
+  --bg: #14171a;
+  --card: #1c2024;
+  --ink: #e7ebe9;
+  --sub: #98a0a0;
+  --line: #2c3237;
+  --accent: #7ce0c4;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f3f1ea;
+    --card: #fbfaf6;
+    --ink: #23262b;
+    --sub: #6b7160;
+    --line: #dcd8cc;
+    --accent: #0a6c96;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  padding: 18px 14px 60px;
+  line-height: 1.55;
+}
+.wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.back-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.back-row a { color: var(--accent); text-decoration: none; }
+.back-row a:hover, .back-row a:focus-visible { text-decoration: underline; }
+.ref-inline { font-family: ui-monospace, Consolas, monospace; color: var(--sub); }
+
+.eyebrow { font-size: 11px; letter-spacing: .18em; color: var(--sub); text-transform: uppercase; margin: 14px 0 3px; }
+h1 { font-size: 21px; margin: 0 0 3px; text-wrap: balance; }
+.lede { color: var(--sub); font-size: 12.5px; margin: 0; max-width: 52ch; }
