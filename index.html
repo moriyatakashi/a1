@@ -107,30 +107,36 @@
       .then((cards) => {
         const container = document.getElementById("cards");
         for (const card of cards) {
+          // card.jsonが手編集等でフィールド欠落(undefined)を含んでいてもクラッシュしないよう、
+          // 参照のたびに空文字へフォールバックする(b1/run側の空文字埋めが素通りされる経路への保険)。
+          const title = card.title ?? "";
+          const url = card.url ?? "";
+          const message = card.message ?? "";
+
           const a = document.createElement("a");
           a.className = "card";
-          a.href = card.url;
+          a.href = url;
 
           const head = document.createElement("div");
           head.className = "card-head";
 
           const badge = document.createElement("div");
           badge.className = "badge";
-          badge.textContent = card.title.charAt(0);
+          badge.textContent = title.charAt(0);
 
-          const title = document.createElement("div");
-          title.className = "card-title";
-          title.textContent = card.title;
+          const titleEl = document.createElement("div");
+          titleEl.className = "card-title";
+          titleEl.textContent = title;
 
-          head.append(badge, title);
+          head.append(badge, titleEl);
 
           const desc = document.createElement("div");
           desc.className = "card-desc";
-          desc.textContent = card.message;
+          desc.textContent = message;
 
           const foot = document.createElement("div");
           foot.className = "card-foot";
-          foot.textContent = card.url.replace(/^https?:\/\//, "").replace(/\/$/, "") + " ";
+          foot.textContent = url.replace(/^https?:\/\//, "").replace(/\/$/, "") + " ";
           const arrow = document.createElement("span");
           arrow.className = "arrow";
           arrow.textContent = "→";
