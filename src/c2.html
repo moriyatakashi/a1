@@ -45,26 +45,26 @@
   <div>
     <p class="eyebrow">b1/run — idlistのキー命名 / たたき台</p>
     <h1>idlistのキー、親子ID案と①②の切り分け</h1>
-    <p class="lede">「課金単位」のつもりで整理していたら、実際に確認できたのは「ID/クレデンシャル単位」だった、という気づきをもとに親子構造を仮に組みました。ここは現状のスナップショットだけで、経緯・具体例はba-266に厚く残しています。</p>
+    <p class="lede">当初は「どのクラウドか(azure/github/google)」で親子を分けていましたが、「どのレーンが使っているか(aa本体/ca_lane)」で分ける方に着地しました。aa-/ca-は今のaaリポジトリに紐づく暫定名で、a1がaaを引き継ぐ時点で読み替えが要る見込みです。経緯・具体例はba-266に厚く残しています。</p>
     <div class="tag-row">
       <span class="tag">たたき台</span>
-      <span class="tag">未確定</span>
+      <span class="tag">aa→a1で読み替え予定</span>
       <span class="tag">idlist</span>
     </div>
   </div>
 
   <section>
-    <h2><span class="num">1.</span> 親子ID案（仮）</h2>
-    <p class="muted">azure/githubは子を作らずフラット。googleだけ、別々のID/クレデンシャルを使っているため3つに分岐。並び順はアルファベット順で番号を振るルール。</p>
+    <h2><span class="num">1.</span> 親子ID案（aa-/ca-）</h2>
+    <p class="muted">親は「aa」「ca」の2つ(アルファベット順)。aaは4つに分岐(drivecal/func/repo/signinをアルファベット順)、caは今のところfirestoreだけなのでflat。</p>
     <div class="data-table-wrap">
       <table class="data-table">
         <thead><tr><th>id</th><th>key</th><th>内容</th></tr></thead>
         <tbody>
-          <tr><td><span class="id-chip">1_0_0</span></td><td><span class="key-chip">azure</span></td><td>Azure Functions / Table Storage</td></tr>
-          <tr><td><span class="id-chip">2_0_0</span></td><td><span class="key-chip">github</span></td><td>このリポジトリ(aa)のActions/Pages</td></tr>
-          <tr><td><span class="id-chip">3_1_0</span></td><td><span class="key-chip">drivecal</span></td><td>Google Drive+Calendar共用OAuthクライアント</td></tr>
-          <tr><td><span class="id-chip">3_2_0</span></td><td><span class="key-chip">firestore</span></td><td>Firestore(ca_laneの書き込み先)</td></tr>
-          <tr><td><span class="id-chip">3_3_0</span></td><td><span class="key-chip">signin</span></td><td>Google Sign-In(One Tap)クライアント</td></tr>
+          <tr><td><span class="id-chip">1_1_0</span></td><td><span class="key-chip">aa-drivecal</span></td><td>Google Drive+Calendar共用OAuthクライアント(aaが使用)</td></tr>
+          <tr><td><span class="id-chip">1_2_0</span></td><td><span class="key-chip">aa-func</span></td><td>Azure Functions / Table Storage(aaのAPI)</td></tr>
+          <tr><td><span class="id-chip">1_3_0</span></td><td><span class="key-chip">aa-repo</span></td><td>このリポジトリ(aa)のActions/Pages</td></tr>
+          <tr><td><span class="id-chip">1_4_0</span></td><td><span class="key-chip">aa-signin</span></td><td>Google Sign-In(One Tap)クライアント(aaのログイン)</td></tr>
+          <tr><td><span class="id-chip">2_0_0</span></td><td><span class="key-chip">ca-firestore</span></td><td>Firestore(ab01-9f35a、ca_laneの書き込み先)</td></tr>
         </tbody>
       </table>
     </div>
@@ -72,35 +72,37 @@
 
   <section>
     <h2><span class="num">2.</span> ①②の切り分け</h2>
-    <p class="muted">キーの名前に関する違和感は、実は別の2軸だった、という整理。</p>
+    <p class="muted">キーの名前に関する違和感は、実は別の2軸だった、という整理。aa-/ca-命名にしたことで両方解消した。</p>
     <div class="compare">
       <div class="compare-card">
         <h3>① 表示の問題</h3>
-        <p>drivecal・signinは単体だと意味不明。親を添える(<code>google:drivecal</code>等)ことで、少なくとも「googleの何か」とは伝わる。</p>
+        <p>旧キー(drivecal・signin)は単体だと意味不明だった。aa-/ca-を頭に付けたことで、親を別途添えなくても単体で「aaの何か」と伝わる。</p>
       </div>
       <div class="compare-card">
         <h3>② 命名の問題</h3>
-        <p>azure・github・firestoreは製品・プラットフォーム全体を指す名前に見えるが、実際に管理したい範囲はごく一部。親を添えても直らない、名前の範囲自体の話。</p>
+        <p>旧キー(azure・github・firestore)は製品・プラットフォーム全体を指す名前に見えた。aa-/ca-にしたことで、実際に管理したい範囲(aaのこの機能・ca_laneのこの1件)に合わせて縮まった。</p>
       </div>
     </div>
   </section>
 
   <section>
-    <h2><span class="num">3.</span> ②の縮めた案（例）</h2>
-    <p class="muted">「製品・プラットフォーム全体を指す名前」から「実際に管理したい範囲」に合わせて縮めるとしたら、という例示。名前自体はまだ未確定。</p>
+    <h2><span class="num">3.</span> 旧→新 対応表</h2>
+    <p class="muted">クラウド単位の旧キーから、レーン単位の新キーへの置き換え。</p>
     <div class="data-table-wrap">
       <table class="data-table">
-        <thead><tr><th>今のキー</th><th>実際の範囲</th><th>縮めた案(例)</th></tr></thead>
+        <thead><tr><th>旧キー</th><th>新キー</th></tr></thead>
         <tbody>
-          <tr><td><span class="key-chip">azure</span></td><td>aaのFunction App 1つ＋そのTable Storage</td><td><span class="key-chip">aa-func</span></td></tr>
-          <tr><td><span class="key-chip">github</span></td><td>aaというリポジトリ1つのActions/Pages</td><td><span class="key-chip">aa-repo</span></td></tr>
-          <tr><td><span class="key-chip">firestore</span></td><td>ab01-9f35aという1プロジェクト(ca_laneの書き込み先)</td><td><span class="key-chip">ca-firestore</span></td></tr>
+          <tr><td><span class="key-chip">azure</span></td><td><span class="key-chip">aa-func</span></td></tr>
+          <tr><td><span class="key-chip">github</span></td><td><span class="key-chip">aa-repo</span></td></tr>
+          <tr><td><span class="key-chip">drivecal</span></td><td><span class="key-chip">aa-drivecal</span></td></tr>
+          <tr><td><span class="key-chip">firestore</span></td><td><span class="key-chip">ca-firestore</span></td></tr>
+          <tr><td><span class="key-chip">signin</span></td><td><span class="key-chip">aa-signin</span></td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <footer class="page">たたき台・未確定。経緯・具体例・検討過程はba-266を参照。</footer>
+  <footer class="page">たたき台。aa-/ca-はaaリポジトリに紐づく暫定名(a1移行時に読み替え予定)。経緯・検討過程はba-266を参照。</footer>
 </div>
 </body>
 </html>
