@@ -5,7 +5,104 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>a1</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <style>
+    /* aa/src/common/base.cssのトークンをそのまま踏襲(ダーク既定、ライトは@mediaで上書き)。
+       a1はaaと同じ「ろれき」サイト群の一員として、配色を独自に起こさず揃える。 */
+    :root {
+      --paper: #14170f;
+      --ink: #eeeeee;
+      --ink-soft: #aaaaaa;
+      --line: #444444;
+      --accent: #0066cc;
+      --accent-ink: #f7f6f0;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --paper: #f7f6f0;
+        --ink: #22261c;
+        --ink-soft: #6b7160;
+        --line: #d8d5c4;
+        --accent: #0a6c96;
+        --accent-ink: #f7f6f0;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      padding: 24px;
+    }
+
+    .heading { text-align: center; }
+    h1 { margin: 0 0 8px; font-size: 1.6rem; font-weight: 700; }
+    .tagline { margin: 0; color: var(--ink-soft); font-size: 0.95rem; }
+
+    .card {
+      width: min(420px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      text-decoration: none;
+      color: inherit;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 28px 26px;
+      background: color-mix(in srgb, var(--accent) 5%, transparent);
+      transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+    }
+    .card:hover, .card:focus-visible {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      transform: translateY(-2px);
+    }
+    .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    .card-head { display: flex; align-items: center; gap: 12px; }
+    .badge {
+      width: 40px; height: 40px; flex: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 1.15rem;
+    }
+    .card-title { font-size: 1.4rem; font-weight: 700; }
+    .card-desc { color: var(--ink-soft); font-size: 0.92rem; line-height: 1.6; }
+    .card-foot {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+      color: var(--accent);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .card-foot .arrow { transition: transform 0.15s ease; }
+    .card:hover .arrow, .card:focus-visible .arrow { transform: translateX(3px); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .card, .card-foot .arrow { transition: none; }
+    }
+  </style>
 </head>
 <body>
+  <div class="heading">
+    <h1>路歴（a1）</h1>
+    <p class="tagline">路歴は、まだ続く。</p>
+  </div>
+  <a class="card" href="https://moriyatakashi.github.io/aa/">
+    <div class="card-head">
+      <div class="badge">a</div>
+      <div class="card-title">aa</div>
+    </div>
+    <div class="card-desc">日々の記録や気づきを、少しずつ積み重ねています。</div>
+    <div class="card-foot">moriyatakashi.github.io/aa <span class="arrow">→</span></div>
+  </a>
 </body>
 </html>
