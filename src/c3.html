@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>c3 / b1コマンド構成の整理 仮案</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../base.css">
+<style>
+  /* c3.html固有の見た目のみ。トークン・eyebrow/lede/back-row等はbase.css側(../base.css)。
+     構成はc1.html/c2.htmlと同じ血筋(tag-row/data-table/compare-card)。 */
+
+  .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .tag { font-size: 10.5px; padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--sub); }
+
+  section { display: flex; flex-direction: column; gap: 10px; }
+  h2 { font-size: 14px; margin: 0; font-weight: 700; }
+  h2 .num { color: var(--accent); }
+  p.muted { color: var(--sub); font-size: 12.5px; margin: 0; max-width: 56ch; }
+
+  .terminal { background: #0e1012; color: #d6dbd8; border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+  .terminal pre { margin: 0; padding: 12px 14px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; line-height: 1.65; white-space: pre; }
+  .t-head { color: var(--accent); }
+  .t-note { color: var(--sub); }
+
+  .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); gap: 10px; }
+  .compare-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--card); display: flex; flex-direction: column; gap: 6px; }
+  .compare-card h3 { margin: 0; font-size: 12.5px; }
+  .compare-card p { margin: 0; font-size: 11.5px; color: var(--sub); }
+  .compare-card.chosen { border-color: var(--accent); }
+  .compare-card.chosen h3 { color: var(--accent); }
+
+  footer.page { border-top: 1px solid var(--line); padding-top: 14px; color: var(--sub); font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="back-row">
+    <a href="../">&larr; 戻る</a>
+    <span class="ref-inline">c3 ・ ba-267</span>
+  </div>
+
+  <div>
+    <p class="eyebrow">b1/run — コマンド構成の整理 / たたき台</p>
+    <h1>card/idlist/servicelistを1.listに統合(案2採用)</h1>
+    <p class="lede">先頭(番号+名前)の数は少なく保ちたい(理想3〜5・最大9)一方、その下(第二識別子)は増えてよい、という条件で3案を比較し、repoをtarget名に埋め込む案2を採用しました。まだ実装はしていません。経緯・比較の詳細はba-267に厚く残しています。</p>
+    <div class="tag-row">
+      <span class="tag">たたき台</span>
+      <span class="tag">未実装</span>
+      <span class="tag">idlist</span>
+    </div>
+  </div>
+
+  <section>
+    <h2><span class="num">1.</span> 新しい構成（案）</h2>
+    <p class="muted">先頭は0/1/2の3つ。card・idlist・servicelistは全部「1.list &lt;target&gt; &lt;verb&gt;」という同じ形になる。</p>
+    <div class="terminal">
+      <pre><span class="t-head">0.help</span>
+<span class="t-head">1.list</span> card:a1 show/set
+<span class="t-head">1.list</span> idlist show/set
+<span class="t-head">1.list</span> servicelist show [&lt;id&gt;] / set
+<span class="t-head">2.azure</span> &lt;id&gt;  <span class="t-note">← providerがazureのみ対応</span></pre>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">2.</span> 検討した3案</h2>
+    <p class="muted">cardだけrepo引数を持つ非対称をどう扱うか。</p>
+    <div class="compare">
+      <div class="compare-card">
+        <h3>案1: repoを省略可能に</h3>
+        <p>省略時はa1扱い。先頭3個だが、cardだけ特別ルールが残る。</p>
+      </div>
+      <div class="compare-card chosen">
+        <h3>案2: target名に埋め込む(採用)</h3>
+        <p><code>card:a1</code>のように書く。3つとも完全に同じ形になる。</p>
+      </div>
+      <div class="compare-card">
+        <h3>案3: cardは統合しない</h3>
+        <p>idlist/servicelistだけ束ねる。先頭は4個(それでも理想範囲内)。</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page">たたき台・未実装。経緯・比較の詳細はba-267を参照。c1・c2・c3は今後最終的に1ページへ統合される見込み(まだ未実施)。</footer>
+</div>
+</body>
+</html>
