@@ -72,6 +72,10 @@
       .then((cards) => {
         const container = document.getElementById("cards");
         for (const card of cards) {
+          // show:falseは「ファイル・カード情報は残すが表示はしない」フラグ(旧c1〜c3の
+          // archive化に使用)。フィールド自体が無いカードはこれまで通り表示する。
+          if (card.show === false) continue;
+
           // card.jsonが手編集等でフィールド欠落(undefined)を含んでいてもクラッシュしないよう、
           // 参照のたびに空文字へフォールバックする(b1/run側の空文字埋めが素通りされる経路への保険)。
           const title = card.title ?? "";
