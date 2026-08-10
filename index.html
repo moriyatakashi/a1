@@ -25,7 +25,13 @@
     .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
     .card-head { display: flex; align-items: center; gap: 10px; }
-    .card-head .ref-inline { margin-left: auto; }
+    .card-head-tags { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .archive-tag {
+      font-size: 0.65rem; padding: 1px 7px; border-radius: 99px;
+      border: 1px dashed var(--line); color: var(--sub); white-space: nowrap;
+    }
+    .card-archived { opacity: 0.6; }
+    .card-archived:hover, .card-archived:focus-visible { opacity: 1; }
     .badge {
       width: 30px; height: 30px; flex: none;
       border-radius: 7px;
@@ -48,6 +54,10 @@
     @media (prefers-reduced-motion: reduce) {
       .card, .card-foot .arrow { transition: none; }
     }
+
+    .toggle-row { margin: 2px 0 0; }
+    .toggle-row a { color: var(--sub); text-decoration: none; font-size: 0.78rem; }
+    .toggle-row a:hover, .toggle-row a:focus-visible { color: var(--accent); text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -62,66 +72,96 @@
       <p class="lede">路歴は、まだ続く。</p>
     </div>
     <div id="cards"></div>
+    <p class="toggle-row"><a href="#" id="toggle-hidden">隠れているカードも表示</a></p>
   </div>
   <script>
     // card.json(b1/run 1.card が読み書きするのと同じファイル)を読んで、そのままカードを組み立てる。
     // 表示ロジックをこの1箇所に一本化しているので、card.jsonの中身が増えても書き換え不要。
     // aaへの導線はcard.jsonではなく上のback-row(固定リンク)側で持つ。
+    const container = document.getElementById("cards");
+    const toggleLink = document.getElementById("toggle-hidden");
+    let allCards = [];
+    let showHidden = false;
+
+    function renderCards() {
+      container.innerHTML = "";
+      for (const card of allCards) {
+        // show:falseは「ファイル・カード情報は残すが表示はしない」フラグ(旧c1〜c3の
+        // archive化に使用)。フィールド自体が無いカードはこれまで通り表示する。
+        const hidden = card.show === false;
+        if (hidden && !showHidden) continue;
+
+        // card.jsonが手編集等でフィールド欠落(undefined)を含んでいてもクラッシュしないよう、
+        // 参照のたびに空文字へフォールバックする(b1/run側の空文字埋めが素通りされる経路への保険)。
+        const title = card.title ?? "";
+        const url = card.url ?? "";
+        const message = card.message ?? "";
+        const ba = card.ba ?? "";
+
+        const a = document.createElement("a");
+        a.className = hidden ? "card card-archived" : "card";
+        a.href = url;
+
+        const head = document.createElement("div");
+        head.className = "card-head";
+
+        const badge = document.createElement("div");
+        badge.className = "badge";
+        badge.textContent = title.charAt(0);
+
+        const titleEl = document.createElement("div");
+        titleEl.className = "card-title";
+        titleEl.textContent = title;
+
+        head.append(badge, titleEl);
+
+        if (hidden || ba) {
+          const tags = document.createElement("div");
+          tags.className = "card-head-tags";
+          if (hidden) {
+            const archiveEl = document.createElement("span");
+            archiveEl.className = "archive-tag";
+            archiveEl.textContent = "非表示設定";
+            tags.append(archiveEl);
+          }
+          if (ba) {
+            const baEl = document.createElement("span");
+            baEl.className = "ref-inline";
+            baEl.textContent = ba;
+            tags.append(baEl);
+          }
+          head.append(tags);
+        }
+
+        const desc = document.createElement("div");
+        desc.className = "card-desc";
+        desc.textContent = message;
+
+        const foot = document.createElement("div");
+        foot.className = "card-foot";
+        foot.textContent = url.replace(/^https?:\/\//, "").replace(/\/$/, "") + " ";
+        const arrow = document.createElement("span");
+        arrow.className = "arrow";
+        arrow.textContent = "→";
+        foot.append(arrow);
+
+        a.append(head, desc, foot);
+        container.append(a);
+      }
+    }
+
+    toggleLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      showHidden = !showHidden;
+      toggleLink.textContent = showHidden ? "隠す" : "隠れているカードも表示";
+      renderCards();
+    });
+
     fetch("data/card.json")
       .then((res) => res.json())
       .then((cards) => {
-        const container = document.getElementById("cards");
-        for (const card of cards) {
-          // show:falseは「ファイル・カード情報は残すが表示はしない」フラグ(旧c1〜c3の
-          // archive化に使用)。フィールド自体が無いカードはこれまで通り表示する。
-          if (card.show === false) continue;
-
-          // card.jsonが手編集等でフィールド欠落(undefined)を含んでいてもクラッシュしないよう、
-          // 参照のたびに空文字へフォールバックする(b1/run側の空文字埋めが素通りされる経路への保険)。
-          const title = card.title ?? "";
-          const url = card.url ?? "";
-          const message = card.message ?? "";
-          const ba = card.ba ?? "";
-
-          const a = document.createElement("a");
-          a.className = "card";
-          a.href = url;
-
-          const head = document.createElement("div");
-          head.className = "card-head";
-
-          const badge = document.createElement("div");
-          badge.className = "badge";
-          badge.textContent = title.charAt(0);
-
-          const titleEl = document.createElement("div");
-          titleEl.className = "card-title";
-          titleEl.textContent = title;
-
-          head.append(badge, titleEl);
-
-          if (ba) {
-            const baEl = document.createElement("div");
-            baEl.className = "ref-inline";
-            baEl.textContent = ba;
-            head.append(baEl);
-          }
-
-          const desc = document.createElement("div");
-          desc.className = "card-desc";
-          desc.textContent = message;
-
-          const foot = document.createElement("div");
-          foot.className = "card-foot";
-          foot.textContent = url.replace(/^https?:\/\//, "").replace(/\/$/, "") + " ";
-          const arrow = document.createElement("span");
-          arrow.className = "arrow";
-          arrow.textContent = "→";
-          foot.append(arrow);
-
-          a.append(head, desc, foot);
-          container.append(a);
-        }
+        allCards = cards;
+        renderCards();
       });
   </script>
 </body>
