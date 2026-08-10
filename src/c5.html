@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>c5 / b1/run 3.dosql</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../base.css">
+<style>
+  /* c5.html固有の見た目のみ。トークン・eyebrow/lede/back-row等はbase.css側(../base.css)。
+     c1〜c4と違い比較検討・捨て案が無い(一発実装)ので、タブ無しの単一ページ構成にする。 */
+  section { display: flex; flex-direction: column; gap: 10px; }
+  h2 { font-size: 14px; margin: 0; font-weight: 700; }
+  p.muted { color: var(--sub); font-size: 12.5px; margin: 0; max-width: 56ch; }
+
+  .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .tag { font-size: 10.5px; padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--sub); }
+
+  .block { border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .block h3 { margin: 0; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .block .src { font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; color: var(--sub); font-weight: 400; }
+  .block p { margin: 0; font-size: 12.5px; }
+
+  .terminal { background: #0e1012; color: #d6dbd8; border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+  .terminal .bar { padding: 7px 12px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--sub); font-family: ui-monospace, Consolas, monospace; }
+  .terminal pre { margin: 0; padding: 12px 14px 14px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; line-height: 1.6; white-space: pre; }
+  .t-ok { color: #8fe3c0; }
+  .t-head { color: #7ce0c4; }
+  .t-muted { color: #7c8c85; }
+
+  .sql-box { background: #0e1012; color: #d6dbd8; border: 1px solid var(--line); border-radius: 10px; margin: 0; padding: 12px 14px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; line-height: 1.6; white-space: pre; overflow-x: auto; }
+  .sql-box .kw { color: #8fe3c0; }
+  .sql-box .cm { color: #7c8c85; }
+
+  footer.page { border-top: 1px solid var(--line); padding-top: 14px; color: var(--sub); font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="back-row">
+    <a href="../">&larr; 戻る</a>
+    <span class="ref-inline">c5 ・ ba-269</span>
+  </div>
+
+  <div>
+    <p class="eyebrow">b1/run — 3.dosql</p>
+    <h1>JSONを毎回sqlite化して、.sqlファイルをそのまま実行する</h1>
+    <p class="lede">card.json・idlist.json・servicelist.jsonをsqliteに作り直し、b1/sql/配下の.sqlファイルを実行するコマンド。<br>
+    idlist/servicelist/azureカタログ(c1〜c4)とは別系統の機能で、その続きではない。</p>
+    <div class="tag-row">
+      <span class="tag">実装済み(2026-08-10・fb87c2b)</span>
+      <span class="tag">一発実装・比較検討なし</span>
+    </div>
+  </div>
+
+  <section>
+    <h2>概要 <span class="src">ba-269</span></h2>
+    <div class="block">
+      <p>3つのJSON(card.json/idlist.json/servicelist.json)を毎回全消し→全入れ直しでsqliteに変換し、その場でSQLを投げられるようにするコマンド。</p>
+      <p>JSONは配列内の各要素が同じキー構成である前提で、値は全部TEXT列として入る(遊び用途のため型は気にしない設計)。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>使い方</h2>
+    <div class="terminal">
+      <div class="bar">&gt; b1\run 3.dosql &lt;sqlファイル名&gt;</div>
+      <pre><span class="t-muted">拡張子省略可(b1/sql/配下から.sqlを補完して探す)。</span>
+<span class="t-muted">1ファイルに複数のSELECT文があれば、全部まとめて出力する。</span></pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>出力イメージ(ダミーデータ)</h2>
+    <p class="muted">実際のb1/sql/tekito.sqlと同じ構造(idlistとservicelistをidで結合)のダミー例。値は全部説明用。</p>
+    <pre class="sql-box"><span class="kw">SELECT</span>
+  i.provider <span class="kw">as</span> idlist_prov,
+  i.id <span class="kw">AS</span> idlist_id,
+  s.id <span class="kw">as</span> svlist_id,
+  i.value <span class="kw">as</span> idlist_valu
+<span class="kw">FROM</span> idlist i
+<span class="kw">FULL OUTER JOIN</span> servicelist s <span class="kw">ON</span> i.id = s.id
+<span class="kw">order by</span> i.provider;</pre>
+    <div class="terminal">
+      <div class="bar">&gt; b1\run 3.dosql tekito</div>
+      <pre><span class="t-muted">[OK] b1\.cache\playground.sqlite を最新のJSONから作り直しました。</span>
+
+<span class="t-head">--- SELECT i.provider as idlist_prov, ... ---</span>
+idlist_prov  idlist_id   svlist_id   idlist_valu
+-----------  ----------  ----------  -----------
+azure        aa-example  aa-example  <span class="t-muted">(ダミー)</span>
+github       aa-repo     aa-repo     <span class="t-muted">(ダミー)</span>
+google       aa-signin   (null)      <span class="t-muted">(ダミー)</span>
+<span class="t-ok">(3 rows)</span></pre>
+    </div>
+  </section>
+
+  <footer class="page">計画・モック段階。card.jsonへの登録はまだ行っていない(a1トップページには出ていない)。値はダミー。実装の詳細はba-269を参照。</footer>
+</div>
+</body>
+</html>

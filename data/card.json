@@ -26,5 +26,12 @@
     "message": "idlist・servicelist・azureカタログの現状(旧c1〜c3を統合)",
     "ba": "ba-268",
     "show": true
+  },
+  {
+    "title": "c5",
+    "url": "https://moriyatakashi.github.io/a1/src/c5.html",
+    "message": "3.dosql(JSON→sqlite化してSQL実行)",
+    "ba": "ba-269",
+    "show": true
   }
 ]
