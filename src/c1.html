@@ -79,50 +79,51 @@
   </div>
 
   <div>
-    <p class="eyebrow">b1/run — たたき台 / 未実装</p>
+    <p class="eyebrow">b1/run — たたき台（初出、後に1.list/2.azureへ実装）</p>
     <h1>idlist・servicelist・azure コマンドの仮イメージ</h1>
-    <p class="lede">「学習のためのAzureカタログ」という前提で組んだ場合、データと出力がどう見えるかを仮でモックにしました。名称・項目は全部仮置きです。中の値も実在のリソース名ではなく説明用のダミーです。</p>
+    <p class="lede">「学習のためのAzureカタログ」という前提で組んだ場合、データと出力がどう見えるかを仮でモックにしました。名称・項目は全部仮置きです。中の値も実在のリソース名ではなく説明用のダミーです。その後の整理(ba-267)で、コマンド名はここに書いた1.card/2.idlist/3.servicelist/4.azureではなく1.list card:&lt;repo&gt;・1.list idlist・1.list servicelist・2.azureとして実際に実装されています。また実際のidlist.jsonにkind列は無く、provider(azure/github/google)だけを持ちます。</p>
     <div class="tag-row">
       <span class="tag">解釈A（手入力カタログ）で仮組み</span>
-      <span class="tag">実装なし・見た目のみ</span>
+      <span class="tag">現在は実装済み(1.list/2.azure、ba-267)</span>
     </div>
   </div>
 
   <section>
     <h2>コマンド一覧（仮）</h2>
+    <p class="muted">番号・名前はこのページ作成時点の仮案。( )内は現在の実際のコマンド名(ba-267で1.list/2.azureに統合済み)。</p>
     <div class="cmdlist">
       <div class="cmdlist-row"><span class="n">0</span><span class="name">help</span><span class="desc">このヘルプを表示する</span><span class="status done">実装済み</span></div>
-      <div class="cmdlist-row"><span class="n">1</span><span class="name">card</span><span class="desc">隣接リポジトリのcard.jsonを読み書きする</span><span class="status done">実装済み</span></div>
-      <div class="cmdlist-row"><span class="n">2</span><span class="name">idlist</span><span class="desc">「どこを見るか」の識別子を登録・一覧する</span><span class="status draft">たたき台</span></div>
-      <div class="cmdlist-row"><span class="n">3</span><span class="name">servicelist</span><span class="desc">各idに対して「何を確認するか」を登録する</span><span class="status draft">たたき台</span></div>
-      <div class="cmdlist-row"><span class="n">4</span><span class="name">azure</span><span class="desc">idlist/servicelistを見て、実際のAzure状態と突き合わせる</span><span class="status draft">たたき台</span></div>
+      <div class="cmdlist-row"><span class="n">1</span><span class="name">card</span><span class="desc">隣接リポジトリのcard.jsonを読み書きする(現: 1.list card:&lt;repo&gt;)</span><span class="status done">実装済み</span></div>
+      <div class="cmdlist-row"><span class="n">2</span><span class="name">idlist</span><span class="desc">「どこを見るか」の識別子を登録・一覧する(現: 1.list idlist)</span><span class="status done">実装済み</span></div>
+      <div class="cmdlist-row"><span class="n">3</span><span class="name">servicelist</span><span class="desc">各idに対して「何を確認するか」を登録する(現: 1.list servicelist)</span><span class="status done">実装済み</span></div>
+      <div class="cmdlist-row"><span class="n">4</span><span class="name">azure</span><span class="desc">idlist/servicelistを見て、実際のAzure状態と突き合わせる(現: 2.azure)</span><span class="status done">実装済み</span></div>
     </div>
   </section>
 
   <section>
     <h2><span class="num">2.</span> idlist — 「どこを見るか」を手で登録</h2>
-    <p class="muted">card.jsonと同じ発想。1件＝1つの対象。値は自分で棚卸ししながら登録するイメージ。</p>
+    <p class="muted">card.jsonと同じ発想。1件＝1つの対象。値は自分で棚卸ししながら登録するイメージ。実際のidlist.jsonにkind列は無く、provider(azure/github/google)だけを持つので、以下もproviderに直しています。</p>
     <div class="terminal">
-      <div class="bar">&gt; b1\run 2.idlist show</div>
-      <pre><span class="t-muted">[<span class="t-ok">aa-storage </span>] kind: storage_account</span>
+      <div class="bar">&gt; b1\run 1.list idlist show</div>
+      <pre><span class="t-muted">[<span class="t-ok">aa-storage </span>] provider: azure</span>
     value: stexampleacct
     note : aaのメインAzureストレージ
 
-<span class="t-muted">[<span class="t-ok">aa-rg      </span>] kind: resource_group</span>
+<span class="t-muted">[<span class="t-ok">aa-rg      </span>] provider: azure</span>
     value: rg-example
     note : aaのリソースグループ
 
-<span class="t-muted">[<span class="t-ok">aa-func    </span>] kind: function_app</span>
+<span class="t-muted">[<span class="t-ok">aa-func    </span>] provider: azure</span>
     value: func-example-app
     note : aaのAPI(Function App)</pre>
     </div>
     <div class="data-table-wrap">
       <table class="data-table">
-        <thead><tr><th>id</th><th>kind</th><th>value</th><th>note</th></tr></thead>
+        <thead><tr><th>id</th><th>provider</th><th>value</th><th>note</th></tr></thead>
         <tbody>
-          <tr><td><span class="id-chip">aa-storage</span></td><td>storage_account</td><td>stexampleacct</td><td>aaのメインAzureストレージ</td></tr>
-          <tr><td><span class="id-chip">aa-rg</span></td><td>resource_group</td><td>rg-example</td><td>aaのリソースグループ</td></tr>
-          <tr><td><span class="id-chip">aa-func</span></td><td>function_app</td><td>func-example-app</td><td>aaのAPI(Function App)</td></tr>
+          <tr><td><span class="id-chip">aa-storage</span></td><td>azure</td><td>stexampleacct</td><td>aaのメインAzureストレージ</td></tr>
+          <tr><td><span class="id-chip">aa-rg</span></td><td>azure</td><td>rg-example</td><td>aaのリソースグループ</td></tr>
+          <tr><td><span class="id-chip">aa-func</span></td><td>azure</td><td>func-example-app</td><td>aaのAPI(Function App)</td></tr>
         </tbody>
       </table>
     </div>
@@ -132,7 +133,7 @@
     <h2><span class="num">3.</span> servicelist — 各idに対して「何を確認するか」</h2>
     <p class="muted">idlistの1件に対して、期待するテーブル/リソースを紐づける。学習用に自分で維持する手元カタログ。</p>
     <div class="terminal">
-      <div class="bar">&gt; b1\run 3.servicelist show aa-storage</div>
+      <div class="bar">&gt; b1\run 1.list servicelist show aa-storage</div>
       <pre><span class="t-muted">[id: <span class="t-ok">aa-storage</span>]</span>
   service: table   expected: ExampleScores    memo: スコア記録
   service: table   expected: ExampleBaLog     memo: ba台帳
@@ -142,9 +143,9 @@
 
   <section>
     <h2><span class="num">4.</span> azure — idlist/servicelistを見て実物と突き合わせる</h2>
-    <p class="muted">rbookのrun_azure.pyを薄く呼ぶだけにして、実装は増やさない方針。</p>
+    <p class="muted">rbookのrun.py(内部でrun_azure.py)を薄く呼ぶだけにして、実装は増やさない方針。実際の2.azure &lt;id&gt;は、指定idのproviderがazureかだけを確認し、テーブル一覧はidで絞り込まずストレージアカウント全体の期待値と実測を突き合わせます(以下の「aa-storageのテーブル」も実際はアカウント全体が対象です)。</p>
     <div class="terminal">
-      <div class="bar">&gt; b1\run 4.azure aa-storage</div>
+      <div class="bar">&gt; b1\run 2.azure aa-storage</div>
       <pre><span class="t-ok">[OK] ExampleScores     </span> (12件)  — スコア記録
 <span class="t-ok">[OK] ExampleBaLog      </span> (263件) — ba台帳
 <span class="t-warn">[!]  ExampleSessions   </span> (想定されているが見つからない)
@@ -156,7 +157,7 @@
   <section>
     <h2>データの流れ（仮）</h2>
     <div class="flow-wrap">
-      <svg viewBox="0 0 620 130" width="620" height="130" role="img" aria-label="idlist.json と servicelist.json が 4.azure に渡り、rbookのrun_azure.py経由でaz CLIを呼ぶ流れ図">
+      <svg viewBox="0 0 620 130" width="620" height="130" role="img" aria-label="idlist.json と servicelist.json が 2.azure に渡り、rbookのrun.py(内部でrun_azure.py)経由でaz CLIを呼ぶ流れ図">
         <defs>
           <marker id="arrowhead2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
             <path class="flow-arrowhead" d="M0,0 L6,3 L0,6 Z" />
@@ -174,37 +175,38 @@
         <path class="flow-arrow" d="M120,95 C160,95 160,80 202,84"/>
 
         <rect x="206" y="46" width="112" height="42" rx="8" class="flow-box-fill flow-accent-stroke" stroke-width="1.4"/>
-        <text x="262" y="64" text-anchor="middle" class="flow-label">4.azure</text>
+        <text x="262" y="64" text-anchor="middle" class="flow-label">2.azure</text>
         <text x="262" y="78" text-anchor="middle" class="flow-sub">薄い橋渡し</text>
 
         <path class="flow-arrow" d="M318,67 L400,67"/>
 
         <rect x="404" y="46" width="112" height="42" rx="8" class="flow-box-fill flow-box-stroke" stroke-width="1"/>
         <text x="460" y="64" text-anchor="middle" class="flow-label">rbook</text>
-        <text x="460" y="78" text-anchor="middle" class="flow-sub">run_azure.py</text>
+        <text x="460" y="78" text-anchor="middle" class="flow-sub">run.py</text>
 
         <path class="flow-arrow" d="M516,67 L600,67"/>
         <text x="608" y="71" text-anchor="end" class="flow-label" font-size="11">az CLI</text>
       </svg>
     </div>
-    <p class="flow-caption">idlist/servicelistは静的な定義ファイル、4.azureは新しいAzure呼び出しロジックを持たない想定。</p>
+    <p class="flow-caption">idlist/servicelistは静的な定義ファイル、2.azureは新しいAzure呼び出しロジックを持たない想定(実際もrun_azure.pyの結果をそのまま使っている)。</p>
   </section>
 
   <section>
-    <h2>まだ決まっていないところ</h2>
+    <h2>解釈A/Bの比較(採用: 解釈A)</h2>
+    <p class="muted">モック作成時点では未決着だったが、その後idlist/servicelistとも手入力の棚卸しとして実装され(ba-266/ba-267)、解釈Aの方向で決着した。</p>
     <div class="compare">
       <div class="compare-card fit-a">
-        <h3>解釈A（このモックの前提）</h3>
-        <ul><li>idlist/servicelistは自分で棚卸し</li><li>4.azureは登録範囲だけ見る</li><li>学習目的と相性が良い</li></ul>
+        <h3>解釈A（採用・このモックの前提）</h3>
+        <ul><li>idlist/servicelistは自分で棚卸し</li><li>2.azureはidでprovider一致を確認するだけで、テーブル一覧はストレージ全体を突き合わせる(id単位の絞り込みはしない)</li><li>学習目的と相性が良い</li></ul>
       </div>
       <div class="compare-card">
-        <h3>解釈B</h3>
+        <h3>解釈B（不採用）</h3>
         <ul><li>idlist/servicelist自体もaz呼び出しで埋まる</li><li>実質4.azureの一部を先出し</li><li>サブスクリプション全体の棚卸しに近い</li></ul>
       </div>
     </div>
   </section>
 
-  <footer class="page">仮モック・実装なし。項目名(kind/value/note等)も置き換え前提です。</footer>
+  <footer class="page">初期のたたき台(仮モック)。実際の実装(1.list/2.azure、ba-267)ではkind列は無くproviderのみです。値は引き続きダミーです。</footer>
 </div>
 </body>
 </html>
