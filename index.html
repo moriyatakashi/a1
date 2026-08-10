@@ -47,15 +47,14 @@
     @media (prefers-reduced-motion: reduce) {
       .card, .card-foot .arrow { transition: none; }
     }
-
-    /* aaカードだけは大きなカードUIではなく、base.cssの.back-row aと同じ
-       シンプルなテキストリンクにする(back相当の見た目)。 */
-    .simple-link { display: flex; align-items: center; gap: 6px; color: var(--accent); text-decoration: none; font-size: 0.95rem; padding: 4px 2px; }
-    .simple-link:hover, .simple-link:focus-visible { text-decoration: underline; }
   </style>
 </head>
 <body>
   <div class="wrap">
+    <div class="back-row">
+      <a href="https://moriyatakashi.github.io/aa/">&larr; aa</a>
+    </div>
+
     <div>
       <p class="eyebrow">roreki</p>
       <h1>路歴（a1）</h1>
@@ -66,6 +65,7 @@
   <script>
     // card.json(b1/run 1.card が読み書きするのと同じファイル)を読んで、そのままカードを組み立てる。
     // 表示ロジックをこの1箇所に一本化しているので、card.jsonの中身が増えても書き換え不要。
+    // aaへの導線はcard.jsonではなく上のback-row(固定リンク)側で持つ。
     fetch("data/card.json")
       .then((res) => res.json())
       .then((cards) => {
@@ -76,16 +76,6 @@
           const title = card.title ?? "";
           const url = card.url ?? "";
           const message = card.message ?? "";
-
-          // aaカードだけはback-row相当のシンプルなリンクにする(見た目のみの特別扱い)。
-          if (title === "aa") {
-            const link = document.createElement("a");
-            link.className = "simple-link";
-            link.href = url;
-            link.textContent = `→ ${title}`;
-            container.append(link);
-            continue;
-          }
 
           const a = document.createElement("a");
           a.className = "card";
