@@ -25,6 +25,7 @@
     .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
     .card-head { display: flex; align-items: center; gap: 10px; }
+    .card-head .ref-inline { margin-left: auto; }
     .badge {
       width: 30px; height: 30px; flex: none;
       border-radius: 7px;
@@ -76,6 +77,7 @@
           const title = card.title ?? "";
           const url = card.url ?? "";
           const message = card.message ?? "";
+          const ba = card.ba ?? "";
 
           const a = document.createElement("a");
           a.className = "card";
@@ -93,6 +95,13 @@
           titleEl.textContent = title;
 
           head.append(badge, titleEl);
+
+          if (ba) {
+            const baEl = document.createElement("div");
+            baEl.className = "ref-inline";
+            baEl.textContent = ba;
+            head.append(baEl);
+          }
 
           const desc = document.createElement("div");
           desc.className = "card-desc";

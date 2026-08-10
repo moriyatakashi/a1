@@ -2,16 +2,19 @@
   {
     "title": "c1",
     "url": "https://moriyatakashi.github.io/a1/src/c1.html",
-    "message": "idlist・servicelist・azure コマンドの仮イメージ"
+    "message": "idlist・servicelist・azure コマンドの仮イメージ",
+    "ba": "ba-264"
   },
   {
     "title": "c2",
     "url": "https://moriyatakashi.github.io/a1/src/c2.html",
-    "message": "idlistキー命名のたたき台(親子ID案)"
+    "message": "idlistキー命名のたたき台(親子ID案)",
+    "ba": "ba-266"
   },
   {
     "title": "c3",
     "url": "https://moriyatakashi.github.io/a1/src/c3.html",
-    "message": "b1コマンド構成整理のたたき台(1.list案)"
+    "message": "b1コマンド構成整理のたたき台(1.list案)",
+    "ba": "ba-267"
   }
 ]
