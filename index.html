@@ -47,6 +47,11 @@
     @media (prefers-reduced-motion: reduce) {
       .card, .card-foot .arrow { transition: none; }
     }
+
+    /* aaカードだけは大きなカードUIではなく、base.cssの.back-row aと同じ
+       シンプルなテキストリンクにする(back相当の見た目)。 */
+    .simple-link { display: flex; align-items: center; gap: 6px; color: var(--accent); text-decoration: none; font-size: 0.95rem; padding: 4px 2px; }
+    .simple-link:hover, .simple-link:focus-visible { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -71,6 +76,16 @@
           const title = card.title ?? "";
           const url = card.url ?? "";
           const message = card.message ?? "";
+
+          // aaカードだけはback-row相当のシンプルなリンクにする(見た目のみの特別扱い)。
+          if (title === "aa") {
+            const link = document.createElement("a");
+            link.className = "simple-link";
+            link.href = url;
+            link.textContent = `→ ${title}`;
+            container.append(link);
+            continue;
+          }
 
           const a = document.createElement("a");
           a.className = "card";
