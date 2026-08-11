@@ -1,11 +1,10 @@
 name: Backup BaLog/Scores/Visits to Google Drive
 
 on:
-  # 2026-08-11: aa→a1移行中(ba-273)、日次スケジュールは一旦止めてある。
-  # aaの既存スケジュールとの二重バックアップを避けるため。旧aa側の処遇(S6)が
-  # 決まったら、ここのscheduleを戻す(または恒久的にaaのみに残す)想定。
-  # schedule:
-  #   - cron: '0 19 * * *'
+  # 2026-08-11: aaは今日ファイルを空にした(ba-273)ため、aa側の日次バックアップは
+  # もう動かない。二重防止で止めていたa1側のscheduleをここで再有効化する。
+  schedule:
+    - cron: '0 19 * * *'
   workflow_dispatch:
 
 env:
