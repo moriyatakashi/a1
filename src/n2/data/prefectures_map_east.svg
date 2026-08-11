@@ -1,10 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="195 75 800 370" width="1050" height="486">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="195 75 800 380" width="1050" height="499">
   <style>
     .pref-rect { stroke: #333; stroke-width: 1.5; rx: 6; }
     .visited { fill: #d9534f; }
     .unvisited { fill: #4a7ebb; }
     .pref-label { font-family: sans-serif; font-size: 14px; fill: #fff; text-anchor: middle; dominant-baseline: central; }
     .adj-line { stroke: #888; stroke-width: 1; stroke-dasharray: 4 3; }
+    .bridge-line { stroke: #4a7ebb; stroke-width: 1.5; stroke-dasharray: 2 3; }
   </style>
   <g id="adjacency">
     <line class="adj-line" x1="410" y1="342" x2="402" y2="250"/>
@@ -43,6 +44,7 @@
     <line class="adj-line" x1="730" y1="205" x2="835" y2="286"/>
     <line class="adj-line" x1="250" y1="262" x2="342" y2="322"/>
     <line class="adj-line" x1="250" y1="262" x2="250" y2="352"/>
+    <line class="bridge-line" x1="300" y1="412" x2="342" y2="322"/>
   </g>
   <g id="prefectures">
     <g data-pref="岡山">
@@ -120,6 +122,10 @@
     <g data-pref="鳥取">
       <rect class="pref-rect unvisited" x="215" y="240" width="70" height="44" rx="6"/>
       <text class="pref-label" x="250" y="262">鳥取</text>
+    </g>
+    <g data-pref="徳島">
+      <rect class="pref-rect unvisited" x="265" y="390" width="70" height="44" rx="6"/>
+      <text class="pref-label" x="300" y="412">徳島</text>
     </g>
   </g>
 </svg>
