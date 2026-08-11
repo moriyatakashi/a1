@@ -1,0 +1,99 @@
+import os
+import sys
+from pathlib import Path
+
+# function_app.pyは環境変数をモジュール読み込み時に参照するため、importより前に設定する。
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "api"))
+
+os.environ.setdefault("TABLE_CONNECTION_STRING", "UseDevelopmentStorage=true")
+os.environ.setdefault("GOOGLE_CLIENT_ID", "test-client-id")
+os.environ.setdefault("ALLOWED_EMAIL", "owner@example.com")
+
+import pytest
+import requests
+from azure.core.exceptions import ResourceNotFoundError
+import function_app as fa  # noqa: E402
+
+
+class FakeTable:
+    """azure.data.tables.TableClientの、テストで使う分だけの最小フェイク。"""
+
+    def __init__(self):
+        self.rows = {}
+
+    def list_entities(self):
+        return list(self.rows.values())
+
+    def get_entity(self, partition_key, row_key):
+        try:
+            return self.rows[(partition_key, row_key)]
+        except KeyError:
+            raise ResourceNotFoundError(f"{partition_key}/{row_key} not found")
+
+    def upsert_entity(self, entity):
+        self.rows[(entity["PartitionKey"], entity["RowKey"])] = dict(entity)
+
+    def delete_entity(self, partition_key, row_key):
+        self.rows.pop((partition_key, row_key), None)
+
+
+@pytest.fixture
+def tables(monkeypatch):
+    """table_name -> FakeTable。GET/POSTをまたいで状態を共有するため、テストごとに1つ。"""
+    store = {}
+
+    def _table_client(table_name):
+        return store.setdefault(table_name, FakeTable())
+
+    monkeypatch.setattr(fa, "_table_client", _table_client)
+    return store
+
+
+class FakeGoogleResponse:
+    def __init__(self, status_code, payload):
+        self.status_code = status_code
+        self._payload = payload
+
+    def json(self):
+        return self._payload
+
+
+@pytest.fixture
+def google_auth_ok(monkeypatch):
+    """ALLOWED_EMAIL本人としてログイン検証を常に通すスタブ。"""
+    def _get(url, params=None, timeout=None):
+        return FakeGoogleResponse(200, {
+            "aud": fa.GOOGLE_CLIENT_ID,
+            "email_verified": "true",
+            "email": fa.ALLOWED_EMAIL,
+        })
+    monkeypatch.setattr(fa.requests, "get", _get)
+
+
+@pytest.fixture
+def google_auth_wrong_email(monkeypatch):
+    """有効なGoogleトークンだが、ALLOWED_EMAIL以外のアカウントのスタブ(401想定)。"""
+    def _get(url, params=None, timeout=None):
+        return FakeGoogleResponse(200, {
+            "aud": fa.GOOGLE_CLIENT_ID,
+            "email_verified": "true",
+            "email": "someone-else@example.com",
+        })
+    monkeypatch.setattr(fa.requests, "get", _get)
+
+
+@pytest.fixture
+def google_auth_invalid(monkeypatch):
+    """Google側がトークンを拒否するスタブ(401想定)。"""
+    def _get(url, params=None, timeout=None):
+        return FakeGoogleResponse(400, {})
+    monkeypatch.setattr(fa.requests, "get", _get)
+
+
+@pytest.fixture
+def google_auth_unreachable(monkeypatch):
+    """tokeninfoへの疎通自体が失敗するスタブ(ネットワーク不通・タイムアウト等を想定、401想定)。"""
+    def _get(url, params=None, timeout=None):
+        raise requests.exceptions.ConnectionError("simulated network failure")
+    monkeypatch.setattr(fa.requests, "get", _get)

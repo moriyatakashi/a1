@@ -1,0 +1,335 @@
+// app.js — ab/src/main/m5(訪問地図)のロジックをaa向けに移植したもの。
+// 画面側ログインゲートを通過した後にのみデータを取得・表示する。GETもcredentialヘッダで認証する(ba-16)。
+// config.jsを自分でimportする(ba-9追補)。HTML側の<script>読込に依存しないため、
+// 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
+import "../common/config.js";
+import { todayStr, withCredential } from "../common/utils.js";
+const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
+const VISITS_API = `${API_BASE}/visits`;
+
+const canvas = document.getElementById("mapCanvas");
+const ctx = canvas.getContext("2d");
+const popup = document.getElementById("popup");
+
+async function fetchGeo(path) {
+  const r = await fetch(path);
+  return r.json();
+}
+
+function makeProjector(features, points, W, H, padding = 20) {
+  let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+  features.forEach(f => {
+    const geom = f.geometry;
+    const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
+    polys.forEach(poly => poly.forEach(ring => ring.forEach(([lng, lat]) => {
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+    })))
+  });
+  // 近畿3市の境界だけだと、その外(神奈川など)の訪問ポイントが投影範囲外に出て
+  // 描画されなくなる。訪問ポイントの緯度経度もbboxに含めて自動的に範囲を広げる。
+  points.forEach(({ lng, lat }) => {
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  });
+  const scaleX = (W - padding * 2) / (maxLng - minLng);
+  const scaleY = (H - padding * 2) / (maxLat - minLat);
+  const scale = Math.min(scaleX, scaleY);
+  const offX = padding + (W - padding * 2 - (maxLng - minLng) * scale) / 2;
+  const offY = padding + (H - padding * 2 - (maxLat - minLat) * scale) / 2;
+  return (lng, lat) => [
+    offX + (lng - minLng) * scale,
+    H - offY - (lat - minLat) * scale
+  ];
+}
+
+function drawFeatures(features, proj, fillColor, strokeColor) {
+  features.forEach(f => {
+    const geom = f.geometry;
+    const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
+    polys.forEach(poly => {
+      ctx.beginPath();
+      poly.forEach(ring => {
+        ring.forEach(([lng, lat], i) => {
+          const [x, y] = proj(lng, lat);
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+      });
+      ctx.fillStyle = fillColor;
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 1;
+      ctx.fill();
+      ctx.stroke();
+    });
+  });
+}
+
+// ba-135: ピンが多すぎて重なる問題への対応。県境データ等は使わず、画面座標(投影後のx/y)
+// が近い点同士を素朴にまとめるだけ。visitsは既に新しい順で渡ってくるため、処理順の性質上
+// 各クラスタのvisits[0]は常にそのクラスタ内で最新の訪問になる(先に来た点がクラスタの起点になり、
+// 後から来る=より古い点はその起点に併合されることはあってもその逆はないため)。
+function clusterPoints(rawPoints, thresholdPx = 14) {
+  const clusters = [];
+  rawPoints.forEach((p) => {
+    const existing = clusters.find((c) => Math.hypot(c.x - p.x, c.y - p.y) < thresholdPx);
+    if (existing) {
+      existing.visits.push(p.v);
+      existing.isLatest = existing.isLatest || p.isLatest;
+    } else {
+      clusters.push({ x: p.x, y: p.y, visits: [p.v], isLatest: p.isLatest });
+    }
+  });
+  return clusters;
+}
+
+function clusterRadius(count) {
+  return Math.min(6 + Math.sqrt(count - 1) * 3, 14);
+}
+
+function drawCluster(c, color) {
+  const r = clusterRadius(c.visits.length);
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 2;
+  ctx.fill();
+  ctx.stroke();
+  if (c.visits.length > 1) {
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 9px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(c.visits.length), c.x, c.y);
+  }
+}
+
+function drawPoints(visits, proj) {
+  const rawPoints = visits.map((v, i) => {
+    const [x, y] = proj(v.lng, v.lat);
+    return { x, y, v, isLatest: i === 0 };
+  });
+  const clusters = clusterPoints(rawPoints);
+
+  // 通常クラスタを先に描画し、最新の訪問を含むクラスタ(赤)は最後に描画して常に最前面に出す
+  clusters.filter((c) => !c.isLatest).forEach((c) => drawCluster(c, "#b5651d"));
+  clusters.filter((c) => c.isLatest).forEach((c) => drawCluster(c, "#e63946"));
+
+  return clusters;
+}
+
+// 訪問記録の入力(ab/src/main/n1の訪問記録機能を移植、メモ欄は対象外)
+function initVisitInput() {
+  const elPlaceInput = document.getElementById("placeInput");
+  const elDateInput = document.getElementById("dateInput");
+  const elTimeInput = document.getElementById("timeInput");
+  const elBtnGps = document.getElementById("btnGps");
+  const elBtnAddVisit = document.getElementById("btnAddVisit");
+  const elStatus = document.getElementById("visitInputStatus");
+
+  const today = todayStr();
+  elDateInput.value = today;
+  const now = new Date();
+  elTimeInput.value = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+
+  let _lat = null, _lng = null;
+  // ba-165②(2026-07-29): 逆ジオコーディング結果のうち県/市/町の3階層を別フィールドとして
+  // 保持しておき、visits POST時にそのまま送る(自動加点の判定に使うのはbackend側)。
+  let _pref = null, _city = null, _town = null;
+
+  elBtnGps.addEventListener("click", () => {
+    if (!navigator.geolocation) { alert("位置情報非対応"); return; }
+    elBtnGps.textContent = "取得中...";
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      _lat = lat; _lng = lng;
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ja`
+        );
+        const data = await res.json();
+        const addr = data.address;
+        _pref = addr.state || addr.province || null;
+        _city = addr.city || addr.town || addr.village || null;
+        _town = addr.suburb || addr.neighbourhood || addr.quarter || null;
+        const place = [_city, _town].filter(Boolean).join(" ");
+        elPlaceInput.value = place || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      } catch {
+        _pref = _city = _town = null;
+        elPlaceInput.value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      }
+      elBtnGps.textContent = "📍 現在地";
+    }, () => {
+      alert("位置情報を取得できませんでした");
+      elBtnGps.textContent = "📍 現在地";
+    });
+  });
+
+  elBtnAddVisit.addEventListener("click", async () => {
+    // ba-35残課題(2): 公開閲覧モードでは未ログインでも閲覧できるため、書き込み時に
+    // credentialの有無を確認し、無ければ通信(401)ではなくログインへ誘導する。
+    if (!window.__credential) {
+      elStatus.textContent = "追加にはログインが必要です";
+      if (window.aaShowLoginGate) window.aaShowLoginGate();
+      return;
+    }
+    const place = elPlaceInput.value.trim();
+    const date = elDateInput.value;
+    const time = elTimeInput.value;
+    if (!place) { elPlaceInput.focus(); return; }
+    try {
+      const res = await fetch(VISITS_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(withCredential({
+          place, date, time, lat: _lat, lng: _lng,
+          pref: _pref, city: _city, town: _town,
+        })),
+      });
+      if (!res.ok) { elStatus.textContent = "エラー: 追加に失敗しました"; return; }
+      const saved = await res.json();
+      elPlaceInput.value = "";
+      _lat = null; _lng = null; _pref = null; _city = null; _town = null;
+      const granLabel = { pref: "県", city: "市", town: "町" }[saved.autoPointGranularity];
+      elStatus.textContent = granLabel ? `✓ 追加しました(初${granLabel}で自動加点)` : "✓ 追加しました";
+      setTimeout(() => elStatus.textContent = "", 3000);
+      load();
+    } catch (e) {
+      elStatus.textContent = "エラー: " + e.message;
+    }
+  });
+}
+
+function addVisitRow(listEl, v, hasPin, onClick) {
+  const row = document.createElement("div");
+  row.className = "visit-row";
+
+  const placeEl = document.createElement("div");
+  placeEl.className = "visit-row-place";
+  placeEl.textContent = v.place || "—";
+  row.appendChild(placeEl);
+
+  const metaEl = document.createElement("div");
+  metaEl.className = "visit-row-meta";
+  metaEl.textContent = `${v.date || ""} ${v.time || ""}${hasPin ? "" : " (地図なし)"}`;
+  row.appendChild(metaEl);
+
+  if (onClick) row.addEventListener("click", onClick);
+  listEl.appendChild(row);
+  return row;
+}
+
+let _points = [];
+let _W = 0;
+
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (_W / rect.width);
+  const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+  let hit = null;
+  for (const pt of _points) {
+    if (Math.hypot(mx - pt.x, my - pt.y) < clusterRadius(pt.visits.length) + 6) { hit = pt; break; }
+  }
+  if (hit) {
+    // ba-135: クラスタは複数訪問の集まりなのでどれを指したか特定できない。クラスタ内最新の
+    // 訪問(visits[0])を代表として表示し、他にもあれば件数を添える。
+    const latest = hit.visits[0];
+    const others = hit.visits.length - 1;
+    document.getElementById("popupPlace").textContent = latest.place || "—";
+    document.getElementById("popupMeta").textContent =
+      `${latest.date || ""} ${latest.time || ""}${others > 0 ? ` (ほか${others}件)` : ""}${latest.memo ? "\n" + latest.memo : ""}`;
+    const px = Math.min(hit.x + 10, _W - 200);
+    const py = Math.max(hit.y - 60, 10);
+    popup.style.left = px + "px";
+    popup.style.top = py + "px";
+    popup.classList.add("show");
+  } else {
+    popup.classList.remove("show");
+  }
+});
+
+async function load() {
+  const listEl = document.getElementById("visitList");
+  const emptyMsg = document.getElementById("emptyMsg");
+  listEl.innerHTML = "";
+  emptyMsg.style.display = "none";
+
+  const [higashiGeo, osakaCityGeo, amagasakiGeo, visitRes] = await Promise.all([
+    fetchGeo("higashiosaka.geojson"),
+    fetchGeo("osaka_city.geojson"),
+    fetchGeo("amagasaki.geojson"),
+    fetch(VISITS_API, { cache: "no-store", headers: { "X-Visits-Credential": window.__credential || "" } })
+  ]);
+
+  const allVisits = visitRes.ok ? await visitRes.json() : [];
+  // 訪問記録をcreatedAtのISO 8601タイムスタンプで降順(新しい順)に並べ替える
+  // これにより、同じ分に複数エントリがあっても最新を正確に特定できる
+  allVisits.sort((a, b) => {
+    const ta = new Date(a.createdAt || 0).getTime();
+    const tb = new Date(b.createdAt || 0).getTime();
+    return tb - ta;
+  });
+  const withLatLng = allVisits.filter(v => v.lat && v.lng);
+
+  document.getElementById("statTotal").textContent = allVisits.length;
+  document.getElementById("statPlaces").textContent = new Set(allVisits.map(v => v.place).filter(Boolean)).size;
+  document.getElementById("statDays").textContent = new Set(allVisits.map(v => v.date).filter(Boolean)).size;
+
+  const W = canvas.offsetWidth;
+  const H = 520; // 既存3エリア(higashiosaka/osaka_city/amagasaki)を読み直し、地図を拡大表示する(360→520)
+  canvas.width = W;
+  canvas.height = H;
+
+  const allFeatures = [...higashiGeo.features, ...osakaCityGeo.features, ...amagasakiGeo.features];
+  const proj = makeProjector(allFeatures, withLatLng, W, H);
+
+  ctx.clearRect(0, 0, W, H);
+  drawFeatures(amagasakiGeo.features, proj, "#f7e8dc", "#dcb08e");
+  drawFeatures(osakaCityGeo.features, proj, "#e8f0e0", "#a8c890");
+  drawFeatures(higashiGeo.features, proj, "#dce8f5", "#aac4e0");
+  _W = W;
+  _points = withLatLng.length > 0 ? drawPoints(withLatLng, proj) : [];
+
+  if (allVisits.length === 0) {
+    emptyMsg.style.display = "block";
+    return;
+  }
+
+  allVisits.forEach(v => {
+    const hasPin = !!(v.lat && v.lng);
+    // ba-135: ピンはクラスタ化されているため、この訪問を含むクラスタを探す(位置決めのみに使う)。
+    const cluster = hasPin ? _points.find(c => c.visits.some(cv => cv.id === v.id)) : null;
+
+    addVisitRow(listEl, v, hasPin, hasPin ? () => {
+      document.querySelectorAll(".visit-row").forEach(r => r.classList.remove("active"));
+      if (cluster) {
+        // ポップアップにはクリックしたこの訪問自体の情報を表示する(クラスタの代表ではない)。
+        document.getElementById("popupPlace").textContent = v.place || "—";
+        document.getElementById("popupMeta").textContent = `${v.date || ""} ${v.time || ""}`;
+        popup.style.left = Math.min(cluster.x + 10, W - 200) + "px";
+        popup.style.top = Math.max(cluster.y - 60, 10) + "px";
+        popup.classList.add("show");
+      }
+    } : null);
+  });
+}
+
+// issue #8対応(案B): auth.jsの実行順は変えず、起動時にwindow.__loginStateを直接チェックする。
+// auth.js(通常script)はHTML解析中に同期実行されるため、このモジュール(type="module"でdefer)が
+// 動く時点では既にwindow.__loginStateがセット済みの可能性がある。その場合はイベントを待たずに即実行し、
+// まだ未ログインならこれまで通りn2-login-successイベントを待つ(通常のログインボタン操作に対応)。
+function onLoginSuccess() {
+  initVisitInput();
+  load();
+}
+
+if (window.__loginState && window.__loginState.loggedIn) {
+  onLoginSuccess();
+} else {
+  window.addEventListener("n2-login-success", onLoginSuccess, { once: true });
+}

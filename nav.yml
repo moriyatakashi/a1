@@ -1,0 +1,31 @@
+categories:
+  - label: 記録
+    items:
+      - code: n1
+        desc: 記録一覧
+        href: src/n1/
+      - code: n2
+        desc: 訪問地図
+        href: src/n2/
+      - code: n3
+        desc: 予定
+        href: src/n3/
+  - label: 内部メモ
+    items:
+      - code: ba
+        desc: 気づきログ
+        href: src/ba/
+      - code: bb
+        desc: ba現在形ビューワ
+        href: src/bb/
+      - code: bc
+        desc: baレーダーチャート
+        href: src/bc/
+  - label: 関連
+    items:
+      - code: w
+        desc: 旧abサイト＋あそび系一覧（t/s一覧＋g1〜g8、2026-08-09に「あそび」カテゴリを統合）
+        href: src/w/
+      - code: a1
+        desc: 路歴は、まだ続く。
+        href: https://moriyatakashi.github.io/a1/

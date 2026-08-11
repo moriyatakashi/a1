@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>g1 — NES Emulator</title>
+<link rel="stylesheet" href="style.css?v=202607201200">
+</head>
+<body>
+<a class="back" href="../../../">← 戻る</a>
+<h1>路歴（g1） / NES Emulator</h1>
+<p class="updated" id="lastUpdated">更新: 2026-07-14 04:55 JST</p>
+<p class="status" id="status">ROM を選択してください</p>
+<p class="status" id="gamepadStatus">🎮 未接続（キーボード/タッチで操作可）</p>
+
+<canvas id="screen" width="256" height="240"></canvas>
+<audio id="iosUnlock" loop playsinline style="display:none"
+  src="data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACBgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA"></audio>
+
+<div class="row" style="align-items:center;gap:6px;">
+  <label style="font-size:0.7rem;color:var(--text-soft);">🔊 音量</label>
+  <input type="range" id="volSlider" min="0" max="6" step="0.5" value="3" style="width:120px;">
+  <button id="btnTestSound" style="font-size:0.7rem;padding:4px 10px;">テスト音</button>
+</div>
+
+<div class="row">
+  <button id="btnFile">📂 ROM を開く</button>
+  <button id="btnStop" disabled>■ 停止</button>
+</div>
+<input type="file" id="fileInput" accept=".nes" style="display:none">
+
+<div class="row">
+  <button class="rom-btn" data-rom="rom/hello_nes4.nes">hello_nes4</button>
+  <button class="rom-btn" data-rom="rom/megaari.nes">megaari</button>
+  <button class="rom-btn" data-rom="rom/nittori.nes">nittori</button>
+  <button class="rom-btn" data-rom="rom/bad_apple_2_5.nes">bad_apple</button>
+</div>
+
+<div class="pad-area">
+  <div class="dpad">
+    <button class="pad-btn dpad-up" data-idx="4">▲</button>
+    <button class="pad-btn dpad-left" data-idx="6">◀</button>
+    <button class="pad-btn dpad-right" data-idx="7">▶</button>
+    <button class="pad-btn dpad-down" data-idx="5">▼</button>
+  </div>
+  <div class="ab-buttons">
+    <button class="pad-btn" data-idx="1">B</button>
+    <button class="pad-btn" data-idx="0">A</button>
+  </div>
+</div>
+<div class="start-select">
+  <button class="pad-btn" data-idx="2">SELECT</button>
+  <button class="pad-btn" data-idx="3">START</button>
+</div>
+
+<div class="keys">
+  Z = A &nbsp;/&nbsp; X = B &nbsp;/&nbsp; Enter = Start &nbsp;/&nbsp; Shift = Select<br>
+  矢印キー = 十字キー &nbsp;/&nbsp; スマホは上のボタンをタップ
+</div>
+
+<div class="error-box" id="errorBox">
+  <div class="error-header">
+    <span class="error-title">⚠ エラー内容（コピーしてClaudeに貼り付け可）</span>
+    <button class="btn-copy-err" id="btnCopyError">📋 コピー</button>
+  </div>
+  <pre class="error-text"><code id="errorText"></code></pre>
+</div>
+
+<script type="module" src="app.js?v=202607231030"></script>
+<script type="module">
+  import { applyLastUpdated } from "../../common/last-updated.js";
+  applyLastUpdated("src/g/g1");
+</script>
+</body>
+</html>

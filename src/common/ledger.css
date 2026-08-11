@@ -1,0 +1,252 @@
+/* common/ledger.css — n4で作った「追記オンリー帳票」デザインの共通化(2026-07-13)
+   n4/baなど、同じ形の台帳ページ(赤黒帳票方式・スレッド一覧)で共有する。
+   ページ固有の見出し・文言はindex.html側のインラインstyleかclassで上書きしてよい。 */
+
+:root {
+  --paper: #14170f;
+  --paper-band: #1b1f14;
+  --ink: #dfe3d2;
+  --ink-soft: #8b9280;
+  --line: #333a28;
+  --accent: #7fa8bd;
+  --red: #d97a68;
+  --closed: #6fb0ac;
+  --open: #d9a63f;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink); margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+  max-width: 680px; margin: 0 auto; padding: 16px;
+}
+a { color: var(--accent); }
+
+.eyebrow { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.7rem; letter-spacing: 0.08em; color: var(--ink-soft); }
+h1 { font-size: 1.3rem; margin: 6px 0 2px; }
+.lede { font-size: 0.8rem; color: var(--ink-soft); margin: 0 0 8px; }
+
+#login-gate { margin: 20px 0; }
+
+.lane-legend {
+  display: flex; gap: 16px; flex-wrap: wrap; margin: 10px 0 20px;
+  font-size: 0.72rem; color: var(--ink-soft);
+}
+.lane-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.lane-dot { width: 8px; height: 8px; border-radius: 50%; }
+.lane-dot--claude { background: var(--accent); }
+.lane-dot--human { background: var(--open); }
+
+.summary-bar {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 8px;
+  overflow: hidden; margin: 0 0 20px;
+}
+.stat { background: var(--paper-band); padding: 10px 12px; text-align: center; }
+.stat-num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 1.2rem; font-weight: 700; }
+.stat-label { font-size: 0.62rem; color: var(--ink-soft); margin-top: 2px; }
+
+.new-entry-card {
+  border: 1px solid var(--line); border-top: 3px solid var(--accent);
+  border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; background: var(--paper);
+}
+.new-entry-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 2px; }
+.new-entry-sub { font-size: 0.7rem; color: var(--ink-soft); margin-bottom: 8px; }
+.lane-form-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.65rem;
+  color: var(--ink-soft); display: block; margin: 8px 0 4px;
+}
+.field-input, .field-textarea {
+  width: 100%; font-size: 0.85rem; padding: 7px 9px; border: 1px solid var(--line);
+  border-radius: 5px; background: var(--paper-band); color: var(--ink); font-family: inherit; box-sizing: border-box;
+}
+.field-textarea { resize: vertical; min-height: 46px; }
+.json-paste { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.74rem; min-height: 54px; }
+.new-entry-divider {
+  display: flex; align-items: center; gap: 10px; font-size: 0.66rem; color: var(--ink-soft); margin: 14px 0 8px;
+}
+.new-entry-divider::before, .new-entry-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.new-entry-submit {
+  margin-top: 10px; font-size: 0.8rem; padding: 8px 16px; border: 1px solid var(--accent);
+  border-radius: 6px; background: transparent; color: var(--accent); font-weight: 600; cursor: pointer;
+}
+
+.thread-list { display: flex; flex-direction: column; gap: 12px; }
+.empty { color: var(--ink-soft); text-align: center; padding: 20px 0; font-size: 0.85rem; }
+
+.thread-card { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.thread-card > summary { list-style: none; cursor: pointer; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.thread-card > summary::-webkit-details-marker { display: none; }
+/* ba-99: バッジ列とタイトルが1行目を取り合わないよう、タイトルは常に次行から全幅で始める */
+.thread-top-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.chevron { font-family: ui-monospace, monospace; font-size: 0.72rem; color: var(--ink-soft); transition: transform 0.15s; flex-shrink: 0; }
+details[open] .chevron { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
+
+.seq-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.7rem;
+  font-weight: 700; color: var(--ink-soft); flex-shrink: 0;
+}
+.pill { font-size: 0.66rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.pill-open { color: var(--open); border: 1px solid var(--open); }
+.pill-closed { color: var(--closed); border: 1px solid var(--closed); }
+.thread-title { font-size: 0.9rem; font-weight: 600; line-height: 1.4; flex: 1; flex-basis: 100%; word-break: break-all; }
+
+.meta-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 20px; }
+.tag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.66rem;
+  color: var(--ink-soft); background: var(--paper-band); border-radius: 4px; padding: 2px 7px;
+}
+.gh-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.66rem;
+  color: var(--accent); border: 1px dashed var(--accent); border-radius: 4px; padding: 2px 7px;
+}
+/* ba-162: 関連番号(link)チップ。表示層はthread-logic.jsのrelatedSeqs/seqTitleを使う(2026-08-02) */
+.related-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 20px; margin-top: 2px; }
+.related-label { font-size: 0.66rem; color: var(--ink-soft); }
+.related-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.68rem;
+  color: var(--accent); background: transparent; border: 1px solid var(--accent); border-radius: 999px;
+  padding: 2px 10px; cursor: pointer;
+}
+.related-chip:hover { background: var(--accent); color: var(--paper); }
+
+.perspective-row { display: flex; gap: 8px; align-items: center; padding-left: 20px; margin-top: 2px; }
+.perspective-label { font-size: 0.62rem; color: var(--ink-soft); }
+.perspective-chip { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.66rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.perspective-chip--active { color: var(--accent); border: 1px solid var(--accent); }
+.perspective-chip--void { color: var(--red); border: 1px solid var(--red); }
+
+/* react: 参考程度の反応(判断根拠にしない)。3レーンそれぞれの有無だけを淡く表示する。 */
+.react-row { display: flex; gap: 6px; align-items: center; padding-left: 20px; margin-top: 2px; }
+.react-label { font-size: 0.62rem; color: var(--ink-soft); cursor: help; }
+.react-chip {
+  font-size: 0.66rem; padding: 2px 8px; border-radius: 10px;
+  border: 1px solid var(--line); color: var(--ink-soft); opacity: 0.6;
+}
+.react-chip--on { border-color: var(--accent); color: var(--accent); opacity: 1; }
+
+.thread-timeline { border-top: 1px solid var(--line); padding: 4px 14px 12px; }
+.entry { display: grid; grid-template-columns: 16px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.entry:last-child { border-bottom: none; }
+.entry-rail { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; justify-self: center; }
+.entry--new .entry-rail { background: var(--accent); }
+.entry--note .entry-rail { background: var(--ink-soft); }
+.entry--correction .entry-rail { background: var(--red); }
+.entry--priority .entry-rail { background: var(--open); }
+.entry--status .entry-rail { background: var(--closed); }
+.entry--void-true .entry-rail { background: var(--red); }
+.entry--void-false .entry-rail { background: var(--accent); }
+.entry--void-true .entry-type, .entry--void-true .entry-body { color: var(--red); }
+/* ba-1: verified_on_device(実機確認)。他の種別と見分けやすいよう closed と同系色 + 太字にする */
+.entry--verified .entry-rail { background: var(--closed); }
+.entry--verified .entry-type { color: var(--closed); font-weight: 700; }
+.entry-head { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.64rem; color: var(--ink-soft); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.entry-type { font-weight: 700; }
+.entry-body { font-size: 0.83rem; margin-top: 3px; line-height: 1.5; word-break: break-all; }
+
+/* ba-77: 承認キュー(claudeがtakashi代筆で提案し、takashi本人の実ログインだけが承認できる) */
+.approval-badge { font-size: 0.62rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.approval-badge--pending { color: var(--open); border: 1px solid var(--open); }
+.approval-badge--approved { color: var(--closed); border: 1px solid var(--closed); }
+.btn-approve {
+  font-size: 0.66rem; padding: 2px 9px; border: 1px solid var(--accent); border-radius: 10px;
+  background: transparent; color: var(--accent); cursor: pointer; white-space: nowrap;
+}
+
+.lane-form { margin-top: 8px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 6px; background: var(--paper-band); }
+.lane-form-row { display: flex; gap: 6px; }
+.lane-form-row input {
+  flex: 1; font-size: 0.8rem; padding: 6px 8px; border: 1px solid var(--line);
+  border-radius: 5px; background: var(--paper); color: var(--ink); font-family: inherit;
+}
+.lane-form-row button {
+  font-size: 0.75rem; padding: 6px 10px; border: 1px solid var(--accent); border-radius: 5px;
+  background: transparent; color: var(--accent); cursor: pointer; white-space: nowrap;
+}
+.lane-form-row select {
+  font-size: 0.8rem; padding: 6px 8px; border: 1px solid var(--line);
+  border-radius: 5px; background: var(--paper); color: var(--ink); font-family: inherit;
+}
+.lane-form-hint { font-size: 0.62rem; color: var(--ink-soft); margin-top: 6px; }
+
+/* ba: 検索欄(数字+Enterでジャンプ/それ以外はタグ抽出)とそのリセットボタン */
+.ba-search { display: flex; gap: 8px; }
+.ba-search .field-input { flex: 1; }
+.btn-search-reset {
+  font-size: 0.72rem; padding: 5px 12px; border: 1px solid var(--ink-soft); border-radius: 5px;
+  background: transparent; color: var(--ink-soft); cursor: pointer; white-space: nowrap;
+}
+
+/* ba: 両視点そろって無効のスレッドは既定で隠し、トグルONのときだけ薄色+取り消し線で表示する */
+.list-controls { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.btn-toggle-voided {
+  font-size: 0.72rem; padding: 5px 12px; border: 1px solid var(--ink-soft); border-radius: 5px;
+  background: transparent; color: var(--ink-soft); cursor: pointer; white-space: nowrap;
+}
+.thread-card--void { opacity: 0.55; }
+.thread-card--void .thread-title { text-decoration: line-through; }
+/* ba: correctionによるタイトル訂正(有事用)。見出しは最新titleで上書き表示し、チップで訂正済みと分かるようにする */
+.title-corrected-chip {
+  font-size: 0.66rem; color: var(--ink-soft); border: 1px dashed var(--ink-soft);
+  border-radius: 10px; padding: 2px 8px; white-space: nowrap;
+}
+/* ba-175: gist(確定仕様スレッドの「今の結論」一言)。抜粋(entry-body)より濃く強調する */
+.thread-gist { font-size: 0.85rem; font-weight: 600; color: var(--ink); margin-top: 4px; }
+.entry-title { font-size: 0.85rem; font-weight: 700; margin-top: 3px; line-height: 1.5; word-break: break-all; }
+
+/* ba: 分類バッジ・分類フィルタ(ba-32の分類、ba-33で表示対応。2026-07-14。旧仕様は2026-07-26追加、
+   記録はba-181・第2版ドラフトで2026-07-30追加)
+   朱=案件(手を動かす)、金茶=確定仕様(恒久)、若葉=気づき、鈍青=保留論点、鈍色=旧仕様(色褪せた金茶)、
+   鈍青緑=記録(確定仕様・旧仕様と同じ参照側だが、決定でも退役でもない「ただの情報」を示す寒色) */
+:root {
+  --cls-anken: #c2452f;
+  --cls-shiyou: #b98a2e;
+  --cls-kizuki: #6e9448;
+  --cls-horyu: #5a7d99;
+  --cls-kyuushiyou: #756f62;
+  --cls-kiroku: #4f7d76;
+  --cls-anken-ink: #e8a294;
+  --cls-shiyou-ink: #ddba6e;
+  --cls-kizuki-ink: #a8c887;
+  --cls-horyu-ink: #9dbdd6;
+  --cls-kyuushiyou-ink: #b6ae9d;
+  --cls-kiroku-ink: #9ccac2;
+}
+.cls-badge {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+  padding: 1px 8px; border-left: 3px solid; background: rgba(255, 255, 255, 0.04);
+  white-space: nowrap;
+}
+.cls-badge--anken { color: var(--cls-anken-ink); border-color: var(--cls-anken); }
+.cls-badge--shiyou { color: var(--cls-shiyou-ink); border-color: var(--cls-shiyou); }
+.cls-badge--kizuki { color: var(--cls-kizuki-ink); border-color: var(--cls-kizuki); }
+.cls-badge--horyu { color: var(--cls-horyu-ink); border-color: var(--cls-horyu); }
+.cls-badge--kyuushiyou { color: var(--cls-kyuushiyou-ink); border-color: var(--cls-kyuushiyou); }
+.cls-badge--kiroku { color: var(--cls-kiroku-ink); border-color: var(--cls-kiroku); }
+.cls-via { font-weight: 400; opacity: 0.55; font-size: 0.6rem; margin-left: 3px; }
+
+.cls-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.cls-chip {
+  font-size: 0.74rem; padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: transparent; color: var(--ink-soft); cursor: pointer; font-family: inherit;
+}
+.cls-cnt { opacity: 0.7; margin-left: 4px; font-size: 0.66rem; }
+.cls-chip--on { color: var(--ink); border-color: var(--ink-soft); background: var(--paper-band); }
+.cls-chip--on.cls-chip--anken { color: var(--cls-anken-ink); border-color: var(--cls-anken); }
+.cls-chip--on.cls-chip--shiyou { color: var(--cls-shiyou-ink); border-color: var(--cls-shiyou); }
+.cls-chip--on.cls-chip--kizuki { color: var(--cls-kizuki-ink); border-color: var(--cls-kizuki); }
+.cls-chip--on.cls-chip--horyu { color: var(--cls-horyu-ink); border-color: var(--cls-horyu); }
+.cls-chip--on.cls-chip--kyuushiyou { color: var(--cls-kyuushiyou-ink); border-color: var(--cls-kyuushiyou); }
+.cls-chip--on.cls-chip--kiroku { color: var(--cls-kiroku-ink); border-color: var(--cls-kiroku); }
+
+.list-controls { gap: 8px; }
+
+/* ba: 新規フォームの分類ラジオ(ba-33) */
+.cls-radio { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.cls-radio label {
+  font-size: 0.76rem; padding: 4px 12px; border: 1px solid var(--line); border-radius: 5px;
+  color: var(--ink-soft); cursor: pointer;
+}
+.cls-radio input { display: none; }
+.cls-radio label:has(input:checked) { color: var(--ink); border-color: var(--ink-soft); background: var(--paper-band); }

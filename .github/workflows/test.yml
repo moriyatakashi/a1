@@ -1,0 +1,43 @@
+name: Run tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Run tests
+        # テストファイルは e2e/ 配下に置く運用だが、
+        # 特定のパスに固定せずリポジトリ全体から *.test.js を探す
+        run: node --test
+
+  test-python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r api-tests/requirements.txt
+      - name: Run tests
+        # api/function_app.py(Azure Functionsバックエンド)のユニットテスト。
+        # テーブルストレージ・Google認証はapi-tests/conftest.pyでフェイク/スタブに差し替える。
+        run: pytest api-tests/

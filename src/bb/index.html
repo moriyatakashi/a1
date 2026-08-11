@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>bb / ba現在形ビュー</title>
+<link rel="stylesheet" href="../common/ledger.css?v=202607262133">
+<style>
+  /* bb固有: 分類セクションの見出し(トップページのcat-labelと同じ流儀) */
+  .sec-label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.7rem; letter-spacing: 0.12em; color: var(--ink-soft, #8b9280);
+    margin: 26px 0 8px; display: flex; align-items: center; gap: 10px;
+  }
+  .sec-label::after { content: ""; flex: 1; height: 1px; background: #333a28; }
+  .ro-banner {
+    font-size: 0.75rem; color: var(--ink-soft, #8b9280);
+    border: 1px dashed #556; border-radius: 8px; padding: 6px 10px; margin: 10px 0;
+  }
+  .bb-item { padding: 8px 0; border-bottom: 1px dotted #333; }
+  .bb-item-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .bb-item-title { font-weight: 600; }
+  .bb-item-sub { font-size: 0.75rem; color: var(--ink-soft, #8b9280); margin-top: 2px; }
+  .bb-latest { font-size: 0.8rem; color: #bbb; margin-top: 4px; }
+  /* ba-175: gist(確定仕様スレッドの「今の結論」一言)。抜粋(bb-latest)より濃く強調する */
+  .bb-gist { font-size: 0.85rem; font-weight: 600; color: var(--ink); margin-top: 4px; }
+  .recent-row { font-size: 0.8rem; padding: 5px 0; border-bottom: 1px dotted #333; }
+  .recent-row .entry-type { margin-right: 6px; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <div class="eyebrow">ロレキ内部メモ</div>
+  <h1>路歴（bb） / ba現在形ビュー</h1>
+  <p class="lede">追記オンリー台帳(ba)から「いまの姿」を計算して見せる投影ページ。正本はあくまでba。</p>
+  <p class="ro-banner">読み取り専用 — bbはbaを読むだけで、一切書かない(恒久制約)。ログイン不要(2026-07-15から)。</p>
+  <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: 2026-07-20 05:43 JST</p>
+
+  <div id="content">
+    <div class="summary-bar">
+      <div class="stat"><div class="stat-num" id="statTotal">—</div><div class="stat-label">スレッド</div></div>
+      <div class="stat"><div class="stat-num" id="statOpen">—</div><div class="stat-label">オープン</div></div>
+      <div class="stat"><div class="stat-num" id="statShiyou">—</div><div class="stat-label">確定仕様</div></div>
+      <div class="stat"><div class="stat-num" id="statLatest">—</div><div class="stat-label">直近更新</div></div>
+    </div>
+
+    <div class="list-controls">
+      <button type="button" class="btn-toggle-voided" id="btnToggleClosed">closedも表示</button>
+    </div>
+
+    <div id="sections"></div>
+
+    <div class="sec-label">直近の動き</div>
+    <div id="recent"></div>
+  </div>
+
+  <script src="../common/config.js?v=202607160712"></script>
+  <script type="module" src="app.js?v=202607261056"></script>
+  <script type="module">
+    import { applyLastUpdated } from "../common/last-updated.js";
+    applyLastUpdated("src/bb", "lastUpdated", "最終更新");
+  </script>
+</body>
+</html>

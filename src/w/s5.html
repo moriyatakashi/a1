@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>s5 / rbookが叩く外部API</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* s5専用: 一覧・図解が多いページなので、既存トークンだけを使って表用の見た目を足す */
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; margin: 12px 0; }
+    table { border-collapse: collapse; width: 100%; min-width: 480px; font-size: 0.86rem; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    thead th { font-size: 0.74rem; color: var(--dim); background: rgba(128,128,128,0.08); }
+    tbody tr:last-child td { border-bottom: none; }
+    .diagram-wrap { border: 1px solid var(--line); border-radius: 8px; padding: 14px 12px; margin: 16px 0; }
+    .diagram-wrap svg { max-width: 100%; height: auto; display: block; margin: 0 auto; color: var(--ink); }
+    .diagram-wrap figcaption { margin: 12px 0 0; font-size: 0.82rem; color: var(--dim); }
+    h2 { margin-top: 34px; }
+    h3 { font-size: 0.98rem; margin: 20px 0 6px; }
+  </style>
+</head>
+<body>
+  <p><a href="../../">&larr; 戻る</a></p>
+  <h1>rbookが叩く外部API</h1>
+  <p><span class="path">rbook\run api</span>が一覧する9件(GitHub / Azure / Firestore・Firebase / その他)について、rbookのどのコマンドが何を叩き、その先で何が起きているかをソース(rbook / aa)に沿ってまとめたもの。</p>
+
+  <div class="scope-row">
+    <span class="scope-tag accent">GitHub 1件</span>
+    <span class="scope-tag">Azure 4件</span>
+    <span class="scope-tag">Firestore・Firebase 3件</span>
+    <span class="scope-tag">その他 1件</span>
+  </div>
+
+  <h2>IDの読み方</h2>
+  <p><span class="path">run api</span>のIDは、run.ymlで定義したグループの<span class="field">key</span>と、グループ内での名前順の連番を<span class="field">-</span>でつないだだけ。<span class="field">github-1</span>のような形は9件とも同じ規則で、グループが違うだけ。</p>
+  <pre class="cmd">ordered = sorted(group["entries"], key=lambda e: e["name"].lower())
+for i, entry in enumerate(ordered, start=1):
+    rows.append((label, f"{key}-{i}", entry["name"], url, entry["auth"], entry["used_by"]))</pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>名前</th><th>認証</th><th>使うコマンド</th></tr></thead>
+      <tbody>
+        <tr><td class="field">github-1</td><td>GitHub REST API</td><td class="field">GITHUB_PAT</td><td class="field">repos / repo-admin / dump / test</td></tr>
+        <tr><td class="field">azure-1</td><td>Azure Resource Manager</td><td class="field">az login</td><td class="field">azure tables / groups / env</td></tr>
+        <tr><td class="field">azure-2</td><td>ba API (Azure Functions)</td><td class="field">匿名GET / POST+BA_CLAUDE_KEY_PC</td><td class="field">ba</td></tr>
+        <tr><td class="field">azure-3</td><td>s1 WIP API (Azure Functions)</td><td class="field">匿名GET</td><td class="field">ba wip</td></tr>
+        <tr><td class="field">azure-4</td><td>s6 タグ集計API (Azure Functions)</td><td class="field">匿名GET</td><td class="field">ba tags</td></tr>
+        <tr><td class="field">firestore-1</td><td>ca-lane (Cloud Function)</td><td class="field">POST+CA_CLAUDE_KEY</td><td class="field">ca new / note-add</td></tr>
+        <tr><td class="field">firestore-2</td><td>Firebase/GCP (gcloud CLI)</td><td class="field">gcloud auth login</td><td class="field">firebase collections / docs</td></tr>
+        <tr><td class="field">firestore-3</td><td>Firestore REST API</td><td class="field">匿名GET(ca) / gcloudトークン(firebase)</td><td class="field">ca list/show, firebase collections/docs</td></tr>
+        <tr><td class="field">other-1</td><td>rbook-start (GitHub Pages)</td><td class="field">不要(公開)</td><td class="field">start</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="color:var(--dim); font-size:0.85rem;">URLの実体はrun.ymlに直書きせず、各コマンドが実際に使っている定数(<span class="field">GITHUB_API_BASE</span>等)をrun_api.pyの<span class="field">URL_REFS</span>がそのまま参照している(二重管理を避ける構造)。</p>
+
+  <h2>GitHub — github-1を叩く5つの呼び出し</h2>
+  <p>GitHub REST APIは「github.comのWeb画面でやることをコードから叩けるAPI」。rbookは<span class="field">GITHUB_PAT</span>を添えて次の5箇所で使う。</p>
+  <div class="tool-grid">
+    <div class="tool-card"><span class="tool-name">run repos</span><span class="tool-desc">GET /user/repos — 今“生きている”レポ一覧を直接取得(記憶ではなく実体)</span></div>
+    <div class="tool-card"><span class="tool-name">run repo-admin create</span><span class="tool-desc">POST /user/repos — 新規リポジトリ作成。既定private、--publicで公開</span></div>
+    <div class="tool-card"><span class="tool-name">run repo-admin desc</span><span class="tool-desc">PATCH /repos/{owner}/{name} — descriptionを更新</span></div>
+    <div class="tool-card"><span class="tool-name">run repo-admin pages-enable</span><span class="tool-desc">POST /repos/{owner}/{name}/pages — GitHub Pagesを有効化</span></div>
+    <div class="tool-card highlight"><span class="tool-name">run dump</span><span class="tool-desc">POST …/workflows/balog-backup.yml/dispatches — BaLogバックアップを今すぐ起動</span></div>
+    <div class="tool-card highlight"><span class="tool-name">run test</span><span class="tool-desc">POST …/workflows/test.yml/dispatches — CIテストを今すぐ起動</span></div>
+  </div>
+
+  <div class="callout">
+    <div class="label">dispatch系だけ2段構え</div>
+    <p><span class="field">dump</span>と<span class="field">test</span>が投げているのは「今すぐ動かして」という<span class="field">workflow_dispatch</span>の起動指示だけ。実処理はaa側の<span class="field">.github/workflows/</span>にある。</p>
+  </div>
+
+  <h3>test.yml <span class="field">workflow_dispatch ← run test</span></h3>
+  <p>トリガー: push(main) / pull_request(main) / workflow_dispatch。<span class="field">test</span>ジョブがNode 20 + Playwright(chromium)で<span class="field">node --test</span>、<span class="field">test-python</span>ジョブがPython 3.11で<span class="field">pytest api-tests/</span>(Azure Functionsバックエンドのユニットテスト、テーブルストレージ/Google認証はconftest.pyでフェイクに差し替え)を並行実行。</p>
+
+  <h3>balog-backup.yml <span class="field">workflow_dispatch ← run dump</span></h3>
+  <p>トリガー: schedule(19:00 UTC = JST 4:00) / workflow_dispatch。</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-spine"><div class="step-num">1</div><div class="step-line"></div></div>
+      <div class="step-body"><h2 class="step-title">checkout / setup-python(3.11)</h2><p>依存: <span class="field">azure-data-tables requests pyyaml</span></p></div>
+    </div>
+    <div class="step">
+      <div class="step-spine"><div class="step-num">2</div><div class="step-line"></div></div>
+      <div class="step-body"><h2 class="step-title">azure/login@v2</h2><p>OIDC — <span class="field">AZURE_CLIENT_ID</span> / <span class="field">TENANT_ID</span> / <span class="field">SUBSCRIPTION_ID</span>(secrets)。長期クレデンシャルを使わない方式</p></div>
+    </div>
+    <div class="step">
+      <div class="step-spine"><div class="step-num">3</div><div class="step-line"></div></div>
+      <div class="step-body"><h2 class="step-title">az storage account show-connection-string</h2><p>取得した接続文字列は<span class="field">::add-mask::</span>でログに出さない</p></div>
+    </div>
+    <div class="step">
+      <div class="step-spine"><div class="step-num">4</div></div>
+      <div class="step-body"><h2 class="step-title">python scripts/backup-balog-to-drive.py</h2><p>OAuth — <span class="field">GDRIVE_OAUTH_CLIENT_ID</span> / <span class="field">SECRET</span> / <span class="field">REFRESH_TOKEN</span>(secrets)でGoogle Driveへアップロード</p></div>
+    </div>
+  </div>
+
+  <figure class="diagram-wrap">
+    <svg viewBox="0 0 880 566" role="img" aria-label="rbookのrun testまたはrun dumpコマンドがGitHub PATでworkflow_dispatchをPOSTすると、GitHub Actionsのランナー上でジョブが起動する。test.ymlはそのままテストを実行して終わる一方、balog-backup.ymlはAzureへのOIDCログインでテーブルストレージからBaLogを読み出し、続けてGoogle DriveへOAuthでアップロードするところまで続く。">
+      <defs>
+        <marker id="s5arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+        </marker>
+      </defs>
+
+      <rect x="300" y="16" width="280" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.4"></rect>
+      <text x="440" y="40" text-anchor="middle" font-family="monospace" font-size="13" font-weight="600" fill="currentColor">rbook run test / run dump</text>
+      <text x="440" y="60" text-anchor="middle" font-family="monospace" font-size="11" fill="currentColor" fill-opacity="0.7">ローカルPC · GITHUB_PAT</text>
+
+      <line x1="440" y1="76" x2="440" y2="130" stroke-width="1.8" marker-end="url(#s5arrow)" style="stroke:var(--warn)"></line>
+      <text x="452" y="106" font-family="monospace" font-size="11" font-weight="600" style="fill:var(--warn)">POST …/dispatches</text>
+
+      <rect x="230" y="132" width="420" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.4"></rect>
+      <text x="440" y="155" text-anchor="middle" font-family="monospace" font-size="13" font-weight="600" fill="currentColor">GitHub Actions runner</text>
+      <text x="440" y="174" text-anchor="middle" font-family="monospace" font-size="11" fill="currentColor" fill-opacity="0.7">ubuntu-latest · moriyatakashi/aa</text>
+
+      <line x1="440" y1="188" x2="440" y2="212" stroke="currentColor" stroke-width="1.2"></line>
+      <line x1="170" y1="212" x2="710" y2="212" stroke="currentColor" stroke-width="1.2"></line>
+      <line x1="170" y1="212" x2="170" y2="238" stroke="currentColor" stroke-width="1.2" marker-end="url(#s5arrow)"></line>
+      <line x1="710" y1="212" x2="710" y2="238" stroke="currentColor" stroke-width="1.2" marker-end="url(#s5arrow)"></line>
+      <text x="120" y="204" font-family="monospace" font-size="10.5" fill="currentColor" fill-opacity="0.7">test.yml</text>
+      <text x="660" y="204" font-family="monospace" font-size="10.5" fill="currentColor" fill-opacity="0.7">balog-backup.yml</text>
+
+      <rect x="30" y="240" width="280" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+      <text x="170" y="264" text-anchor="middle" font-family="monospace" font-size="12.5" font-weight="600" fill="currentColor">node --test / pytest</text>
+      <text x="170" y="284" text-anchor="middle" font-family="sans-serif" font-size="11" fill="currentColor" fill-opacity="0.75">api-tests/ ごと実行</text>
+      <text x="170" y="302" text-anchor="middle" font-family="sans-serif" font-size="11" fill="currentColor" fill-opacity="0.75">結果はActionsのログに残るだけ</text>
+      <text x="170" y="318" text-anchor="middle" font-family="sans-serif" font-size="11" fill="currentColor" fill-opacity="0.6">— ここで完結、外部への書き込みなし</text>
+
+      <rect x="570" y="240" width="280" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+      <text x="710" y="263" text-anchor="middle" font-family="monospace" font-size="12.5" font-weight="600" fill="currentColor">az login</text>
+      <text x="710" y="282" text-anchor="middle" font-family="sans-serif" font-size="11" fill="currentColor" fill-opacity="0.75">OIDC · AZURE_CLIENT_ID 等(secrets)</text>
+
+      <line x1="710" y1="300" x2="710" y2="336" stroke="currentColor" stroke-width="1.2" marker-end="url(#s5arrow)"></line>
+
+      <rect x="570" y="338" width="280" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+      <text x="710" y="361" text-anchor="middle" font-family="monospace" font-size="12.5" font-weight="600" fill="currentColor">Azure Table Storage</text>
+      <text x="710" y="380" text-anchor="middle" font-family="sans-serif" font-size="11" fill="currentColor" fill-opacity="0.75">接続文字列取得 → BaLog読み出し</text>
+
+      <line x1="710" y1="398" x2="710" y2="434" stroke="currentColor" stroke-width="1.2" marker-end="url(#s5arrow)"></line>
+      <text x="722" y="420" font-family="monospace" font-size="10.5" fill="currentColor" fill-opacity="0.7">GDRIVE_OAUTH_* (secrets)</text>
+
+      <rect x="570" y="436" width="280" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+      <text x="710" y="459" text-anchor="middle" font-family="monospace" font-size="12.5" font-weight="600" fill="currentColor">Google Drive</text>
+      <text x="710" y="478" text-anchor="middle" font-family="sans-serif" font-size="11" fill="currentColor" fill-opacity="0.75">backup-balog-to-drive.py がアップロード</text>
+    </svg>
+    <figcaption>起点はrbook側の<span class="field">GITHUB_PAT</span>だが、直接触るのは「起動しろ」というPOSTだけ。実行に移った後のAzure・Google Driveへのアクセスは、aaリポジトリのActions secretsに置かれたOIDC/OAuthの資格情報に切り替わる。8件のうちこの2つだけが2段構えで、他5件はrbookから直接1段で叩くだけ。</figcaption>
+  </figure>
+
+  <h2>Azure — 「インフラを見る窓」と「アプリを使う窓」</h2>
+  <p>4件は同じ提供元というだけで層が違う。azure-1はAzureそのもの(何がデプロイされているか)、azure-2/3/4はそのAzure上で動くbaレジャーというアプリ(何が書き込まれているか)。</p>
+  <div class="tool-grid">
+    <div class="tool-card"><span class="tool-name">azure-1</span><span class="tool-desc">run azure tables/groups/env — az CLIで取得し、x2/tools/04_azure/の「あるべき集合」ymlと突き合わせ、揃っていればOK・想定外なら?を出す</span></div>
+    <div class="tool-card"><span class="tool-name">azure-2</span><span class="tool-desc">run ba … — Function App(ab-board-api)の/api/ba本体。読み取りは匿名GET、書き込みはBA_CLAUDE_KEY_PC付きPOST</span></div>
+    <div class="tool-card"><span class="tool-name">azure-3</span><span class="tool-desc">run ba wip — 同じFunction Appの/api/s1。WIP作業台の一覧を匿名GETで取るだけ</span></div>
+    <div class="tool-card"><span class="tool-name">azure-4</span><span class="tool-desc">run ba tags — 同じFunction Appの/api/s6。BaLogを都度集計し、タグ→ba一覧を軽量に返す(ba-260、フロントはsrc/w/s6.html)</span></div>
+  </div>
+
+  <h2>Firestore・Firebase — 同じプロジェクトを2つの角度から</h2>
+  <p>3件とも行き先はFirestore(ab01-9f35a)。<span class="field">ca</span>は「アプリの意味(タイトル・本文)」を見る窓、<span class="field">firebase</span>は「生ドキュメントそのもの」を見るインフラの窓(azure/baの関係と対称)。</p>
+  <div class="tool-grid">
+    <div class="tool-card"><span class="tool-name">firestore-1</span><span class="tool-desc">run ca new/note-add — ca-lane(Cloud Function)への書き込み。CA_CLAUDE_KEYがPC/mobileどちらの鍵と一致したかをサーバー側が判定しレーンを振り分ける</span></div>
+    <div class="tool-card"><span class="tool-name">firestore-2</span><span class="tool-desc">run firebase collections/docs — gcloudのアクセストークンでFirestore REST APIを直接叩く。あるべきコレクションと突き合わせる</span></div>
+    <div class="tool-card"><span class="tool-name">firestore-3</span><span class="tool-desc">run ca list/show, run firebase collections/docs — 実体は同じFirestore REST。caはSecurity Rulesの匿名GET、firebaseはgcloudトークン付きGET</span></div>
+  </div>
+
+  <h2>その他 — 認証なしの1本</h2>
+  <p>残り1件はもっとも単純。<span class="field">run start</span>が、GitHub Pagesで公開している静的テキスト(aa/rbook-start.txt、rbookが前提とする「設計の約束」)を認証無しのGETでそのまま取得して表示するだけ。URLはrun.ymlの<span class="field">docs.start_url</span>側に外出ししてあり、rbook本体に直書きしない。</p>
+
+  <p style="color:var(--dim); font-size:0.85rem; margin-top:32px;">参照: rbook/src/run_api.py, run.yml(api節), run.py(cmd_repos/cmd_repo/cmd_dump/cmd_test/_dispatch_workflow), run_azure.py, run_ba.py, run_ca.py, run_firebase.py / aa/.github/workflows/test.yml, balog-backup.yml。2026-08-09時点のソース。</p>
+</body>
+</html>

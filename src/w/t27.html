@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>t27 / abの新方針(外部AI向けba公開窓口)</title>
+<style>
+  :root{
+    --bg:#14171a; --card:#1c2024; --ink:#e7ebe9; --sub:#98a0a0; --line:#2c3237;
+    --solid:#7ce0c4; --beta:#66ccff; --toss:#ff6b6b;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f3f1ea; --card:#fbfaf6; --ink:#23262b; --sub:#6b7160; --line:#dcd8cc;
+      --solid:#2a8f6f; --beta:#0a6c96; --toss:#c94545;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",system-ui,sans-serif;
+    padding:18px 16px 60px;line-height:1.65}
+  .wrap{max-width:700px;margin:0 auto}
+  .back{font-size:13px}
+  .back a{color:var(--beta)}
+  .mock-label{
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--sub);margin:14px 0 6px 0;display:flex;align-items:center;gap:10px;
+  }
+  .mock-label::after{content:"";flex:1;height:1px;background:var(--line)}
+  h1{font-size:19px;margin:0 0 4px}
+  .lede{font-size:13px;color:var(--sub);margin:0 0 22px}
+
+  .tabs{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+  .tab-btn{
+    font-size:13px;padding:9px 16px;border:none;background:none;color:var(--sub);
+    cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;
+    display:flex;align-items:center;gap:6px;
+  }
+  .tab-btn .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .tab-btn[data-tab="solid"] .dot{background:var(--solid)}
+  .tab-btn[data-tab="beta"] .dot{background:var(--beta)}
+  .tab-btn[data-tab="toss"] .dot{background:var(--toss)}
+  .tab-btn.on{color:var(--ink);font-weight:700}
+  .tab-btn.on[data-tab="solid"]{border-color:var(--solid)}
+  .tab-btn.on[data-tab="beta"]{border-color:var(--beta)}
+  .tab-btn.on[data-tab="toss"]{border-color:var(--toss)}
+
+  .panel{display:none}
+  .panel.on{display:block}
+  .panel-note{font-size:12.5px;color:var(--sub);margin:0 0 16px;padding:10px 14px;
+    border-radius:8px;border:1px dashed var(--line)}
+
+  .theme-block{border:1px solid var(--line);border-radius:12px;background:var(--card);
+    padding:14px 16px;margin:0 0 14px}
+  .theme-block h2{font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+  .theme-block .src{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--sub);font-weight:400}
+  .theme-block p{font-size:13px;margin:0 0 8px}
+  .theme-block p:last-child{margin-bottom:0}
+  .theme-block ol,.theme-block ul{margin:0 0 10px;padding-left:1.1em;font-size:13px}
+  .theme-block ol:last-child,.theme-block ul:last-child{margin-bottom:0}
+  .theme-block li{margin:6px 0}
+  .quote-src{
+    background:var(--bg);border:1px solid var(--line);border-radius:8px;
+    padding:10px 12px;font-size:12px;color:var(--sub);margin:8px 0 0;
+  }
+  .quote-src b{color:var(--ink);font-weight:600}
+
+  .panel#solid .theme-block{border-left:3px solid var(--solid)}
+  .panel#beta .theme-block{border-left:3px solid var(--beta)}
+  .panel#toss .theme-block{border-left:3px solid var(--toss)}
+
+  .toss-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:480px){.toss-grid{grid-template-columns:1fr}}
+  .toss-card{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:14px;text-align:center}
+  .toss-card .icon{width:44px;height:44px;margin:0 auto 8px;color:var(--toss)}
+  .toss-card .icon svg{width:100%;height:100%}
+  .toss-card h3{font-size:12px;margin:0 0 6px}
+  .toss-card p{font-size:11px;color:var(--sub);margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="back"><a href="../../">&larr; 戻る</a></p>
+<p class="mock-label">ab再構築と外部AI向け公開窓口構想 / ba-261</p>
+<h1>abの新方針(外部AI向けba公開窓口)</h1>
+<p class="lede">abを空にしてリポジトリごと作り直したあと、次の用途として固まりつつある構想の窓。ChatGPT/Geminiにもbaの経緯を読ませたい、というところから出発した。まだ実装は始まっていない。</p>
+<div class="tabs"><button type="button" class="tab-btn on" data-tab="solid"><span class="dot"></span>確定事項</button><button type="button" class="tab-btn" data-tab="beta"><span class="dot"></span>ベータ版</button><button type="button" class="tab-btn" data-tab="toss"><span class="dot"></span>捨て案(お遊び)</button></div>
+<div class="panel on" id="solid"><p class="panel-note">baに書かれていることだけ。</p><div class="theme-block"><h2>abを空にした経緯 <span class="src">ba-261</span></h2><p>2026-08-08、ab中身(rbook/run start説明文、ca一式)をaaへ移設し空にした(ba-257)。t/s一覧は<code>aa/src/w/</code>へ引っ越し済み。</p></div><div class="theme-block"><h2>リポジトリを削除して作り直した <span class="src">ba-261</span></h2><p>2026-08-09、takashi依頼によりGitHub上のabリポジトリを削除→再作成(コミット履歴なし)。新しい実験場として最小骨組み(index.html/style.css/README.md)のみ設置し、GitHub Pagesを有効化した(https://moriyatakashi.github.io/ab/)。</p></div><div class="theme-block"><h2>先に似た仕組みがaa側にあった <span class="src">ba-261</span></h2><p>「baの内容をChatGPT/Geminiにも読ませたい」という要望から出発したが、aa/api/bp_s1_md.pyに<code>/api/s1.html</code>・<code>/api/s1.md</code>が既に実装済みだった。JS不要・認証不要のプレーンMarkdownテキストで、s1(WIP作業台)に紐づくbaスレッド全文を時系列で返す。対象はs1紐づき分のみで、ba全件ではない。</p></div><div class="theme-block"><h2>合意した方向性 <span class="src">ba-261</span></h2><p>aa/api(Azure Functionsのpythonコード一式、Function App名<code>ab-board-api</code>)をabへコピー(複製)して手を入れる。移動ではなくコピー。接続先データはaaと同じTable Storage(BaLog等)とし、abは独自データを持たない。目的の中心はba全件出力(s1紐づきに絞らない版)を、外部AI向け窓口として用意すること。</p></div><div class="theme-block"><h2>未決定・着手前に詰める点 <span class="src">ba-261</span></h2><ul><li>新しいAzure Function Appを別途立てるか、既存<code>ab-board-api</code>と何らかの形で関係させるか</li><li>接続文字列/シークレットの扱い</li><li>エンドポイント名(<code>/api/ba.html</code>案など、未確定)</li></ul></div></div>
+<div class="panel" id="beta"><p class="panel-note">構想・分析。まだbaに書き込んでいない解釈込みの考察。</p><div class="theme-block"><h2>なぜs1.htmlだけでは足りないか</h2><p>s1.htmlはWIP作業台に「登録された」スレッドだけを追う仕組みなので、登録し忘れたスレッドや、そもそもWIP扱いにするほどでもない気づきは漏れる。ChatGPT/Geminiに「これまでの経緯」を一括で渡すには、s1経由のフィルタを外した全件版が要る。</p></div><div class="theme-block"><h2>なぜHTML/CSSを凝らなくていいのか</h2><p>ChatGPT等のfetch系AIはHTMLとしてパースしているのではなく、「text/htmlと名乗っているので中身を読む」だけ。実際s1.htmlの中身は素のMarkdown文字列で<code>&lt;div&gt;</code>も<code>&lt;style&gt;</code>も無い。ba全件版を作るときも、Pythonの文字列組み立てだけで足り、見た目の作り込みは不要と見込める。</p></div><div class="theme-block"><h2>「コピーして直す」を選んだ理由(推測)</h2><p>aaのapiを直接abから叩く(共有)のではなく複製にしたのは、外部AI向けの窓口という性質上、将来abだけの都合(レート制限・公開範囲の調整など)で気兼ねなく手を入れたい、という判断だったのではないか。ここは明言されていないので推測に留める。</p></div><div class="theme-block"><h2>Function Appをどうするか、2つの選択肢</h2><p>①ab用に新しいAzure Function Appを立てて、aaと同じTable Storageアカウントだけ共有する。②既存<code>ab-board-api</code>にab用のルートを追加し、デプロイ元だけab repoに付け替える。①は環境が独立するぶん影響範囲が絞れる、②は名前(ab-board-api)の由来にいちばん忠実。まだどちらとも決めていない。</p></div></div>
+<div class="panel" id="toss"><p class="panel-note">不採用・お遊び。</p><div class="toss-grid"><div class="toss-card"><h3>ボツ案：静的a1ページ</h3><p>最初に出た「a1」というGitHub Pages上の静的ページ構想。クライアントJSでbaを取りに行く作りだと、JSを実行しない外部AIには「読み込み中…」の空の殻しか見えず不採用。</p></div><div class="toss-card"><h3>AI宛の手紙、のつもりが窓口に</h3><p>発端は「ChatGPTやGeminiにこれまでの経緯を伝えたい」という、ほぼ手紙のような発想だった。出来上がるのは手紙というより、いつでも読みに来られる公開の窓口(API)。宛先を決めた手紙ではなく、誰でも読める掲示板に近づいている。</p></div></div></div>
+</div>
+<script>(function(){var t=document.querySelectorAll('.tab-btn'),p=document.querySelectorAll('.panel');function a(i){t.forEach(function(b){b.classList.toggle('on',b.dataset.tab===i)});p.forEach(function(x){x.classList.toggle('on',x.id===i)})}t.forEach(function(b){b.addEventListener('click',function(){a(b.dataset.tab);history.replaceState(null,'','#'+b.dataset.tab)})});var h=location.hash.replace('#','');if(h&&document.getElementById(h))a(h);})();</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "aa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-index.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0",
+    "js-yaml": "^5.2.1"
+  }
+}
