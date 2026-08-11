@@ -63,7 +63,7 @@
 <body>
   <div class="wrap">
     <div class="back-row">
-      <a href="https://moriyatakashi.github.io/aa/">&larr; aa</a>
+      <a href="../">&larr; 戻る</a>
     </div>
 
     <div>
@@ -77,7 +77,7 @@
   <script>
     // card.json(b1/run 1.card が読み書きするのと同じファイル)を読んで、そのままカードを組み立てる。
     // 表示ロジックをこの1箇所に一本化しているので、card.jsonの中身が増えても書き換え不要。
-    // aaへの導線はcard.jsonではなく上のback-row(固定リンク)側で持つ。
+    // a1トップへの導線はcard.jsonではなく上のback-row(固定リンク)側で持つ。
     const container = document.getElementById("cards");
     const toggleLink = document.getElementById("toggle-hidden");
     let allCards = [];
