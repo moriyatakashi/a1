@@ -16,8 +16,8 @@ Takashi本人がブラウザで認可URLを開いてログイン・同意する�
 使い方:
   python scripts/get_drive_refresh_token.py
   表示されたURLをブラウザで開いて同意すると、このスクリプトがrefresh tokenを表示する。
-  表示された値をGitHub Actionsのシークレット(GDRIVE_OAUTH_REFRESH_TOKEN, repo: moriyatakashi/aa)
-  に反映すること(`gh secret set GDRIVE_OAUTH_REFRESH_TOKEN --repo moriyatakashi/aa`)。
+  表示された値をGitHub Actionsのシークレット(GDRIVE_OAUTH_REFRESH_TOKEN, repo: moriyatakashi/a1)
+  に反映すること(`gh secret set GDRIVE_OAUTH_REFRESH_TOKEN --repo moriyatakashi/a1`)。
 
 前提: ローカルの C:\\Users\\takas\\.claude\\ba_backup_oauth_client.json に
 既存のclient_id/client_secretがある(Calendar用取得スクリプトと共用)。
@@ -103,7 +103,7 @@ def main():
     print()
     print("取得成功。")
     print("次のコマンドでGitHub Actionsシークレットに反映してください:")
-    print("  gh secret set GDRIVE_OAUTH_REFRESH_TOKEN --repo moriyatakashi/aa")
+    print("  gh secret set GDRIVE_OAUTH_REFRESH_TOKEN --repo moriyatakashi/a1")
     print("  (プロンプトが出たら refresh_token の値を貼り付けてEnter → Ctrl+ZやEnterで確定)")
 
     # ローカルのba_backup_refresh_token.json(get_access_tokenの動作確認用)も更新しておく。

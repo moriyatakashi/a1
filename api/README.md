@@ -22,7 +22,7 @@ Azure Functionsバックエンド (`ab-board-api`)。`src/`配下の各アプリ
 GitHubトークンはコード上どこにも埋め込まれておらず、Azure Function Appのアプリケーション設定としてのみ保持する(クライアント側JSには一切渡らない)。**このトークンの発行・設定はTakashi本人が行う必要がある**(GitHubの新規トークン発行はWeb UI経由のみで、Claude Codeの実行環境からは代行できない)。
 
 1. GitHubの Settings → Developer settings → Fine-grained personal access tokens で新規トークンを発行する。
-   - Repository access: `moriyatakashi/aa` のみに限定
+   - Repository access: `moriyatakashi/a1` のみに限定
    - Permissions: `Contents` → `Read-only` のみ(それ以外は付けない)
    - 有効期限は任意(切れたら`GITHUB_TOKEN`未設定時の動作=未認証60req/時にフォールバックするだけで、last-updated機能自体は壊れない)
 2. Azure Portal(`ab-board-api` → 構成 → アプリケーション設定)で`GITHUB_TOKEN`を追加し、発行したトークンの値を設定する。または`az functionapp config appsettings set -g rg-ab -n ab-board-api --settings GITHUB_TOKEN=<値>`をTakashi本人の端末で実行する。
