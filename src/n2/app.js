@@ -100,7 +100,7 @@ function drawCluster(c, color) {
   ctx.lineWidth = 2;
   ctx.fill();
   ctx.stroke();
-  if (c.visits.length > 1) {
+  if (!c.isTop && c.visits.length > 1) { // ba: 上位20%クラスタは件数を出さない
     ctx.fillStyle = "#fff";
     ctx.font = "bold 9px sans-serif";
     ctx.textAlign = "center";
@@ -116,8 +116,16 @@ function drawPoints(visits, proj) {
   });
   const clusters = clusterPoints(rawPoints);
 
-  // 通常クラスタを先に描画し、最新の訪問を含むクラスタ(赤)は最後に描画して常に最前面に出す
-  clusters.filter((c) => !c.isLatest).forEach((c) => drawCluster(c, "#b5651d"));
+  // ba: 訪問件数が上位20%(80パーセンタイル以上・最低2件)のクラスタは青丸・件数非表示にして
+  // 密集地の視認性を上げる。閾値未満のクラスタは従来通り(茶・複数なら件数表示)。
+  const counts = clusters.map((c) => c.visits.length).sort((a, b) => a - b);
+  const p80 = counts.length ? counts[Math.floor(counts.length * 0.8)] : 2;
+  const thr = Math.max(2, p80);
+  clusters.forEach((c) => { c.isTop = c.visits.length >= thr; });
+
+  // 通常(茶) → 上位20%(青) → 最新(赤) の順で描画。後のものほど前面に出る。
+  clusters.filter((c) => !c.isTop && !c.isLatest).forEach((c) => drawCluster(c, "#b5651d"));
+  clusters.filter((c) => c.isTop && !c.isLatest).forEach((c) => drawCluster(c, "#3b7dd8"));
   clusters.filter((c) => c.isLatest).forEach((c) => drawCluster(c, "#e63946"));
 
   return clusters;
