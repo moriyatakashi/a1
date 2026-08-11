@@ -259,10 +259,10 @@ async function load() {
   listEl.innerHTML = "";
   emptyMsg.style.display = "none";
 
-  const [higashiGeo, osakaCityGeo, amagasakiGeo, visitRes] = await Promise.all([
-    fetchGeo("higashiosaka.geojson"),
-    fetchGeo("osaka_city.geojson"),
-    fetchGeo("amagasaki.geojson"),
+  // ba: 下地を「県境＋訪問市区町村」の2レイヤーに一本化(既存の関西3市geojsonは廃止)。
+  const [prefGeo, cityGeo, visitRes] = await Promise.all([
+    fetchGeo("data/prefectures_east.geojson"),
+    fetchGeo("data/cities_visited.geojson"),
     fetch(VISITS_API, { cache: "no-store", headers: { "X-Visits-Credential": window.__credential || "" } })
   ]);
 
@@ -285,13 +285,12 @@ async function load() {
   canvas.width = W;
   canvas.height = H;
 
-  const allFeatures = [...higashiGeo.features, ...osakaCityGeo.features, ...amagasakiGeo.features];
+  const allFeatures = [...prefGeo.features, ...cityGeo.features];
   const proj = makeProjector(allFeatures, withLatLng, W, H);
 
   ctx.clearRect(0, 0, W, H);
-  drawFeatures(amagasakiGeo.features, proj, "#f7e8dc", "#dcb08e");
-  drawFeatures(osakaCityGeo.features, proj, "#e8f0e0", "#a8c890");
-  drawFeatures(higashiGeo.features, proj, "#dce8f5", "#aac4e0");
+  drawFeatures(prefGeo.features, proj, "#eef1f4", "#8aa0b5"); // 県境(下地)
+  drawFeatures(cityGeo.features, proj, "#cfe0f0", "#6f97c0"); // 訪問市区町村
   _W = W;
   _points = withLatLng.length > 0 ? drawPoints(withLatLng, proj) : [];
 
