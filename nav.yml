@@ -21,6 +21,11 @@ categories:
       - code: bc
         desc: baレーダーチャート
         href: src/bc/
+  - label: カタログ
+    items:
+      - code: catalog
+        desc: id/service/azureカタログ(カード型)
+        href: catalog/
   - label: 関連
     items:
       - code: w
