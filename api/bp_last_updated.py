@@ -13,7 +13,7 @@ bp = func.Blueprint()
 # クライアント側のJSに一切埋め込まないため、サーバー側(ここ)でGitHub commits API
 # を認証付きで叩き、結果だけをクライアントへ返す。GITHUB_TOKEN未設定でも動作する
 # (その場合は未認証のままGitHub APIを叩く。既存の直接fetch版と同じ挙動)。
-GITHUB_REPO = "moriyatakashi/aa"
+GITHUB_REPO = "moriyatakashi/a1"
 _last_updated_cache = {}  # path -> (fetched_at: datetime, iso_date: str | None)
 LAST_UPDATED_CACHE_TTL = timedelta(minutes=10)
 
