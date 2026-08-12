@@ -6,10 +6,8 @@ import "../common/config.js";
 import { todayStr, withCredential } from "../common/utils.js";
 const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
 const SCORES_API = `${API_BASE}/scores`;
-const VISITS_API = `${API_BASE}/visits`;
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const DOW = ["日","月","火","水","木","金","土"];
 
 // be(スコア推移グラフ)統合分(2026-07-29): n1が既に持つscoreMapを描画するだけで、
 // 独自fetchは持たない。k2のページ構造・ログイン待ちパターンを踏襲していた元コードのまま移植。
@@ -122,12 +120,6 @@ function renderStats(rows) {
   document.getElementById("statMin").textContent = Math.min(...scores);
 }
 
-function formatDate(s) {
-  const [y, m, d] = s.split("-");
-  const dow = DOW[new Date(s).getDay()];
-  return { label: `${y}年${parseInt(m)}月${parseInt(d)}日`, dow };
-}
-
 // スコア入力(ab/src/main/n1のスコア機能を移植)
 function initScoreInput() {
   const today = todayStr();
@@ -197,20 +189,12 @@ function initScoreInput() {
 }
 
 async function load() {
-  const listEl = document.getElementById("list");
-  const emptyMsg = document.getElementById("emptyMsg");
   const chartSection = document.getElementById("scoreChartSection");
-  listEl.innerHTML = "";
-  emptyMsg.style.display = "none";
   chartSection.style.display = "none";
 
   try {
-    const [scoreRes, visitRes] = await Promise.all([
-      fetch(SCORES_API, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } }),
-      fetch(VISITS_API, { cache: "no-store", headers: { "X-Visits-Credential": window.__credential || "" } })
-    ]);
-    const scoreRows = scoreRes.ok ? await scoreRes.json() : [];
-    const visitRows = visitRes.ok ? await visitRes.json() : [];
+    const res = await fetch(SCORES_API, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } });
+    const scoreRows = res.ok ? await res.json() : [];
 
     const scoreMap = {};
     scoreRows.forEach(r => {
@@ -227,51 +211,6 @@ async function load() {
       drawChart(document.getElementById("scoreSvg"), chartRows);
       renderStats(chartRows);
     }
-
-    const visitMap = {};
-    visitRows.forEach(d => {
-      if (!d.date) return;
-      if (!visitMap[d.date]) visitMap[d.date] = [];
-      visitMap[d.date].push({ place: d.place || "—", time: d.time || "", memo: d.memo || "" });
-    });
-
-    const allDates = [...new Set([...Object.keys(scoreMap), ...Object.keys(visitMap)])]
-      .sort((a, b) => b.localeCompare(a));
-
-    if (allDates.length === 0) {
-      emptyMsg.style.display = "block";
-      return;
-    }
-
-    allDates.forEach(date => {
-      const { label, dow } = formatDate(date);
-      const score = scoreMap[date];
-      const visits = (visitMap[date] || []).slice().sort((a, b) => a.time.localeCompare(b.time));
-
-      const card = document.createElement("div");
-      card.className = "day-card";
-
-      const dateRow = document.createElement("div");
-      dateRow.className = "day-date";
-      dateRow.textContent = `${label}(${dow}曜)`;
-      card.appendChild(dateRow);
-
-      function addRow(text) {
-        const row = document.createElement("div");
-        row.className = "row";
-        row.textContent = text;
-        card.appendChild(row);
-      }
-
-      if (score) {
-        addRow(`スコア: ${score.score}${score.note ? " — " + score.note : ""}`);
-      }
-      visits.forEach(v => {
-        addRow(`📍 ${v.place}${v.time ? " " + v.time : ""}${v.memo ? " — " + v.memo : ""}`);
-      });
-
-      listEl.appendChild(card);
-    });
   } catch (e) {
     console.error(e);
   }
