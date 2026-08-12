@@ -7,8 +7,6 @@ import { todayStr, withCredential } from "../common/utils.js";
 const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
 const SCORES_API = `${API_BASE}/scores`;
 const VISITS_API = `${API_BASE}/visits`;
-const STREAK_CHECKS_API = `${API_BASE}/streak-checks`;
-const SCORING_RULES_API = `${API_BASE}/scoring-rules`;
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DOW = ["日","月","火","水","木","金","土"];
@@ -198,85 +196,6 @@ function initScoreInput() {
   loadTodayScore();
 }
 
-// ba-165④(2026-07-29): streak(連続作業)チェックイン。同じ作業名を毎日押すだけで、
-// サーバー側が連続日数を数えて5日ごとに自動加点する(週1回まで)。
-function initStreakInput() {
-  const elTask = document.getElementById("streakTask");
-  const elDate = document.getElementById("streakDate");
-  const elBtn = document.getElementById("btnStreakCheck");
-  const elSaved = document.getElementById("streakSaved");
-
-  elDate.value = todayStr();
-
-  elBtn.addEventListener("click", async () => {
-    if (!window.__credential) {
-      elSaved.textContent = "記録にはログインが必要です";
-      if (window.aaShowLoginGate) window.aaShowLoginGate();
-      return;
-    }
-    const task = elTask.value.trim();
-    if (!task) { elSaved.textContent = "作業名を入力してください"; return; }
-    try {
-      const res = await fetch(STREAK_CHECKS_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(withCredential({ task, date: elDate.value })),
-      });
-      if (!res.ok) { elSaved.textContent = "エラー: 記録に失敗しました"; return; }
-      const data = await res.json();
-      elSaved.textContent = data.awarded
-        ? `✓ ${data.streakLength}日連続達成、加点しました`
-        : `✓ 記録しました(${data.streakLength}日連続)`;
-      setTimeout(() => elSaved.textContent = "", 3000);
-    } catch (e) {
-      elSaved.textContent = "エラー: " + e.message;
-    }
-  });
-}
-
-// ba-159: イカサマ対策(基準ずらし記録)。クローズ配点(low/normal/high)の変更は
-// 頻度が低い前提なので、専用UIは作らず素朴な3つの数値入力+発効日+理由だけにする。
-function initRuleInput() {
-  const elLow = document.getElementById("rulePointsLow");
-  const elNormal = document.getElementById("rulePointsNormal");
-  const elHigh = document.getElementById("rulePointsHigh");
-  const elEffectiveFrom = document.getElementById("ruleEffectiveFrom");
-  const elNote = document.getElementById("ruleNote");
-  const elBtn = document.getElementById("btnSaveRule");
-  const elSaved = document.getElementById("ruleSaved");
-
-  elBtn.addEventListener("click", async () => {
-    if (!window.__credential) {
-      elSaved.textContent = "変更にはログインが必要です";
-      if (window.aaShowLoginGate) window.aaShowLoginGate();
-      return;
-    }
-    const low = Number(elLow.value), normal = Number(elNormal.value), high = Number(elHigh.value);
-    if (![low, normal, high].every(Number.isInteger)) {
-      elSaved.textContent = "low/normal/highはすべて整数で入力してください";
-      return;
-    }
-    try {
-      const res = await fetch(SCORING_RULES_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(withCredential({
-          difficultyPoints: { low, normal, high },
-          effectiveFrom: elEffectiveFrom.value || undefined,
-          note: elNote.value.trim(),
-        })),
-      });
-      if (!res.ok) { elSaved.textContent = "エラー: 変更に失敗しました"; return; }
-      elEffectiveFrom.value = "";
-      elNote.value = "";
-      elSaved.textContent = "✓ 新しいルールを追加しました";
-      setTimeout(() => elSaved.textContent = "", 2000);
-    } catch (e) {
-      elSaved.textContent = "エラー: " + e.message;
-    }
-  });
-}
-
 async function load() {
   const loadStatus = document.getElementById("loadStatus");
   const listEl = document.getElementById("list");
@@ -368,8 +287,6 @@ async function load() {
 // まだ未ログインならこれまで通りn1-login-successイベントを待つ(通常のログインボタン操作に対応)。
 function onLoginSuccess() {
   initScoreInput();
-  initStreakInput();
-  initRuleInput();
   load();
 }
 
