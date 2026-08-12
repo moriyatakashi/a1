@@ -36,17 +36,6 @@
   .btn-gps { padding: 8px 12px; border: 1px solid var(--accent); border-radius: 6px; background: #eef6ff; color: var(--accent); white-space: nowrap; }
   .btn-add-visit { width: 100%; padding: 10px; border: 1px solid var(--accent); border-radius: 8px; background: #fff; color: var(--accent); font-size: 0.95rem; }
   .visit-input-status { font-size: 0.78rem; color: var(--ink-soft); margin-top: 6px; text-align: center; min-height: 1.2em; }
-
-  /* n3(予定)統合分: 宣言(ba-160/ba-165)とGoogleカレンダー表示 */
-  .field-input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 10px; background: var(--input-bg); color: var(--ink); }
-  .btn-primary { width: 100%; padding: 10px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 0.95rem; }
-  .form-status { font-size: 0.78rem; color: var(--ink-soft); margin-top: 6px; text-align: center; min-height: 1.2em; }
-  .decl-row { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; }
-  .decl-row button { padding: 6px 12px; border: 1px solid var(--accent); border-radius: 5px; background: transparent; color: var(--accent); cursor: pointer; white-space: nowrap; }
-  .decl-row--done { opacity: 0.6; }
-  .cal-row { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; }
-  .cal-summary { font-weight: 600; font-size: 0.88rem; }
-  .cal-meta { font-size: 0.72rem; color: var(--ink-soft); margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -116,26 +105,6 @@
     <div class="section-title">今日の訪問</div>
     <div id="visitList"></div>
     <p class="empty" id="emptyMsg" style="display:none;">今日の訪問記録はまだありません</p>
-
-    <!-- n3(予定)統合分(ba-160/ba-165: 宣言+Googleカレンダー) -->
-    <div class="section">
-      <div class="section-title">宣言を追加(ba-160/ba-165: 先の週ほど高得点)</div>
-      <input class="field-input" id="declText" type="text" placeholder="例: 部屋を片付ける">
-      <select class="field-input" id="targetWeek"></select>
-      <button class="btn-primary" id="btnAddDecl">追加</button>
-      <div class="form-status" id="declStatus"></div>
-    </div>
-
-    <div class="section-title">未達成の宣言</div>
-    <div id="openDeclList"></div>
-    <p class="empty" id="openDeclEmpty" style="display:none;">未達成の宣言はありません</p>
-
-    <div class="section-title">達成済み</div>
-    <div id="doneDeclList"></div>
-
-    <div class="section-title">Googleカレンダーの直近の予定</div>
-    <p class="form-status" id="calendarStatus"></p>
-    <div id="calendarList"></div>
   </div>
 
   <script>window.AA_AUTH_EVENT = "m2-login-success"; window.AA_PUBLIC_VIEW = true;</script>
