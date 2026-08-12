@@ -268,8 +268,11 @@ async function load() {
   emptyMsg.style.display = "none";
 
   // ba: 下地を「県境＋訪問市区町村」の2レイヤーに一本化(既存の関西3市geojsonは廃止)。
-  const [prefGeo, cityGeo, visitRes] = await Promise.all([
+  // 隣接10県(未訪問、和歌山・岡山・鳥取・徳島・福井・石川・富山・長野・山梨・東京)は
+  // 別ファイルに分けてグレーの背景レイヤーとして追加(元の10府県のデータはそのまま)。
+  const [prefGeo, adjacentGeo, cityGeo, visitRes] = await Promise.all([
     fetchGeo("data/prefectures_east.geojson"),
+    fetchGeo("data/prefectures_adjacent.geojson"),
     fetchGeo("data/cities_visited.geojson"),
     fetch(VISITS_API, { cache: "no-store", headers: { "X-Visits-Credential": window.__credential || "" } })
   ]);
@@ -293,10 +296,11 @@ async function load() {
   canvas.width = W;
   canvas.height = H;
 
-  const allFeatures = [...prefGeo.features, ...cityGeo.features];
+  const allFeatures = [...prefGeo.features, ...adjacentGeo.features, ...cityGeo.features];
   const proj = makeProjector(allFeatures, withLatLng, W, H);
 
   ctx.clearRect(0, 0, W, H);
+  drawFeatures(adjacentGeo.features, proj, "#5a5e66", "#3f4247", 1.5); // 隣接県(未訪問、グレーで背景として先に描く)
   drawFeatures(prefGeo.features, proj, "#eef1f4", "#8aa0b5", 2.5); // 県境(下地、太めにして境目を分かりやすく)
   drawFeatures(cityGeo.features, proj, "#cfe0f0", "#6f97c0"); // 訪問市区町村
   _W = W;
