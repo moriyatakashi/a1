@@ -31,8 +31,9 @@ categories:
           desc: bcのそっくりさん(実験中)
           href: src/cc/
       - code: bd
-        desc: id/service/azureカタログ
+        desc: id/service/azureカタログ＋旧absite一覧(旧beを統合)
         href: src/bd/
-      - code: be
-        desc: 旧abサイト＋あそび系一覧
-        href: src/be/
+        sub:
+          code: cd
+          desc: bdのそっくりさん(実験中)
+          href: src/cd/

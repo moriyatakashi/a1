@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../../common/config.js?v=202608092000"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s6 / タグ集計ビュー（ba-260）</title>
+<style>
+  :root{
+    --bg:#14171a; --card:#1c2024; --ink:#e7ebe9; --sub:#98a0a0; --line:#2c3237;
+    --accent:#7ce0c4; --warn:#e0b64a; --danger:#e65050;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f3f1ea; --card:#fbfaf6; --ink:#23262b; --sub:#6b7160; --line:#dcd8cc; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",system-ui,sans-serif;
+    padding:18px 14px 60px;line-height:1.55}
+  .wrap{max-width:640px;margin:0 auto}
+  .back{font-size:12px}
+  .back a{color:var(--accent)}
+  .eyebrow{font-size:11px;letter-spacing:.18em;color:var(--sub);text-transform:uppercase;margin:14px 0 3px}
+  h1{font-size:21px;margin:0 0 3px}
+  .lede{color:var(--sub);font-size:12.5px;margin:0 0 14px}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:12.5px;color:var(--sub)}
+  .toolbar label{display:flex;align-items:center;gap:5px;cursor:pointer}
+  .toolbar .count{margin-left:auto}
+
+  .taglist{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+  .tag-chip{background:var(--card);border:1px solid var(--line);color:var(--ink);
+    border-radius:999px;padding:5px 11px;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .tag-chip .n{color:var(--sub);font-size:11px}
+  .tag-chip.on{border-color:var(--accent);color:var(--accent)}
+  .tag-chip.on .n{color:var(--accent)}
+
+  .selected-row{display:flex;align-items:center;gap:8px;margin:2px 0 10px;font-size:13px}
+  .selected-row .lbl{color:var(--sub)}
+  .selected-row .clear{background:none;border:1px solid var(--line);color:var(--sub);
+    border-radius:7px;padding:3px 9px;font-size:11.5px;cursor:pointer}
+
+  .card{border:1px solid var(--line);border-radius:12px;background:var(--card);
+    padding:10px 13px;margin:8px 0;cursor:pointer}
+  .card .row1{display:flex;align-items:baseline;gap:9px}
+  .dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:1px}
+  .dot.closed{background:var(--sub)}
+  .dot.void{background:var(--danger);opacity:.6}
+  .baid{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--accent);font-weight:700;flex:none}
+  .title{font-size:14px;font-weight:600;flex:1}
+  .card.status-void .title{opacity:.55;text-decoration:line-through;text-decoration-color:var(--sub)}
+  .card.status-closed .title{opacity:.8}
+
+  .card .detail{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);
+    font-size:12px;color:var(--sub);align-items:center;gap:8px;flex-wrap:wrap}
+  .card.open .detail{display:flex}
+  .status-badge{padding:1px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+  .status-badge.open{color:var(--accent);border-color:var(--accent)}
+  .status-badge.closed{color:var(--sub)}
+  .status-badge.void{color:var(--danger)}
+  .detail a{color:var(--accent);margin-left:auto}
+
+  .empty{color:var(--sub);font-size:13px;text-align:center;padding:24px 0}
+  .state{color:var(--sub);font-size:13px;text-align:center;padding:24px 0}
+  .state.err{color:var(--danger)}
+  .note{margin-top:20px;font-size:11.5px;color:var(--sub);border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="back"><a href="../../../">&larr; 戻る</a></p>
+  <p class="eyebrow">roreki · タグ集計 · s6</p>
+  <h1>タグから逆引きする</h1>
+  <p class="lede">baの全スレッドをタグ単位で集計。タグをクリックすると、そのタグが付いたスレッドだけカードで並ぶ。voidにし過ぎたもの・タグが微妙なものを見直す用。</p>
+
+  <div class="toolbar">
+    <label><input type="checkbox" id="fVoidClosed"> void/closedも含む</label>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="state" id="loading">読み込み中…</div>
+  <div class="taglist" id="tagList"></div>
+
+  <div class="selected-row" id="selectedRow" style="display:none">
+    <span class="lbl">タグ:</span>
+    <span id="selectedTag"></span>
+    <button class="clear" id="btnClear">クリア</button>
+  </div>
+  <div id="cardList"></div>
+  <div class="empty" id="empty" style="display:none">このタグの表示対象スレッドはありません（void/closedも含む、をONにすると増えるかも）。</div>
+
+  <p class="note">source= /api/s6（BaLogから毎回集計する読み取り専用ビュー、書き込みは無し）。分類語(案件/確定仕様/気づき/保留論点/旧仕様/記録)は集計対象から除く。詳しくはba-260。</p>
+</div>
+
+<script>
+  var API = "https://ab-board-api.azurewebsites.net/api";
+  var TAGS = {};        // { tag: [{seq,title,status}] }
+  var selectedTag = null;
+  var includeVoidClosed = false;
+
+  var tagListEl = document.getElementById('tagList');
+  var cardListEl = document.getElementById('cardList');
+  var emptyEl = document.getElementById('empty');
+  var loadingEl = document.getElementById('loading');
+  var selectedRowEl = document.getElementById('selectedRow');
+  var selectedTagEl = document.getElementById('selectedTag');
+  var countEl = document.getElementById('count');
+
+  function esc(s){
+    return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  function visibleEntries(list){
+    if (includeVoidClosed) return list;
+    return list.filter(function(e){ return e.status === "open"; });
+  }
+
+  function renderTags(){
+    var names = Object.keys(TAGS);
+    var rows = names.map(function(t){
+      return { tag: t, n: visibleEntries(TAGS[t]).length };
+    }).filter(function(r){ return r.n > 0; });
+    rows.sort(function(a, b){ return b.n - a.n || a.tag.localeCompare(b.tag, 'ja'); });
+
+    tagListEl.innerHTML = rows.map(function(r){
+      return '<button type="button" class="tag-chip'+(r.tag===selectedTag?' on':'')+'" data-tag="'+esc(r.tag)+'">'+
+        esc(r.tag)+'<span class="n">'+r.n+'</span></button>';
+    }).join("");
+    countEl.textContent = rows.length + " タグ";
+
+    if (selectedTag && !TAGS[selectedTag]) { selectTag(null); return; }
+    renderCards();
+  }
+
+  function statusLabel(s){
+    return s === "closed" ? "closed" : s === "void" ? "void" : "open";
+  }
+
+  function renderCards(){
+    if (!selectedTag) {
+      selectedRowEl.style.display = "none";
+      cardListEl.innerHTML = "";
+      emptyEl.style.display = "none";
+      return;
+    }
+    selectedRowEl.style.display = "flex";
+    selectedTagEl.textContent = selectedTag;
+
+    var entries = visibleEntries(TAGS[selectedTag] || []).slice().sort(function(a, b){
+      return (b.seq||0) - (a.seq||0);
+    });
+    cardListEl.innerHTML = entries.map(function(e){
+      var st = statusLabel(e.status);
+      return '<div class="card status-'+st+'" data-seq="'+e.seq+'">'+
+        '<div class="row1">'+
+          '<span class="dot '+st+'"></span>'+
+          '<span class="baid">ba-'+e.seq+'</span>'+
+          '<span class="title">'+esc(e.title || "(タイトル未取得)")+'</span>'+
+        '</div>'+
+        '<div class="detail">'+
+          '<span class="status-badge '+st+'">'+st+'</span>'+
+          '<a href="../../ba/" target="_blank" rel="noopener">baで開く &rarr;</a>'+
+        '</div>'+
+      '</div>';
+    }).join("");
+    emptyEl.style.display = entries.length ? "none" : "block";
+  }
+
+  function selectTag(tag){
+    selectedTag = tag;
+    renderTags();
+  }
+
+  tagListEl.addEventListener('click', function(e){
+    var btn = e.target.closest('.tag-chip');
+    if (!btn) return;
+    var tag = btn.dataset.tag;
+    selectTag(tag === selectedTag ? null : tag);
+  });
+  document.getElementById('btnClear').addEventListener('click', function(){ selectTag(null); });
+  cardListEl.addEventListener('click', function(e){
+    var card = e.target.closest('.card');
+    if (!card) return;
+    card.classList.toggle('open');
+  });
+  document.getElementById('fVoidClosed').addEventListener('change', function(e){
+    includeVoidClosed = e.target.checked;
+    renderTags();
+  });
+
+  fetch(API+"/s6").then(function(r){
+    if (!r.ok) throw new Error("s6 "+r.status);
+    return r.json();
+  }).then(function(data){
+    TAGS = data.tags || {};
+    loadingEl.style.display = "none";
+    renderTags();
+  }).catch(function(err){
+    loadingEl.className = "state err";
+    loadingEl.textContent = "読み込み失敗: "+err.message+"（時間をおくか、APIの状態を確認）";
+  });
+</script>
+</body>
+</html>
