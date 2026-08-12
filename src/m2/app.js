@@ -50,7 +50,7 @@ function makeProjector(features, points, W, H, padding = 20) {
   ];
 }
 
-function drawFeatures(features, proj, fillColor, strokeColor) {
+function drawFeatures(features, proj, fillColor, strokeColor, lineWidth = 1) {
   features.forEach(f => {
     const geom = f.geometry;
     const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
@@ -65,7 +65,7 @@ function drawFeatures(features, proj, fillColor, strokeColor) {
       });
       ctx.fillStyle = fillColor;
       ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = lineWidth;
       ctx.fill();
       ctx.stroke();
     });
@@ -300,17 +300,21 @@ async function load() {
   const proj = makeProjector(allFeatures, withLatLng, W, H);
 
   ctx.clearRect(0, 0, W, H);
-  drawFeatures(prefGeo.features, proj, "#eef1f4", "#8aa0b5"); // 県境(下地)
+  drawFeatures(prefGeo.features, proj, "#eef1f4", "#8aa0b5", 2.5); // 県境(下地、太めにして境目を分かりやすく)
   drawFeatures(cityGeo.features, proj, "#cfe0f0", "#6f97c0"); // 訪問市区町村
   _W = W;
   _points = withLatLng.length > 0 ? drawPoints(withLatLng, proj) : [];
 
-  if (allVisits.length === 0) {
+  // 場所カード一覧は今日の分だけ表示(地図・統計は従来通り全期間)
+  const today = todayStr();
+  const todayVisits = allVisits.filter(v => v.date === today);
+
+  if (todayVisits.length === 0) {
     emptyMsg.style.display = "block";
     return;
   }
 
-  allVisits.forEach(v => {
+  todayVisits.forEach(v => {
     const hasPin = !!(v.lat && v.lng);
     // ba-135: ピンはクラスタ化されているため、この訪問を含むクラスタを探す(位置決めのみに使う)。
     const cluster = hasPin ? _points.find(c => c.visits.some(cv => cv.id === v.id)) : null;
