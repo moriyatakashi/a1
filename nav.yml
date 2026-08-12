@@ -37,3 +37,10 @@ categories:
           code: cd
           desc: bdのそっくりさん(実験中)
           href: src/cd/
+      - code: be
+        desc: WIP作業台(旧s1)
+        href: src/be/
+        sub:
+          code: ce
+          desc: beのそっくりさん(実験中)
+          href: src/ce/
