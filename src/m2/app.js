@@ -170,6 +170,19 @@ function drawPoints(visits, proj) {
   return clusters;
 }
 
+// 拡大時: クラスタ化せず、テーブルの生データ(1件=1点)をそのまま描く。
+// 密集地の視認性用の「上位20%=青」はクラスタの密度に基づく概念なので、
+// クラスタ化しないここでは使わず、通常(茶)/最新(赤)の2色だけにする。
+function drawIndividualPoints(visits, proj) {
+  const points = visits.map((v, i) => {
+    const [x, y] = proj(v.lng, v.lat);
+    return { x, y, visits: [v], isLatest: i === 0 };
+  });
+  points.filter((p) => !p.isLatest).forEach((p) => drawCluster(p, "#b5651d"));
+  points.filter((p) => p.isLatest).forEach((p) => drawCluster(p, "#e63946"));
+  return points;
+}
+
 // 訪問記録の入力(ab/src/main/n1の訪問記録機能を移植、メモ欄は対象外)
 function initVisitInput() {
   const elPlaceInput = document.getElementById("placeInput");
@@ -296,7 +309,14 @@ function renderMap() {
   drawFeatures(adjacentGeo.features, proj, "#5a5e66", "#3f4247", 1.5); // 隣接県(未訪問、グレーで背景として先に描く)
   drawFeatures(prefGeo.features, proj, "#eef1f4", "#8aa0b5", 2.5); // 県境(下地、太めにして境目を分かりやすく)
   drawFeatures(cityGeo.features, proj, "#cfe0f0", "#6f97c0"); // 訪問市区町村
-  _points = withLatLng.length > 0 ? drawPoints(withLatLng, proj) : [];
+  // 最大表示(scale=1)はクラスタ化して見やすく、拡大時はテーブルの生データを1件=1点で出す
+  if (withLatLng.length === 0) {
+    _points = [];
+  } else if (view.scale > 1) {
+    _points = drawIndividualPoints(withLatLng, proj);
+  } else {
+    _points = drawPoints(withLatLng, proj);
+  }
   ctx.restore();
 }
 
