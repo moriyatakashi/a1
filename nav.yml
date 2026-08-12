@@ -23,7 +23,7 @@ categories:
         href: src/bc/
       - code: bd
         desc: id/service/azureカタログ(カード型)
-        href: catalog/
+        href: src/bd/
       - code: be
         desc: 旧abサイト＋あそび系一覧（t/s一覧＋g1〜g8、2026-08-09に「あそび」カテゴリを統合）
         href: src/w/

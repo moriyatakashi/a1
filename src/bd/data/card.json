@@ -1,35 +1,35 @@
 [
   {
     "title": "c1",
-    "url": "https://moriyatakashi.github.io/a1/catalog/src/c1.html",
+    "url": "https://moriyatakashi.github.io/a1/src/bd/src/c1.html",
     "message": "idlist・servicelist・azure コマンドの仮イメージ",
     "ba": "ba-264",
     "show": false
   },
   {
     "title": "c2",
-    "url": "https://moriyatakashi.github.io/a1/catalog/src/c2.html",
+    "url": "https://moriyatakashi.github.io/a1/src/bd/src/c2.html",
     "message": "idlistキー命名のたたき台(親子ID案)",
     "ba": "ba-266",
     "show": false
   },
   {
     "title": "c3",
-    "url": "https://moriyatakashi.github.io/a1/catalog/src/c3.html",
+    "url": "https://moriyatakashi.github.io/a1/src/bd/src/c3.html",
     "message": "b1コマンド構成整理のたたき台(1.list案)",
     "ba": "ba-267",
     "show": false
   },
   {
     "title": "c4",
-    "url": "https://moriyatakashi.github.io/a1/catalog/src/c4.html",
+    "url": "https://moriyatakashi.github.io/a1/src/bd/src/c4.html",
     "message": "idlist・servicelist・azureカタログの現状",
     "ba": "ba-268",
     "show": true
   },
   {
     "title": "c5",
-    "url": "https://moriyatakashi.github.io/a1/catalog/src/c5.html",
+    "url": "https://moriyatakashi.github.io/a1/src/bd/src/c5.html",
     "message": "3.dosql(JSON→sqlite化してSQL実行)",
     "ba": "ba-269",
     "show": true
