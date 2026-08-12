@@ -25,6 +25,10 @@ categories:
       - code: bc
         desc: baレーダーチャート
         href: src/bc/
+        sub:
+          code: cc
+          desc: bcのそっくりさん(実験中)
+          href: src/cc/
       - code: bd
         desc: id/service/azureカタログ
         href: src/bd/

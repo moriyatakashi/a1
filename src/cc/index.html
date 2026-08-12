@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../common/config.js?v=202607160712"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cc / baレーダーチャート</title>
+<link rel="stylesheet" href="../common/ledger.css?v=202607262133">
+<style>
+  .radar-wrap {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 14px; margin: 20px 0;
+  }
+  #radarSvg { width: 100%; max-width: 420px; height: auto; }
+  .radar-table {
+    width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.85rem;
+  }
+  .radar-table th, .radar-table td {
+    border: 1px solid var(--line, #444); padding: 6px 8px; text-align: center;
+  }
+  .radar-table th:first-child, .radar-table td:first-child { text-align: left; }
+  .radar-empty { color: var(--ink-soft, #999); font-size: 0.9rem; }
+
+  .view-tabs {
+    display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line);
+    border-radius: 8px; overflow: hidden; margin: 14px 0 4px;
+  }
+  .view-tab {
+    flex: 1; text-align: center; padding: 9px 6px; font-size: 0.78rem;
+    background: var(--paper-band); color: var(--ink-soft); cursor: pointer;
+    border: none; font-family: inherit;
+  }
+  .view-tab.active { background: var(--paper); color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <div class="eyebrow">ロレキ内部メモ</div>
+  <h1>路歴（cc） / baレーダーチャート</h1>
+  <p class="lede">ba(n4後継の追記ログ)を軸にしたレーダーチャート。投稿者別(参加スレッド数)、分類別(ba-32規約の4分類ごとのスレッド数)、週次得点(ba-53、直近8週の推移)を切り替えて見られる。</p>
+  <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: 2026-07-16 07:48 JST</p>
+
+<!-- LOGIN_GATE:START -->
+  <div id="login-gate">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
+    <div class="g_id_signin"></div>
+    <p id="status">未ログイン(ログインするとチャートが表示されます)</p>
+  </div>
+<!-- LOGIN_GATE:END -->
+
+  <div id="content" style="display:none;">
+    <div class="view-tabs">
+      <button type="button" class="view-tab active" data-view="poster">投稿者別</button>
+      <button type="button" class="view-tab" data-view="classification">分類別</button>
+      <button type="button" class="view-tab" data-view="weekly">週次得点</button>
+      <button type="button" class="view-tab" data-view="monthly">月次得点</button>
+    </div>
+    <div class="radar-wrap">
+      <svg id="radarSvg" viewBox="0 0 320 320"></svg>
+    </div>
+    <table class="radar-table" id="radarTable">
+      <thead>
+        <tr id="radarTableHead"><th>投稿者</th><th>投稿数(スレッド数・クローズ含む)</th></tr>
+      </thead>
+      <tbody id="radarTableBody"></tbody>
+    </table>
+    <p class="radar-empty" id="radarEmpty" style="display:none;">スレッドがまだありません</p>
+  </div>
+
+  <script>window.AA_AUTH_EVENT = "cc-login-success"; window.AA_PUBLIC_VIEW = true;</script>
+  <script src="../common/auth.js?v=202607201000"></script>
+  <script type="module" src="app.js?v=202607261305"></script>
+  <script type="module">
+    import { applyLastUpdated } from "../common/last-updated.js";
+    applyLastUpdated("src/cc", "lastUpdated", "最終更新");
+  </script>
+</body>
+</html>
