@@ -10,7 +10,7 @@ bp = func.Blueprint()
 
 # ===== s6 / タグ集計ビュー (ba-260) — 読み取り専用の派生ビュー =====
 # BaLogに新しいテーブルは足さない。newエントリのtagsを「タグ→[{seq,title,status}]」に
-# 集約して返すだけ(POSTは無い)。フロント(src/w/s6.html)とrbook(run_ba.py)が
+# 集約して返すだけ(POSTは無い)。フロント(src/be/s6.html)とrbook(run_ba.py)が
 # 「全件fetchして自前で集計する」のをやめ、ここが返す軽量な結果をそのまま使う
 # トークン節約が目的(ba-260の要件①)。
 #
