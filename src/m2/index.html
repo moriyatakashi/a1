@@ -15,6 +15,16 @@
   .stat-num { font-size: 1.4rem; font-weight: 800; }
   .stat-label { font-size: 0.7rem; color: var(--ink-soft); }
   .map-wrap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 14px; position: relative; }
+  /* 各カードを話題にしやすいよう、左上に名前ラベルを置く */
+  .card-label {
+    position: absolute; top: 8px; left: 8px; z-index: 5;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em;
+    padding: 3px 9px; border-radius: 999px;
+    background: rgba(20,23,26,0.72); color: #fff;
+  }
+  @media (prefers-color-scheme: light) {
+    .card-label { background: rgba(255,255,255,0.88); color: #22261c; border: 1px solid var(--line); }
+  }
   #mapCanvas { display: block; width: 100%; touch-action: none; }
   .map-legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 8px 10px; border-top: 1px solid var(--line); font-size: 0.7rem; color: var(--ink-soft); }
   .legend-item { display: flex; align-items: center; gap: 5px; }
@@ -80,6 +90,7 @@
     </div>
 
     <div class="map-wrap">
+      <span class="card-label">訪問マップ</span>
       <canvas id="mapCanvas" height="520"></canvas>
       <div class="popup" id="popup">
         <div class="popup-place" id="popupPlace"></div>
@@ -94,6 +105,7 @@
     </div>
 
     <div class="map-wrap">
+      <span class="card-label">県マップ</span>
       <img src="data/prefectures_map_east.svg?v=202608110549" alt="近畿〜関東 県マップ" style="display:block;width:100%;">
       <div class="map-legend">
         <div class="legend-item"><div class="legend-dot" style="background:#d9534f;"></div>訪問済み</div>
