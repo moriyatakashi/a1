@@ -21,16 +21,9 @@ categories:
       - code: bc
         desc: baレーダーチャート
         href: src/bc/
-  - label: カタログ
-    items:
-      - code: catalog
+      - code: bd
         desc: id/service/azureカタログ(カード型)
         href: catalog/
-  - label: 関連
-    items:
-      - code: w
+      - code: be
         desc: 旧abサイト＋あそび系一覧（t/s一覧＋g1〜g8、2026-08-09に「あそび」カテゴリを統合）
         href: src/w/
-      - code: a1
-        desc: 路歴は、まだ続く。
-        href: https://moriyatakashi.github.io/a1/
