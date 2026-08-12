@@ -126,16 +126,20 @@ function clusterRadius(count) {
   return Math.min(6 + Math.sqrt(count - 1) * 3, 14);
 }
 
+// 最大表示(view.scale===1)の時だけ、件数に応じた大きさの丸+件数表示。
+// 拡大中は件数によらず小さい点だけにする(view.scaleで割って画面上のサイズを一定に保つ、
+// 拡大してもピンが大きくなり過ぎない・数字も出さない)。
 function drawCluster(c, color) {
-  const r = clusterRadius(c.visits.length);
+  const zoomedIn = view.scale > 1;
+  const r = zoomedIn ? 3 / view.scale : clusterRadius(c.visits.length);
   ctx.beginPath();
   ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 2;
+  ctx.lineWidth = zoomedIn ? 1 / view.scale : 2;
   ctx.fill();
   ctx.stroke();
-  if (!c.isTop && c.visits.length > 1) { // ba: 上位20%クラスタは件数を出さない
+  if (!zoomedIn && !c.isTop && c.visits.length > 1) { // ba: 上位20%クラスタは件数を出さない
     ctx.fillStyle = "#fff";
     ctx.font = "bold 9px sans-serif";
     ctx.textAlign = "center";
