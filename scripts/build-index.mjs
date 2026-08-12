@@ -25,6 +25,13 @@ function renderSections(categories) {
               : item.stage === "joke"
               ? `<span class="stage-badge">真っ赤なウソ</span>`
               : "";
+          if (item.sub) {
+            // サブリンクを持つ項目は、同じカード(枠)の中にメインリンク+小さなサブリンクを縦に並べる
+            return `    <div class="nav-item has-sub${stageClass}">
+      <a class="nav-main" href="${escapeHtml(item.href)}"><span class="nav-code">${escapeHtml(item.code)}</span><span class="nav-desc">${escapeHtml(item.desc)}</span>${stageLabel}</a>
+      <a class="nav-sub" href="${escapeHtml(item.sub.href)}">↳ <span class="nav-code">${escapeHtml(item.sub.code)}</span> ${escapeHtml(item.sub.desc)}</a>
+    </div>`;
+          }
           return `    <a class="nav-item${stageClass}" href="${escapeHtml(item.href)}"><span class="nav-code">${escapeHtml(item.code)}</span><span class="nav-desc">${escapeHtml(item.desc)}</span>${stageLabel}</a>`;
         })
         .join("\n");

@@ -4,6 +4,10 @@ categories:
       - code: n1
         desc: 記録一覧
         href: src/n1/
+        sub:
+          code: m1
+          desc: n1のそっくりさん(実験中)
+          href: src/m1/
       - code: n2
         desc: 訪問地図
         href: src/n2/

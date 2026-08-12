@@ -32,6 +32,16 @@
     .nav-item:hover { border-color: var(--link); }
     .nav-code { font-weight: bold; color: var(--link); }
     .nav-desc { color: var(--nav-desc); font-size: 0.9rem; }
+    /* サブリンク(例: m1)を持つ項目(例: n1)は、同じカードの中にメインリンク+控えめな
+       サブリンクを横に並べ、サブリンクは右端に寄せる。カード自体はリンクではなく入れ物(div)になる */
+    .nav-item.has-sub { align-items: center; }
+    .nav-main { display: flex; align-items: baseline; gap: 10px; text-decoration: none; color: inherit; }
+    .nav-sub {
+      display: flex; align-items: baseline; gap: 6px; margin-left: auto; flex-shrink: 0;
+      text-decoration: none; color: var(--nav-desc); font-size: 0.78rem; opacity: 0.75;
+    }
+    .nav-sub:hover { opacity: 1; color: var(--link); }
+    .nav-sub .nav-code { font-weight: bold; font-size: 0.78rem; }
     /* ba-34: カテゴリ見出し(baのeyebrowと同じ流儀の小ラベル+罫線) */
     .cat-label {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
