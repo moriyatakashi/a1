@@ -9,11 +9,12 @@ categories:
           desc: n1のそっくりさん(実験中)
           href: src/m1/
       - code: n2
-        desc: 訪問地図
+        desc: 訪問地図・予定(旧n3を統合)
         href: src/n2/
-      - code: n3
-        desc: 予定
-        href: src/n3/
+        sub:
+          code: m2
+          desc: n2のそっくりさん(実験中)
+          href: src/m2/
   - label: 内部メモ
     items:
       - code: ba

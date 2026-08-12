@@ -484,5 +484,5 @@ function onLoginSuccess() {
 if (window.__loginState && window.__loginState.loggedIn) {
   onLoginSuccess();
 } else {
-  window.addEventListener("n2-login-success", onLoginSuccess, { once: true });
+  window.addEventListener("m2-login-success", onLoginSuccess, { once: true });
 }
