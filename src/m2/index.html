@@ -15,6 +15,7 @@
   .stat-num { font-size: 1.4rem; font-weight: 800; }
   .stat-label { font-size: 0.7rem; color: var(--ink-soft); }
   .map-wrap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 14px; position: relative; }
+  .map-canvas-wrap { position: relative; }
   /* 各カードを話題にしやすいよう、左上に名前ラベルを置く */
   .card-label {
     position: absolute; top: 8px; left: 8px; z-index: 5;
@@ -25,7 +26,20 @@
   @media (prefers-color-scheme: light) {
     .card-label { background: rgba(255,255,255,0.88); color: #22261c; border: 1px solid var(--line); }
   }
-  #mapCanvas { display: block; width: 100%; touch-action: none; }
+  #mapCanvas { display: block; width: 100%; touch-action: none; cursor: grab; }
+  /* 訪問マップの拡大縮小操作。右下に縦並びの小さな丸ボタン */
+  .zoom-ctrl { position: absolute; bottom: 10px; right: 10px; z-index: 5; display: flex; flex-direction: column; gap: 6px; }
+  .zoom-ctrl button {
+    width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line);
+    background: rgba(20,23,26,0.72); color: #fff; font-size: 1rem; line-height: 1;
+    cursor: pointer; padding: 0;
+  }
+  .zoom-ctrl button:active { background: rgba(20,23,26,0.9); }
+  .zoom-ctrl .zoom-reset { font-size: 0.72rem; }
+  @media (prefers-color-scheme: light) {
+    .zoom-ctrl button { background: rgba(255,255,255,0.88); color: #22261c; }
+    .zoom-ctrl button:active { background: rgba(240,240,240,0.95); }
+  }
   .map-legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 8px 10px; border-top: 1px solid var(--line); font-size: 0.7rem; color: var(--ink-soft); }
   .legend-item { display: flex; align-items: center; gap: 5px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
@@ -90,11 +104,18 @@
     </div>
 
     <div class="map-wrap">
-      <span class="card-label">訪問マップ</span>
-      <canvas id="mapCanvas" height="520"></canvas>
-      <div class="popup" id="popup">
-        <div class="popup-place" id="popupPlace"></div>
-        <div class="popup-meta" id="popupMeta"></div>
+      <div class="map-canvas-wrap">
+        <span class="card-label">訪問マップ</span>
+        <canvas id="mapCanvas" height="520"></canvas>
+        <div class="zoom-ctrl">
+          <button type="button" id="btnZoomIn" aria-label="拡大">＋</button>
+          <button type="button" id="btnZoomOut" aria-label="縮小">－</button>
+          <button type="button" id="btnZoomReset" class="zoom-reset" aria-label="表示を戻す">⟲</button>
+        </div>
+        <div class="popup" id="popup">
+          <div class="popup-place" id="popupPlace"></div>
+          <div class="popup-meta" id="popupMeta"></div>
+        </div>
       </div>
       <div class="map-legend">
         <div class="legend-item"><div class="legend-dot" style="background:#eef1f4;border:1px solid #8aa0b5;"></div>県境</div>

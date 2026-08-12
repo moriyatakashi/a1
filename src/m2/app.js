@@ -11,6 +11,41 @@ const canvas = document.getElementById("mapCanvas");
 const ctx = canvas.getContext("2d");
 const popup = document.getElementById("popup");
 
+// 訪問マップの拡大縮小・パン。地図データ自体は変えず、描画時にctx変換をかけるだけ。
+// scale=1が全体表示(既定)。tx/tyは画面(base座標系)上の平行移動量。
+let view = { scale: 1, tx: 0, ty: 0 };
+const ZOOM_MIN = 1, ZOOM_MAX = 6, ZOOM_STEP = 1.35;
+
+function clampPan() {
+  if (view.scale <= 1) { view.tx = 0; view.ty = 0; return; }
+  const maxPanX = _W * (view.scale - 1);
+  const maxPanY = canvas.height * (view.scale - 1);
+  view.tx = Math.min(maxPanX, Math.max(-maxPanX, view.tx));
+  view.ty = Math.min(maxPanY, Math.max(-maxPanY, view.ty));
+}
+
+// (cx, cy)を中心に据えたまま拡大/縮小する(ボタン押下時はキャンバス中心、
+// ホイール操作時はカーソル位置を渡す)。
+function zoomBy(factor, cx, cy) {
+  const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, view.scale * factor));
+  if (newScale === view.scale) return;
+  view.tx = cx - (cx - view.tx) * (newScale / view.scale);
+  view.ty = cy - (cy - view.ty) * (newScale / view.scale);
+  view.scale = newScale;
+  clampPan();
+  renderMap();
+}
+
+function resetView() {
+  view = { scale: 1, tx: 0, ty: 0 };
+  renderMap();
+}
+
+// base座標(地図データの投影座標)→画面(canvas)座標
+function toScreen(x, y) {
+  return [x * view.scale + view.tx, y * view.scale + view.ty];
+}
+
 async function fetchGeo(path) {
   const r = await fetch(path);
   return r.json();
@@ -234,11 +269,71 @@ function addVisitRow(listEl, v, hasPin, onClick) {
 
 let _points = [];
 let _W = 0;
+let _mapData = null; // {prefGeo, adjacentGeo, cityGeo, withLatLng} を保持し、zoom/pan時に再fetchせず再描画するため
+
+// canvas上のクライアント座標→base(canvas内部)座標
+function toCanvasCoords(e) {
+  const rect = canvas.getBoundingClientRect();
+  return [
+    (e.clientX - rect.left) * (_W / rect.width),
+    (e.clientY - rect.top) * (canvas.height / rect.height),
+  ];
+}
+
+function renderMap() {
+  if (!_mapData) return;
+  const { prefGeo, adjacentGeo, cityGeo, withLatLng } = _mapData;
+  const proj = _mapData.proj;
+
+  ctx.clearRect(0, 0, _W, canvas.height);
+  ctx.save();
+  ctx.translate(view.tx, view.ty);
+  ctx.scale(view.scale, view.scale);
+  drawFeatures(adjacentGeo.features, proj, "#5a5e66", "#3f4247", 1.5); // 隣接県(未訪問、グレーで背景として先に描く)
+  drawFeatures(prefGeo.features, proj, "#eef1f4", "#8aa0b5", 2.5); // 県境(下地、太めにして境目を分かりやすく)
+  drawFeatures(cityGeo.features, proj, "#cfe0f0", "#6f97c0"); // 訪問市区町村
+  _points = withLatLng.length > 0 ? drawPoints(withLatLng, proj) : [];
+  ctx.restore();
+}
+
+let isPanning = false;
+let panStart = null;
+let panMoved = false;
+
+canvas.addEventListener("pointerdown", e => {
+  if (view.scale <= 1) return; // 全体表示時はパン不要
+  const [x, y] = toCanvasCoords(e);
+  isPanning = true;
+  panMoved = false;
+  panStart = { x, y, tx0: view.tx, ty0: view.ty };
+  canvas.setPointerCapture(e.pointerId);
+});
+
+canvas.addEventListener("pointermove", e => {
+  if (!isPanning || !panStart) return;
+  const [x, y] = toCanvasCoords(e);
+  const dx = x - panStart.x, dy = y - panStart.y;
+  if (Math.hypot(dx, dy) > 3) panMoved = true;
+  view.tx = panStart.tx0 + dx;
+  view.ty = panStart.ty0 + dy;
+  clampPan();
+  renderMap();
+});
+
+canvas.addEventListener("pointerup", () => { isPanning = false; panStart = null; });
+canvas.addEventListener("pointercancel", () => { isPanning = false; panStart = null; });
+
+canvas.addEventListener("wheel", e => {
+  e.preventDefault();
+  const [cx, cy] = toCanvasCoords(e);
+  zoomBy(e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP, cx, cy);
+}, { passive: false });
 
 canvas.addEventListener("click", e => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = (e.clientX - rect.left) * (_W / rect.width);
-  const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+  if (panMoved) { panMoved = false; return; } // パン操作の後のクリックは無視
+  const [rawX, rawY] = toCanvasCoords(e);
+  const mx = (rawX - view.tx) / view.scale;
+  const my = (rawY - view.ty) / view.scale;
   let hit = null;
   for (const pt of _points) {
     if (Math.hypot(mx - pt.x, my - pt.y) < clusterRadius(pt.visits.length) + 6) { hit = pt; break; }
@@ -251,8 +346,9 @@ canvas.addEventListener("click", e => {
     document.getElementById("popupPlace").textContent = latest.place || "—";
     document.getElementById("popupMeta").textContent =
       `${latest.date || ""} ${latest.time || ""}${others > 0 ? ` (ほか${others}件)` : ""}${latest.memo ? "\n" + latest.memo : ""}`;
-    const px = Math.min(hit.x + 10, _W - 200);
-    const py = Math.max(hit.y - 60, 10);
+    const [sx, sy] = toScreen(hit.x, hit.y);
+    const px = Math.min(sx + 10, _W - 200);
+    const py = Math.max(sy - 60, 10);
     popup.style.left = px + "px";
     popup.style.top = py + "px";
     popup.classList.add("show");
@@ -260,6 +356,17 @@ canvas.addEventListener("click", e => {
     popup.classList.remove("show");
   }
 });
+
+function initZoomControls() {
+  const btnIn = document.getElementById("btnZoomIn");
+  const btnOut = document.getElementById("btnZoomOut");
+  const btnReset = document.getElementById("btnZoomReset");
+  if (!btnIn) return; // index.html未対応の複製ページ(cd等)では何もしない
+  btnIn.addEventListener("click", () => zoomBy(ZOOM_STEP, _W / 2, canvas.height / 2));
+  btnOut.addEventListener("click", () => zoomBy(1 / ZOOM_STEP, _W / 2, canvas.height / 2));
+  btnReset.addEventListener("click", resetView);
+}
+initZoomControls();
 
 async function load() {
   const listEl = document.getElementById("visitList");
@@ -295,16 +402,12 @@ async function load() {
   const H = 520; // 既存3エリア(higashiosaka/osaka_city/amagasaki)を読み直し、地図を拡大表示する(360→520)
   canvas.width = W;
   canvas.height = H;
+  _W = W;
 
   const allFeatures = [...prefGeo.features, ...adjacentGeo.features, ...cityGeo.features];
   const proj = makeProjector(allFeatures, withLatLng, W, H);
-
-  ctx.clearRect(0, 0, W, H);
-  drawFeatures(adjacentGeo.features, proj, "#5a5e66", "#3f4247", 1.5); // 隣接県(未訪問、グレーで背景として先に描く)
-  drawFeatures(prefGeo.features, proj, "#eef1f4", "#8aa0b5", 2.5); // 県境(下地、太めにして境目を分かりやすく)
-  drawFeatures(cityGeo.features, proj, "#cfe0f0", "#6f97c0"); // 訪問市区町村
-  _W = W;
-  _points = withLatLng.length > 0 ? drawPoints(withLatLng, proj) : [];
+  _mapData = { prefGeo, adjacentGeo, cityGeo, withLatLng, proj };
+  renderMap();
 
   // 場所カード一覧は今日の分だけ表示(地図・統計は従来通り全期間)
   const today = todayStr();
@@ -326,8 +429,9 @@ async function load() {
         // ポップアップにはクリックしたこの訪問自体の情報を表示する(クラスタの代表ではない)。
         document.getElementById("popupPlace").textContent = v.place || "—";
         document.getElementById("popupMeta").textContent = `${v.date || ""} ${v.time || ""}`;
-        popup.style.left = Math.min(cluster.x + 10, W - 200) + "px";
-        popup.style.top = Math.max(cluster.y - 60, 10) + "px";
+        const [sx, sy] = toScreen(cluster.x, cluster.y);
+        popup.style.left = Math.min(sx + 10, W - 200) + "px";
+        popup.style.top = Math.max(sy - 60, 10) + "px";
         popup.classList.add("show");
       }
     } : null);
