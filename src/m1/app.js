@@ -197,7 +197,6 @@ function initScoreInput() {
 }
 
 async function load() {
-  const loadStatus = document.getElementById("loadStatus");
   const listEl = document.getElementById("list");
   const emptyMsg = document.getElementById("emptyMsg");
   const chartSection = document.getElementById("scoreChartSection");
@@ -241,7 +240,6 @@ async function load() {
 
     if (allDates.length === 0) {
       emptyMsg.style.display = "block";
-      loadStatus.textContent = "記録なし";
       return;
     }
 
@@ -274,10 +272,8 @@ async function load() {
 
       listEl.appendChild(card);
     });
-
-    loadStatus.textContent = `${allDates.length} 日分`;
   } catch (e) {
-    loadStatus.textContent = "エラー: " + e.message;
+    console.error(e);
   }
 }
 
