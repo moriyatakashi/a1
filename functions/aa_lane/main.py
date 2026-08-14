@@ -20,6 +20,23 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+# 通し番号(seq)。baの_next_ba_seq(aa/api/bp_ba.py)と同じ「専用カウンタを
+# アトミックにインクリメント」方式。Firestoreはトランザクションで
+# read-modify-writeを保証できるので、新規スレッド作成と同じトランザクション内で
+# カウンタ更新とスレッドsetを両方行い、採番の重複・欠番を防ぐ。
+_AA_SEQ_COUNTER_REF = db.collection("_meta").document("aa_seq")
+
+
+@firestore.transactional
+def _create_thread_with_seq(transaction, doc_ref, thread_data):
+    snapshot = _AA_SEQ_COUNTER_REF.get(transaction=transaction)
+    current = snapshot.get("value") if snapshot.exists else 0
+    seq = (current or 0) + 1
+    transaction.set(_AA_SEQ_COUNTER_REF, {"value": seq})
+    transaction.set(doc_ref, {**thread_data, "seq": seq})
+    return seq
+
+
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -74,7 +91,7 @@ def aa_lane(request):
         if dry_run:
             return _json_response({"ok": True, "dry_run": True, "by": by, "title": title})
         doc_ref = db.collection("aaThreads").document()
-        doc_ref.set({
+        seq = _create_thread_with_seq(db.transaction(), doc_ref, {
             "title": title,
             "body": body.get("body", ""),
             "class": body.get("class", ""),
@@ -82,7 +99,7 @@ def aa_lane(request):
             "createdAt": now,
             "status": "open",
         })
-        return _json_response({"ok": True, "threadId": doc_ref.id, "by": by})
+        return _json_response({"ok": True, "threadId": doc_ref.id, "seq": seq, "by": by})
 
     if action == "note-add":
         thread_id = body.get("threadId")
