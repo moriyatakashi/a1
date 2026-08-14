@@ -20,9 +20,17 @@ categories:
       - code: ba
         desc: 気づきログ
         href: src/ba/
+        sub:
+          code: ca
+          desc: baのそっくりさん(実験中)
+          href: src/ca/
       - code: bb
         desc: ba現在形ビューワ
         href: src/bb/
+        sub:
+          code: cb
+          desc: bbのそっくりさん(実験中)
+          href: src/cb/
       - code: bc
         desc: baレーダーチャート
         href: src/bc/
