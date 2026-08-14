@@ -21,9 +21,9 @@ categories:
         desc: 気づきログ
         href: src/ba/
         sub:
-          code: ca
-          desc: Firestore版ca(ba-242)をba風UIで表示(実験中)
-          href: src/ca/
+          code: aa
+          desc: Firestore版aa(ba-242、2026-08-14にcaから改名)をba風UIで表示(実験中)
+          href: src/aa/
       - code: bb
         desc: ba現在形ビューワ
         href: src/bb/

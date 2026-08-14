@@ -1,18 +1,18 @@
 rules_version = '2';
 
-// ca — 「人もClaudeも自由に書ける、開かれた・やってみる面白い試み」の台帳(ba-242)。
-// 対象コレクション: caThreads とそのサブコレクション notes。
+// aa — 「人もClaudeも自由に書ける、開かれた・やってみる面白い試み」の台帳(ba-242、2026-08-14にcaから改名)。
+// 対象コレクション: aaThreads とそのサブコレクション notes。
 //
 // 2026-08-05確認時点、ab01-9f35a のFirestoreは実データ0件(ab_items2/ab_visits等
 // 旧ab時代のコレクションも空)。そのため「旧データを壊さないための温存」は不要と判断し、
-// caThreads以外はデフォルト拒否(何もmatchしない)にする。将来なにか復活させる場合は
+// aaThreads以外はデフォルト拒否(何もmatchしない)にする。将来なにか復活させる場合は
 // このファイルに明示的にmatchを追加すること。
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- ca: 人もClaudeも書き込める追記型台帳 ---
-    match /caThreads/{threadId} {
+    // --- aa: 人もClaudeも書き込める追記型台帳 ---
+    match /aaThreads/{threadId} {
       // 読み取りは誰でも(ログイン不要) — c1.html preview想定通り。
       allow read: if true;
 
@@ -33,7 +33,7 @@ service cloud.firestore {
     }
 
     // Claudeレーンの書き込みはこのRulesを経由しない
-    // (rbook/run ca → Cloud Function → Admin SDK、Admin SDKはRulesをバイパスする)。
+    // (b1/run aa → Cloud Function、Admin SDKはRulesをバイパスする)。
     // そのためここにClaude用の許可分岐は存在しない — 鍵の正当性はFunction側のclaude_key照合が担う。
 
     function isTakashi() {

@@ -1,21 +1,21 @@
-// ca/app.js — Firestore版caレジャー(ab01-9f35a、ba-242/c1.html)を、baと同じ見た目で
+// aa/app.js — Firestore版aaレジャー(ab01-9f35a、ba-242/c1.html、2026-08-14にcaから改名)を、baと同じ見た目で
 // 表示する読み取り専用ビュー。
 //
-// baとの違い: baはAzure Table Storage(api/bp_ba.py)をfetchするが、caはFirestoreに
-// SDK経由で直接onSnapshot購読する(src/g/g8/ca-app.jsと同じ接続方式)。
+// baとの違い: baはAzure Table Storage(api/bp_ba.py)をfetchするが、aaはFirestoreに
+// SDK経由で直接onSnapshot購読する(src/g/g8/aa-app.jsと同じ接続方式)。
 // 書き込みはこのファイルにはない。人間(takashi)の書き込みはFirebase Authenticationが
-// 別途要る(未実装、src/g/g8/ca-app.js参照)。Claude(利尻・すまさん)の書き込みは
-// Cloud Function「ca-lane」経由(b1/run ca new / note-add)で、このページの外で完結する
-// — 書けば(caThreadsに反映されれば)ここにonSnapshotで即座に出てくる。
+// 別途要る(未実装、src/g/g8/aa-app.js参照)。Claude(利尻・すまさん)の書き込みは
+// Cloud Function「aa-lane」経由(b1/run aa new / note-add)で、このページの外で完結する
+// — 書けば(aaThreadsに反映されれば)ここにonSnapshotで即座に出てくる。
 //
-// caの対応アクションは今のところ new(スレッド作成)と note-add(追記)の2つだけなので、
+// aaの対応アクションは今のところ new(スレッド作成)と note-add(追記)の2つだけなので、
 // baにあるvoid/status切替・react・link・gist・correction・verified_on_device・難易度・
-// seq番号などはca-lane側に実装が無く、このビューにも出さない(ba-242参照)。
+// seq番号などはaa-lane側に実装が無く、このビューにも出さない(ba-242参照)。
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 import { esc, fmtTs, BY_LABEL } from "../common/utils.js";
 
-// プロジェクトはab01-9f35a(src/g/g8/ca-app.jsと同じ)。apiKeyは公開前提の値
+// プロジェクトはab01-9f35a(src/g/g8/aa-app.jsと同じ)。apiKeyは公開前提の値
 // (クライアントに同梱される) — 認可はFirestore Security Rules(firestore.rules)が担うため、
 // ここに秘密情報は含まれない。
 const firebaseConfig = {
@@ -86,7 +86,7 @@ function render() {
     : `<p class="empty">まだスレッドがありません</p>`;
 }
 
-const threadsQuery = query(collection(db, "caThreads"), orderBy("createdAt", "asc"));
+const threadsQuery = query(collection(db, "aaThreads"), orderBy("createdAt", "asc"));
 
 onSnapshot(
   threadsQuery,
@@ -102,7 +102,7 @@ onSnapshot(
       const prev = threadsCache.get(id);
       threadsCache.set(id, { id, ...change.doc.data(), notes: prev ? prev.notes : [] });
       if (!noteUnsubs.has(id)) {
-        const notesQuery = query(collection(db, "caThreads", id, "notes"), orderBy("createdAt", "asc"));
+        const notesQuery = query(collection(db, "aaThreads", id, "notes"), orderBy("createdAt", "asc"));
         const unsub = onSnapshot(notesQuery, (nsnap) => {
           const t = threadsCache.get(id);
           if (!t) return;

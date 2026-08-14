@@ -1,11 +1,11 @@
-# ca-lane -- Claudeレーン専用の最小HTTPSエンドポイント(P4、ba-242参照)。
+# aa-lane -- Claudeレーン専用の最小HTTPSエンドポイント(P4、ba-242参照。2026-08-14にca-laneから改名)。
 #
-# 役割はclaude_keyの照合とFirestore(caThreads)へのAdmin SDK書き込みだけ。
-# 読み取り・人間の書き込みはこのFunctionを経由しない(ca.htmlからFirestoreへ直接、
+# 役割はclaude_keyの照合とFirestore(aaThreads)へのAdmin SDK書き込みだけ。
+# 読み取り・人間の書き込みはこのFunctionを経由しない(aa.htmlからFirestoreへ直接、
 # Security Rules(../../firestore.rules)が認可を担う)。
 #
 # ba(aa/api/function_app.py の _ba_claude_lane)と同じ判定パターン:
-# CA_CLAUDE_KEY_PC / CA_CLAUDE_KEY_MOBILE のどちらと一致したかでby(claude-pc/claude-mobile)を決める。
+# AA_CLAUDE_KEY_PC / AA_CLAUDE_KEY_MOBILE のどちらと一致したかでby(claude-pc/claude-mobile)を決める。
 
 import os
 import json
@@ -38,8 +38,8 @@ def _claude_lane(claude_key):
     サーバー側はba同様もとから両方チェックしているので踏襲するだけでよい)。"""
     if not claude_key:
         return None
-    pc_key = os.environ.get("CA_CLAUDE_KEY_PC", "")
-    mobile_key = os.environ.get("CA_CLAUDE_KEY_MOBILE", "")
+    pc_key = os.environ.get("AA_CLAUDE_KEY_PC", "")
+    mobile_key = os.environ.get("AA_CLAUDE_KEY_MOBILE", "")
     if pc_key and claude_key == pc_key:
         return "claude-pc"
     if mobile_key and claude_key == mobile_key:
@@ -48,7 +48,7 @@ def _claude_lane(claude_key):
 
 
 @functions_framework.http
-def ca_lane(request):
+def aa_lane(request):
     if request.method == "OPTIONS":
         return ("", 204, CORS_HEADERS)
 
@@ -73,7 +73,7 @@ def ca_lane(request):
             return _json_response({"error": "title required"}, 400)
         if dry_run:
             return _json_response({"ok": True, "dry_run": True, "by": by, "title": title})
-        doc_ref = db.collection("caThreads").document()
+        doc_ref = db.collection("aaThreads").document()
         doc_ref.set({
             "title": title,
             "body": body.get("body", ""),
@@ -89,7 +89,7 @@ def ca_lane(request):
         note_body = (body.get("body") or "").strip()
         if not thread_id or not note_body:
             return _json_response({"error": "threadId and body required"}, 400)
-        thread_ref = db.collection("caThreads").document(thread_id)
+        thread_ref = db.collection("aaThreads").document(thread_id)
         if not thread_ref.get().exists:
             # rootless防止(ba-72/ba-101と同じ考え方)。dry_runでも実データで確認する
             # (存在チェックまでが検証の一部、これをスキップすると事故防止にならない)。

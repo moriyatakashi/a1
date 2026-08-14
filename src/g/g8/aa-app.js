@@ -1,18 +1,17 @@
-// aa/src/g/g8/ca-app.js -- ca(ba-242/c1.html P6)のFirestore SDK経由read/write。
-// (2026-08-08、ab/src/ca-app.jsから移設。2026-08-09、aa/src/ca/からaa/src/g/g8/へ再移設)
+// a1/src/g/g8/aa-app.js -- aa(ba-242/c1.html P6、2026-08-14にcaから改名)のFirestore SDK経由read/write。
 // index.html から type="module" で読み込まれる。
 //
 // 読み取り: 誰でも(Security Rulesの allow read: if true)。onSnapshotでリアルタイム表示。
 // 人間の書き込み: Firebase Authentication(Googleログイン) + Security Rulesがtakashi本人のみ許可
 // (../../firestore.rules参照)。ここではUIをtakashiのメールで出し分けているだけで、実際の認可は
 // Rules側が担う(このJS内のチェックを迂回されても書き込みは弾かれる)。
-// Claudeレーンの書き込みはこのファイルを経由しない(rbook/run ca → Cloud Function、
+// Claudeレーンの書き込みはこのファイルを経由しない(b1/run aa → Cloud Function、
 // firestore.rules冒頭のコメント参照)。
 //
 // createdAtは意図的にFirestore Timestamp/serverTimestamp()ではなく ISO 8601文字列を使う。
-// 理由: Claudeレーン(aa/functions/ca_lane/main.py)がdatetime.now(timezone.utc).isoformat()で
+// 理由: Claudeレーン(a1/functions/aa_lane/main.py)がdatetime.now(timezone.utc).isoformat()で
 // 文字列として書いているため、型を揃えないと orderBy('createdAt') が
-// 人間の投稿とClaudeの投稿の間で正しく交互に並ばなくなる(rbook/src/run_ca.pyの
+// 人間の投稿とClaudeの投稿の間で正しく交互に並ばなくなる(b1/src/run_aa.pyの
 // 文字列ソートとも合わせる必要がある)。
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -23,7 +22,7 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
 
-// プロジェクトは ab01-9f35a(rbook/src/run.yml参照、P1で既に作成・流用済み)。
+// プロジェクトは ab01-9f35a(b1/src/run.yml参照、P1で既に作成・流用済み)。
 // 値は Firebase Management API(projects.webApps.getConfig)から取得したもの
 // (登録済みウェブアプリ "ab" 1件のみ)。apiKeyは公開前提の値(クライアントに同梱される) —
 // 認可はSecurity Rulesが担うので、ここに秘密情報は含まれない。
@@ -96,7 +95,7 @@ newThreadForm.addEventListener("submit", async (ev) => {
   const submitBtn = newThreadForm.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   try {
-    await addDoc(collection(db, "caThreads"), {
+    await addDoc(collection(db, "aaThreads"), {
       title,
       body: $("nt-body").value.trim(),
       class: $("nt-class").value.trim(),
@@ -119,7 +118,7 @@ async function submitNote(threadId, text, formEl) {
   const btn = formEl.querySelector("button");
   btn.disabled = true;
   try {
-    await addDoc(collection(db, "caThreads", threadId, "notes"), {
+    await addDoc(collection(db, "aaThreads", threadId, "notes"), {
       body: trimmed,
       by: "takashi",
       createdAt: new Date().toISOString(),
@@ -138,7 +137,7 @@ async function submitNote(threadId, text, formEl) {
 const threadsCache = new Map(); // id -> { id, ...fields, notes: [] }
 const noteUnsubs = new Map(); // id -> unsubscribe fn
 
-const threadsQuery = query(collection(db, "caThreads"), orderBy("createdAt", "asc"));
+const threadsQuery = query(collection(db, "aaThreads"), orderBy("createdAt", "asc"));
 
 onSnapshot(
   threadsQuery,
@@ -156,7 +155,7 @@ onSnapshot(
       const prev = threadsCache.get(id);
       threadsCache.set(id, { id, ...change.doc.data(), notes: prev ? prev.notes : [] });
       if (!noteUnsubs.has(id)) {
-        const notesQuery = query(collection(db, "caThreads", id, "notes"), orderBy("createdAt", "asc"));
+        const notesQuery = query(collection(db, "aaThreads", id, "notes"), orderBy("createdAt", "asc"));
         const unsub = onSnapshot(notesQuery, (nsnap) => {
           const t = threadsCache.get(id);
           if (!t) return;
