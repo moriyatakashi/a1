@@ -251,11 +251,33 @@ def ba_log(req: func.HttpRequest) -> func.HttpResponse:
         if err:
             return err
 
+    # ba-274b(2026-08-15): rootless(note/voidにrefを取られたがrootのnewが無いthreadId)を
+    # 事後救済するためのバックフィル経路。type=newの投稿にbackfillIdを添えると、通常のように
+    # entry_idを新規生成せず、指定したidをそのままPartitionKey/RowKeyに使う(=既存の孤立
+    # threadIdをrootに昇格させる)。狙って上書きしないよう、そのidに既にrootが無いことを
+    # 確認してから使う。seqは通常のnew同様_next_ba_seqでその場の次番号を振るため、
+    # 過去の日付でも「今の」ba番号になる(時系列とba番号がズレるのは織り込み済み)。
     now = datetime.now(timezone.utc)
-    entry_id = now.strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:8]
+    backfill_id = (body.get("backfillId") or "").strip() if entry_type == "new" else ""
+    if backfill_id:
+        try:
+            table.get_entity(partition_key=backfill_id, row_key=backfill_id)
+            return func.HttpResponse(
+                json.dumps(
+                    {"error": "backfillId already has a root", "backfillId": backfill_id},
+                    ensure_ascii=False,
+                ),
+                status_code=400,
+                mimetype="application/json",
+            )
+        except ResourceNotFoundError:
+            pass
+        entry_id = backfill_id
+    else:
+        entry_id = now.strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:8]
     partition = ref if ref else entry_id
 
-    exclude_keys = {"credential", "claude_key", "type", "ref"}
+    exclude_keys = {"credential", "claude_key", "type", "ref", "backfillId"}
     data_fields = {k: v for k, v in body.items() if k not in exclude_keys}
 
     entity = {

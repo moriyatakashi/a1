@@ -569,6 +569,31 @@ def test_ba_void_rejects_rootless_ref(google_auth_ok, tables):
     assert fa.ba_log(req).status_code == 400
 
 
+def test_ba_new_with_backfill_id_creates_root_at_given_id(google_auth_ok, tables):
+    # ba-274b: rootless救済用のバックフィル経路。既存の孤立threadIdをそのままid指定してrootを作れる。
+    req = make_request(
+        "POST", "ba",
+        json_body={"credential": "token", "type": "new", "title": "t", "backfillId": "20260101T000000-deadbeef"},
+    )
+    resp = fa.ba_log(req)
+    assert resp.status_code == 201
+    body = json.loads(resp.get_body())
+    assert body["id"] == "20260101T000000-deadbeef"
+    assert body["threadId"] == "20260101T000000-deadbeef"
+    assert body["seq"] is not None
+
+
+def test_ba_new_with_backfill_id_rejects_when_root_already_exists(google_auth_ok, tables):
+    root = json.loads(fa.ba_log(make_request(
+        "POST", "ba", json_body={"credential": "token", "type": "new", "title": "t"},
+    )).get_body())
+    req = make_request(
+        "POST", "ba",
+        json_body={"credential": "token", "type": "new", "title": "dup", "backfillId": root["id"]},
+    )
+    assert fa.ba_log(req).status_code == 400
+
+
 def test_ba_post_dry_run_does_not_persist(google_auth_ok, tables):
     req = make_request(
         "POST", "ba",
