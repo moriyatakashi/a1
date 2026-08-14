@@ -7,6 +7,8 @@ rules_version = '2';
 // 旧ab時代のコレクションも空)。そのため「旧データを壊さないための温存」は不要と判断し、
 // aaThreads以外はデフォルト拒否(何もmatchしない)にする。将来なにか復活させる場合は
 // このファイルに明示的にmatchを追加すること。
+// 2026-08-14追記: caThreads→aaThreads改名時点で実データ1件(疎通テスト投稿)あり。
+// 同じドキュメントID・内容のままaaThreadsへコピー済み(caThreads側は削除せず残置)。
 
 service cloud.firestore {
   match /databases/{database}/documents {
