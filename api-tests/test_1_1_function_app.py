@@ -551,6 +551,24 @@ def test_ba_gist_rejects_text_over_max_length(google_auth_ok, tables):
     assert fa.ba_log(req).status_code == 400
 
 
+def test_ba_note_rejects_rootless_ref(google_auth_ok, tables):
+    # 2026-08-15: rootless防止ガードをstatus/gistからnote/voidへ拡張(b1のba生ログ画面経由で
+    # 存在しないthreadIdを指すnote/void投稿が21件紛れ込んでいたのを確認したための対応)。
+    req = make_request(
+        "POST", "ba",
+        json_body={"credential": "token", "type": "note", "ref": "no-such-thread", "body": "b"},
+    )
+    assert fa.ba_log(req).status_code == 400
+
+
+def test_ba_void_rejects_rootless_ref(google_auth_ok, tables):
+    req = make_request(
+        "POST", "ba",
+        json_body={"credential": "token", "type": "void", "ref": "no-such-thread"},
+    )
+    assert fa.ba_log(req).status_code == 400
+
+
 def test_ba_post_dry_run_does_not_persist(google_auth_ok, tables):
     req = make_request(
         "POST", "ba",

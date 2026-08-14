@@ -241,11 +241,12 @@ def ba_log(req: func.HttpRequest) -> func.HttpResponse:
     if entry_type == "new":
         ref = ""  # newは常に新規スレッドの起点にする
 
-    # rootless防止(ba-72/ba-101、gist追加でstatus専用から汎用化): statusやgistは必ず
-    # 既存スレッドのroot(PartitionKey=RowKey=ref)を指していなければならない。スタレ/破損refを
-    # 通すと孤立エントリ(rootless)ができ、_calc_weekly_scoreのクローズ集計等が静かにズレる。
-    # 発生源で拒否する。
-    if entry_type in ("status", "gist"):
+    # rootless防止(ba-72/ba-101、gist追加でstatus専用から汎用化。2026-08-15、note/voidにも拡張):
+    # note/status/void/gistは必ず既存スレッドのroot(PartitionKey=RowKey=ref)を指していなければ
+    # ならない。スタレ/破損refを通すと孤立エントリ(rootless)ができ、_calc_weekly_scoreの
+    # クローズ集計等が静かにズレる。発生源で拒否する(note/voidだけこのガードが漏れていたのを
+    # b1のba(=生ログ画面)経由で21件確認したことによる対応、b1/nr1/d1.sql参照)。
+    if entry_type in ("status", "gist", "note", "void"):
         err = _require_existing_root(table, entry_type, ref)
         if err:
             return err
