@@ -22,7 +22,7 @@ categories:
         href: src/ba/
         sub:
           code: ca
-          desc: baのそっくりさん(実験中)
+          desc: Firestore版ca(ba-242)をba風UIで表示(実験中)
           href: src/ca/
       - code: bb
         desc: ba現在形ビューワ
