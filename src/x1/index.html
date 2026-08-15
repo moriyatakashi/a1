@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>x1 — SQLビュー</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --fg: #1a1a1a;
+    --bg: #ffffff;
+    --muted: #666;
+    --border: #d8d8d8;
+    --stripe: #f5f5f5;
+    --head-bg: #eef1f5;
+    --error-bg: #fdecea;
+    --error-fg: #7a1f1f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e8e8e8;
+      --bg: #1b1b1b;
+      --muted: #999;
+      --border: #3a3a3a;
+      --stripe: #242424;
+      --head-bg: #2a2f3a;
+      --error-bg: #3a1f1f;
+      --error-fg: #ff9d9d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 16px; margin: 0 0 8px; }
+  #sql-box {
+    background: var(--stripe);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: ui-monospace, Consolas, monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-bottom: 10px;
+  }
+  #status {
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  #status.error {
+    color: var(--error-fg);
+    background: var(--error-bg);
+    border-radius: 6px;
+    padding: 8px 10px;
+    white-space: pre-wrap;
+  }
+  .table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: max-content;
+  }
+  th, td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+    max-width: 32em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  th {
+    position: sticky;
+    top: 0;
+    background: var(--head-bg);
+    font-weight: 600;
+  }
+  tbody tr:nth-child(even) { background: var(--stripe); }
+  #meta, .row-count {
+    color: var(--muted);
+    margin-top: 10px;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<h1>x1 — SQLビュー</h1>
+<div id="sql-box">読み込み中…</div>
+<div id="status">読み込み中…</div>
+<div id="result"></div>
+<div id="meta"></div>
+
+<!-- sql.js(WebAssembly版SQLite)。バージョン固定 + integrityでCDN依存のリスクを抑える。 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/sql-wasm.js"
+        integrity="sha512-G5E7whKQSPtDMO2K5CnlFdy518Z28CydpBURC+gT5JtOa+hMFMG0JhZUHgs+b7N4sbEOz2j0NfFQWmHVos5nUQ=="
+        crossorigin="anonymous"></script>
+
+<script type="module">
+// x1/index.html — a2/x1/a1.sqlに書かれたSQLを、a1のba API + Firestore(aa)から
+// その場で取得したデータに対して、ブラウザ内(sql.js)で実際に実行して表示する。
+// 仕組みはb1のtool dosql(b1/src/run_tool.py)と同じ発想(取得JSONのキー和集合で
+// TEXT列のテーブルを作る)だが、Pythonではなくこのページの中でその都度組み立てる。
+// 2026-08-15、takashi依頼。SQLを直接書き換えれば次に開いた時から反映される。
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+const BA_API_URL = "https://ab-board-api.azurewebsites.net/api/ba";
+
+// aa(Firestore、ab01-9f35a)。apiKeyは公開前提の値(a1/src/aa/app.jsと同じ設定) ——
+// 認可はFirestore Security Rules側が担うため、ここに秘密情報は含まれない。
+const firebaseConfig = {
+  apiKey: "AIzaSyDuPw8nMuFWx8ghV5ZeBGETeiNII3uk4l8",
+  authDomain: "ab01-9f35a.firebaseapp.com",
+  projectId: "ab01-9f35a",
+  storageBucket: "ab01-9f35a.firebasestorage.app",
+  messagingSenderId: "502154862201",
+  appId: "1:502154862201:web:4ca0c72225af6bd0147ea8",
+  measurementId: "G-4L8FF69B1B",
+};
+
+const sqlBox = document.getElementById("sql-box");
+const statusEl = document.getElementById("status");
+const resultEl = document.getElementById("result");
+const metaEl = document.getElementById("meta");
+
+function setStatus(text, isError = false) {
+  statusEl.textContent = text;
+  statusEl.classList.toggle("error", isError);
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+// b1/src/run_tool.py の _build_sqlite と同じ規則: 全行のキーの和集合を列にし、
+// 無い列は空文字、list/dict値はJSON文字列化してTEXT列へ入れる。
+function buildTable(db, name, rows) {
+  if (!rows.length) return;
+  const cols = [];
+  const seen = new Set();
+  for (const row of rows) {
+    for (const k of Object.keys(row)) {
+      if (!seen.has(k)) { seen.add(k); cols.push(k); }
+    }
+  }
+  const colList = cols.map((c) => `"${c}"`).join(", ");
+  db.run(`CREATE TABLE "${name}" (${colList})`);
+  const stmt = db.prepare(`INSERT INTO "${name}" VALUES (${cols.map(() => "?").join(", ")})`);
+  for (const row of rows) {
+    stmt.run(cols.map((c) => {
+      const v = row[c];
+      if (v === undefined || v === null) return "";
+      if (typeof v === "object") return JSON.stringify(v);
+      return String(v);
+    }));
+  }
+  stmt.free();
+}
+
+async function fetchBaRows() {
+  const res = await fetch(BA_API_URL);
+  if (!res.ok) throw new Error(`ba取得失敗: HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchAaRows() {
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const snap = await getDocs(collection(db, "aaThreads"));
+  return snap.docs.map((d) => ({ _id: d.id, ...d.data() }));
+}
+
+function renderResults(results) {
+  resultEl.innerHTML = "";
+  if (!results.length) {
+    resultEl.textContent = "(結果なし)";
+    return;
+  }
+  for (const { columns, values } of results) {
+    const wrap = document.createElement("div");
+    wrap.className = "table-scroll";
+    const table = document.createElement("table");
+    const thead = `<thead><tr>${columns.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead>`;
+    const tbody = `<tbody>${values.map((row) =>
+      `<tr>${row.map((v) => `<td title="${esc(v)}">${esc(v)}</td>`).join("")}</tr>`
+    ).join("")}</tbody>`;
+    table.innerHTML = thead + tbody;
+    wrap.appendChild(table);
+    resultEl.appendChild(wrap);
+    const count = document.createElement("div");
+    count.className = "row-count";
+    count.textContent = `${values.length} 行`;
+    resultEl.appendChild(count);
+  }
+}
+
+async function main() {
+  let sqlText;
+  try {
+    const res = await fetch("a1.sql");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    sqlText = (await res.text()).trim();
+  } catch (e) {
+    sqlBox.textContent = "(a1.sql取得失敗)";
+    setStatus(`a1.sqlの取得に失敗しました: ${e.message}`, true);
+    return;
+  }
+  sqlBox.textContent = sqlText;
+
+  setStatus("ba/aaを取得中…");
+  let baRows = [], aaRows = [];
+  try {
+    [baRows, aaRows] = await Promise.all([fetchBaRows(), fetchAaRows()]);
+  } catch (e) {
+    setStatus(`データ取得に失敗しました: ${e.message}`, true);
+    return;
+  }
+
+  setStatus("SQLを実行中…");
+  let SQL, db;
+  try {
+    SQL = await initSqlJs({
+      locateFile: (f) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.2/${f}`,
+    });
+    db = new SQL.Database();
+    buildTable(db, "ba", baRows);
+    buildTable(db, "aa", aaRows);
+  } catch (e) {
+    setStatus(`SQLエンジンの初期化に失敗しました: ${e.message}`, true);
+    return;
+  }
+
+  try {
+    const results = db.exec(sqlText);
+    renderResults(results);
+    const now = new Date().toISOString();
+    setStatus(`表示完了(ba ${baRows.length}件 / aa ${aaRows.length}件を取得)`);
+    metaEl.textContent = `最終取得: ${now}(毎回ライブ取得。SQLは a1.sql を編集すれば次回表示に反映される)`;
+  } catch (e) {
+    setStatus(`SQL実行エラー: ${e.message}`, true);
+  }
+}
+
+main();
+</script>
+</body>
+</html>
