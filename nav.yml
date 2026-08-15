@@ -9,7 +9,7 @@ categories:
           desc: .
           href: src/m1/
       - code: n2
-        desc: 訪問地図・予定
+        desc: 訪問地図
         href: src/n2/
         sub:
           code: m2
