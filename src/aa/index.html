@@ -12,20 +12,23 @@
   .detail-toggle { margin-bottom: 8px; }
   .detail-loading { font-size: 0.78rem; color: var(--ink-soft); }
   .detail-frame { display: block; width: 100%; height: 480px; border: 1px solid var(--line); border-radius: 6px; margin-top: 8px; background: #fff; }
+  /* ba番号タグ(新c1へのリンク)。他の.tagと見た目を揃えつつ、リンクだと分かるようhoverで示す */
+  a.tag { text-decoration: none; }
+  a.tag:hover, a.tag:focus-visible { text-decoration: underline; color: var(--accent); }
+  /* ledger.cssの.summary-barはba/bbと共有(4列固定)なので、aaだけ2項目用に上書きする */
+  .summary-bar { grid-template-columns: repeat(2, 1fr); }
 </style>
 </head>
 <body>
   <p><a href="../../">← 戻る</a></p>
   <div class="eyebrow">ロレキ内部メモ</div>
-  <h1>路歴（aa） / オープン台帳(Firestore)</h1>
-  <p class="lede">baと同じ見た目で、Firestoreの aaThreads(ba-242、2026-08-14にcaThreadsから改名)を表示する読み取り専用ページ。書き込みは今のところ利尻・すまさん(Claudeレーン、b1/run aa 経由)のみ。</p>
+  <h1 id="pageTitle">路歴（aa） / オープン台帳(Firestore)</h1>
+  <p class="lede" id="pageLede">baと同じ見た目で、Firestoreの aaThreads(ba-242、2026-08-14にcaThreadsから改名)を表示する読み取り専用ページ。書き込みは今のところ利尻・すまさん(Claudeレーン、b1/run aa 経由)のみ。</p>
   <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: -</p>
 
   <div class="summary-bar">
-    <div class="stat"><div class="stat-num" id="statTotal">—</div><div class="stat-label">スレッド</div></div>
-    <div class="stat"><div class="stat-num" id="statOpen">—</div><div class="stat-label">オープン</div></div>
-    <div class="stat"><div class="stat-num" id="statClosed">—</div><div class="stat-label">クローズ</div></div>
-    <div class="stat"><div class="stat-num" id="statLatestBy">—</div><div class="stat-label">直近の記入者</div></div>
+    <div class="stat"><div class="stat-num" id="statMaxSeq">—</div><div class="stat-label">最大番号</div></div>
+    <div class="stat"><div class="stat-num" id="statCount">—</div><div class="stat-label">有効数</div></div>
   </div>
 
   <div class="thread-list" id="threadList"></div>

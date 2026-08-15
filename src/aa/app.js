@@ -8,12 +8,15 @@
 // Cloud Function「aa-lane」経由(b1/run aa new / note-add)で、このページの外で完結する
 // — 書けば(aaThreadsに反映されれば)ここにonSnapshotで即座に出てくる。
 //
-// aaの対応アクションは今のところ new(スレッド作成)と note-add(追記)の2つだけなので、
-// baにあるvoid/status切替・react・link・gist・correction・verified_on_device・難易度・
-// seq番号などはaa-lane側に実装が無く、このビューにも出さない(ba-242参照)。
+// ba-289改訂(2026-08-15、aa_lane/main.py参照)でstatus/classは廃止済み、void/tags/baSeqが
+// 追加された。open/closedの概念自体が無い(void=trueのスレッドを単純に出さないだけ)ので、
+// このビューにもopen/closedのpill表示は持たない。
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, getCountFromServer } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
-import { esc, fmtTs, BY_LABEL } from "../common/utils.js";
+import { esc, fmtTs, BY_LABEL, parseTags } from "../common/utils.js";
+
+// 新c1(旧c2、a2リポジトリ)のBaLog Index。ba番号タグのリンク先。
+const BA_INDEX_URL = "https://moriyatakashi.github.io/a2/c1.html";
 
 // プロジェクトはab01-9f35a(src/g/g8/aa-app.jsと同じ)。apiKeyは公開前提の値
 // (クライアントに同梱される) — 認可はFirestore Security Rules(firestore.rules)が担うため、
@@ -56,15 +59,15 @@ function ensureHtmlDocsCount(id) {
 }
 
 function renderSummary(threads) {
-  const openCount = threads.filter((t) => (t.status || "open") === "open").length;
-  const closedCount = threads.length - openCount;
-  const allEntries = threads.flatMap((t) => [t, ...t.notes]);
-  const latest = allEntries.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))[0];
+  const maxSeq = threads.length ? Math.max(...threads.map((t) => t.seq || 0)) : 0;
+  document.getElementById("statMaxSeq").textContent = maxSeq || "—";
+  document.getElementById("statCount").textContent = threads.length;
+}
 
-  document.getElementById("statTotal").textContent = threads.length;
-  document.getElementById("statOpen").textContent = openCount;
-  document.getElementById("statClosed").textContent = closedCount;
-  document.getElementById("statLatestBy").textContent = latest ? (BY_LABEL[latest.by] || latest.by || "—") : "—";
+// 各スレッドの「最終更新」= root作成時刻とnotesの最新作成時刻の大きい方(bb/app.jsのlastAtと同じ考え方)
+function lastActivityAt(t) {
+  const noteAt = t.notes.length ? t.notes[t.notes.length - 1].createdAt : null;
+  return noteAt && noteAt > (t.createdAt || "") ? noteAt : t.createdAt;
 }
 
 function noteRowHtml(n) {
@@ -96,20 +99,21 @@ function detailBlockHtml(t) {
 }
 
 function threadCardHtml(t) {
-  const isOpen = (t.status || "open") === "open";
-  const clsHtml = t.class ? `<span class="tag">#${esc(t.class)}</span>` : "";
   const seqLabel = t.seq != null ? `aa-${t.seq}` : "aa-?";
-  const baLabel = t.baSeq != null ? `<span class="tag">→ ba-${esc(String(t.baSeq))}</span>` : "";
+  const tagsHtml = parseTags(t.tags || "").map((x) => `<span class="tag">#${esc(x)}</span>`).join("");
+  // ba番号タグは新c1(a2)の該当行への外部リンク。カード自体の開閉トグルとは独立させる
+  const baHtml = t.baSeq != null
+    ? `<a class="tag" href="${BA_INDEX_URL}#ba-${esc(String(t.baSeq))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">→ ba-${esc(String(t.baSeq))}</a>`
+    : "";
   return `
     <details class="thread-card">
       <summary>
         <div class="thread-top-row">
-          <span class="chevron">▶</span>
-          <span class="pill ${isOpen ? "pill-open" : "pill-closed"}">${isOpen ? "open" : "closed"}</span>
+          <span class="chevron">▶ 内容を見る</span>
           <span class="tag">${esc(seqLabel)}</span>
           <span class="thread-title">${esc(t.title || "(無題)")}</span>
         </div>
-        <div class="meta-row">${clsHtml}${baLabel}<span class="tag">${esc(BY_LABEL[t.by] || t.by || "")}</span><span class="tag">${fmtTs(t.createdAt)}</span></div>
+        <div class="meta-row">${tagsHtml}${baHtml}<span class="tag">最終更新 ${fmtTs(lastActivityAt(t))}</span></div>
       </summary>
       <div class="thread-timeline">
         ${t.body ? `<div class="entry entry--new"><div class="entry-rail"></div><div><div class="entry-body">${esc(t.body)}</div></div></div>` : ""}
@@ -120,7 +124,10 @@ function threadCardHtml(t) {
 }
 
 function render() {
-  const threads = [...threadsCache.values()].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  // voidは単純に出さない(open/closedのような状態表示は持たず、voidだけが特別扱い)
+  const threads = [...threadsCache.values()]
+    .filter((t) => t.void !== true)
+    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   renderSummary(threads);
   const listEl = document.getElementById("threadList");
   listEl.innerHTML = threads.length
@@ -182,3 +189,13 @@ onSnapshot(
     document.getElementById("threadList").innerHTML = `<p class="empty">読み込みエラー: ${esc(err.message)}</p>`;
   }
 );
+
+// 見出し・説明文はcopy.jsonから読む(ba-289後の再構成で認識がずれたため、コードを触らず
+// このファイルだけ書き換えれば文言を直せるようにした)。失敗してもページ全体は止めない。
+fetch("copy.json")
+  .then((r) => r.json())
+  .then((c) => {
+    if (c.title) document.getElementById("pageTitle").textContent = c.title;
+    if (c.lede) document.getElementById("pageLede").textContent = c.lede;
+  })
+  .catch(() => {});

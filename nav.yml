@@ -52,3 +52,8 @@ categories:
           code: ce
           desc: .
           href: src/ce/
+  - label: 姉妹サイト
+    items:
+      - code: a2
+        desc: BaLog Index(closed/void/tagsも見える一覧)の実験場
+        href: https://moriyatakashi.github.io/a2/
