@@ -1,4 +1,4 @@
-// common/auth.js — n1/n2/n4で共通のログインゲート実装(2026-07-13 共通化)
+// common/auth.js — m1/n2/n4で共通のログインゲート実装(2026-07-13 共通化)
 // GSIのdata-callbackから呼ばれる。ログイン成功後、呼び出し元ページが待っている
 // カスタムイベント(window.AA_AUTH_EVENTで指定、未指定時は"aa-login-success")を発火する。
 // 各ページのindex.htmlは、このスクリプトを読み込む前に
@@ -15,7 +15,7 @@
 // サーバー側が未対応(SESSION_SECRET未設定・通信不可等)の場合は、従来どおり生の
 // Googleトークンを60分だけ保持するフォールバックに自動的に倒れる(段階移行を安全にするため)。
 // 無期限トークンはログアウト(window.aaLogout、またはサーバー側の失効)でのみ失効する。
-// n1/n2/n4で共通のキーを使うため、いずれか1つでログインすれば他も再ログイン不要になる。
+// m1/n2/n4で共通のキーを使うため、いずれか1つでログインすれば他も再ログイン不要になる。
 const STORAGE_KEY = "aa_credential";
 const GOOGLE_TOKEN_SESSION_MS = 60 * 60 * 1000; // フォールバック(生Googleトークン)のみに適用
 const LOGIN_EVENT = window.AA_AUTH_EVENT || "aa-login-success";

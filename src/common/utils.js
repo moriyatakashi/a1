@@ -44,12 +44,12 @@ export function findClassification(tags) {
   return tagArray.find((t) => CLASSIFICATIONS.includes(t)) || null;
 }
 
-// n1/n2共通: 今日の日付をYYYY-MM-DD形式で返す
+// m1/n2共通: 今日の日付をYYYY-MM-DD形式で返す
 export function todayStr() {
   return new Date().toLocaleDateString("sv-SE");
 }
 
-// ba/n1/n2共通: POST bodyに認証情報(auth.jsがwindow.__credentialへ格納)を付与する
+// ba/m1/n2共通: POST bodyに認証情報(auth.jsがwindow.__credentialへ格納)を付与する
 export function withCredential(body = {}) {
   return { ...body, credential: window.__credential };
 }
