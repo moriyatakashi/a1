@@ -60,15 +60,18 @@ function noteRowHtml(n) {
 function threadCardHtml(t) {
   const isOpen = (t.status || "open") === "open";
   const clsHtml = t.class ? `<span class="tag">#${esc(t.class)}</span>` : "";
+  const seqLabel = t.seq != null ? `aa-${t.seq}` : "aa-?";
+  const baLabel = t.baSeq != null ? `<span class="tag">→ ba-${esc(String(t.baSeq))}</span>` : "";
   return `
     <details class="thread-card">
       <summary>
         <div class="thread-top-row">
           <span class="chevron">▶</span>
           <span class="pill ${isOpen ? "pill-open" : "pill-closed"}">${isOpen ? "open" : "closed"}</span>
+          <span class="tag">${esc(seqLabel)}</span>
           <span class="thread-title">${esc(t.title || "(無題)")}</span>
         </div>
-        <div class="meta-row">${clsHtml}<span class="tag">${esc(BY_LABEL[t.by] || t.by || "")}</span><span class="tag">${fmtTs(t.createdAt)}</span></div>
+        <div class="meta-row">${clsHtml}${baLabel}<span class="tag">${esc(BY_LABEL[t.by] || t.by || "")}</span><span class="tag">${fmtTs(t.createdAt)}</span></div>
       </summary>
       <div class="thread-timeline">
         ${t.body ? `<div class="entry entry--new"><div class="entry-rail"></div><div><div class="entry-body">${esc(t.body)}</div></div></div>` : ""}
