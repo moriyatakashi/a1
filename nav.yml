@@ -39,7 +39,7 @@ categories:
           desc: bcのそっくりさん(実験中)
           href: src/cc/
       - code: bd
-        desc: id/service/azureカタログ＋旧absite一覧(旧beを統合)
+        desc: card
         href: src/bd/
         sub:
           code: cd
