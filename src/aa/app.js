@@ -12,7 +12,7 @@
 // baにあるvoid/status切替・react・link・gist・correction・verified_on_device・難易度・
 // seq番号などはaa-lane側に実装が無く、このビューにも出さない(ba-242参照)。
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, getCountFromServer } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 import { esc, fmtTs, BY_LABEL } from "../common/utils.js";
 
 // プロジェクトはab01-9f35a(src/g/g8/aa-app.jsと同じ)。apiKeyは公開前提の値
@@ -33,6 +33,27 @@ const db = getFirestore(app);
 
 const threadsCache = new Map(); // id -> { id, ...fields, notes: [] }
 const noteUnsubs = new Map(); // id -> unsubscribe fn
+
+// htmlDocs(2026-08-16、「窓の窓」): aaThreads本体のフィールドではなくサブコレクション
+// (aa_lane/main.pyのhtml-add参照)。既定では出さず、件数だけ軽量に取得(getCountFromServer、
+// 中身は読まない)しておき、「解説を見る」が押された時だけ本文を取りに行く(容量対策)。
+const htmlDocsMeta = new Map(); // id -> { count: number|null, docs: array|null, expanded: bool }
+
+function ensureHtmlDocsCount(id) {
+  if (htmlDocsMeta.has(id)) return;
+  htmlDocsMeta.set(id, { count: null, docs: null, expanded: false });
+  getCountFromServer(collection(db, "aaThreads", id, "htmlDocs"))
+    .then((snap) => {
+      const meta = htmlDocsMeta.get(id);
+      if (!meta) return;
+      meta.count = snap.data().count;
+      render();
+    })
+    .catch(() => {
+      const meta = htmlDocsMeta.get(id);
+      if (meta) meta.count = 0;
+    });
+}
 
 function renderSummary(threads) {
   const openCount = threads.filter((t) => (t.status || "open") === "open").length;
@@ -57,6 +78,23 @@ function noteRowHtml(n) {
     </div>`;
 }
 
+function detailBlockHtml(t) {
+  ensureHtmlDocsCount(t.id); // 未取得ならここで件数取得を1回だけ発火(結果はrenderで反映)
+  const meta = htmlDocsMeta.get(t.id);
+  if (!meta || !meta.count) return "";
+  const label = meta.expanded ? "解説をとじる ▲" : `解説を見る(${meta.count}) ▼`;
+  const framesHtml = !meta.expanded
+    ? ""
+    : meta.docs === null
+      ? `<p class="detail-loading">読み込み中…</p>`
+      : meta.docs.map((d) => `<iframe class="detail-frame" sandbox="allow-scripts" srcdoc="${esc(d.html || "")}"></iframe>`).join("");
+  return `
+    <div class="detail-block">
+      <button type="button" class="related-chip detail-toggle" data-id="${esc(t.id)}">${label}</button>
+      ${framesHtml}
+    </div>`;
+}
+
 function threadCardHtml(t) {
   const isOpen = (t.status || "open") === "open";
   const clsHtml = t.class ? `<span class="tag">#${esc(t.class)}</span>` : "";
@@ -77,6 +115,7 @@ function threadCardHtml(t) {
         ${t.body ? `<div class="entry entry--new"><div class="entry-rail"></div><div><div class="entry-body">${esc(t.body)}</div></div></div>` : ""}
         ${t.notes.map(noteRowHtml).join("")}
       </div>
+      ${detailBlockHtml(t)}
     </details>`;
 }
 
@@ -88,6 +127,28 @@ function render() {
     ? threads.map(threadCardHtml).join("")
     : `<p class="empty">まだスレッドがありません</p>`;
 }
+
+// 「解説を見る」クリックの委譲。render()がinnerHTMLを丸ごと差し替えるため、要素自体には
+// リスナーを付けず、常に存在するthreadListに1回だけ付ける。
+document.getElementById("threadList").addEventListener("click", (e) => {
+  const btn = e.target.closest(".detail-toggle");
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const meta = htmlDocsMeta.get(id);
+  if (!meta) return;
+  meta.expanded = !meta.expanded;
+  if (meta.expanded && meta.docs === null) {
+    render(); // まず「読み込み中…」を出す
+    getDocs(collection(db, "aaThreads", id, "htmlDocs")).then((snap) => {
+      const m = htmlDocsMeta.get(id);
+      if (!m) return;
+      m.docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      render();
+    });
+    return;
+  }
+  render();
+});
 
 const threadsQuery = query(collection(db, "aaThreads"), orderBy("createdAt", "asc"));
 
