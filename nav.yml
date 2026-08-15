@@ -6,14 +6,14 @@ categories:
         href: src/n1/
         sub:
           code: m1
-          desc: n1のそっくりさん(実験中)
+          desc: .
           href: src/m1/
       - code: n2
-        desc: 訪問地図・予定(旧n3を統合)
+        desc: 訪問地図・予定
         href: src/n2/
         sub:
           code: m2
-          desc: n2のそっくりさん(実験中)
+          desc: .
           href: src/m2/
   - label: 内部メモ
     items:
@@ -22,33 +22,33 @@ categories:
         href: src/ba/
         sub:
           code: aa
-          desc: 
+          desc: . 
           href: src/aa/
       - code: bb
         desc: ba現在形ビューワ
         href: src/bb/
         sub:
           code: cb
-          desc: bbのそっくりさん(実験中)
+          desc: .
           href: src/cb/
       - code: bc
         desc: baレーダーチャート
         href: src/bc/
         sub:
           code: cc
-          desc: bcのそっくりさん(実験中)
+          desc: .
           href: src/cc/
       - code: bd
         desc: card
         href: src/bd/
         sub:
           code: cd
-          desc: bdのそっくりさん(実験中)
+          desc: .
           href: src/cd/
       - code: be
-        desc: WIP作業台(旧s1)
+        desc: WIP作業台
         href: src/be/
         sub:
           code: ce
-          desc: beのそっくりさん(実験中)
+          desc: .
           href: src/ce/
