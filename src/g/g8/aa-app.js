@@ -3,13 +3,14 @@
 //
 // 読み取り: 誰でも(Security Rulesの allow read: if true)。onSnapshotでリアルタイム表示。
 // 人間の書き込み: Firebase Authentication(Googleログイン) + Security Rulesがtakashi本人のみ許可
-// (../../firestore.rules参照)。ここではUIをtakashiのメールで出し分けているだけで、実際の認可は
-// Rules側が担う(このJS内のチェックを迂回されても書き込みは弾かれる)。
+// (b3/firestore.rules参照。2026-08-16、aa_laneとセットでa1からb3へ移設)。ここではUIをtakashiの
+// メールで出し分けているだけで、実際の認可はRules側が担う(このJS内のチェックを迂回されても
+// 書き込みは弾かれる)。
 // Claudeレーンの書き込みはこのファイルを経由しない(b1/run aa → Cloud Function、
-// firestore.rules冒頭のコメント参照)。
+// b3/firestore.rules冒頭のコメント参照)。
 //
 // createdAtは意図的にFirestore Timestamp/serverTimestamp()ではなく ISO 8601文字列を使う。
-// 理由: Claudeレーン(a1/functions/aa_lane/main.py)がdatetime.now(timezone.utc).isoformat()で
+// 理由: Claudeレーン(b3/functions/aa_lane/main.py)がdatetime.now(timezone.utc).isoformat()で
 // 文字列として書いているため、型を揃えないと orderBy('createdAt') が
 // 人間の投稿とClaudeの投稿の間で正しく交互に並ばなくなる(b1/src/run_aa.pyの
 // 文字列ソートとも合わせる必要がある)。
