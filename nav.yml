@@ -55,5 +55,5 @@ categories:
   - label: 姉妹サイト
     items:
       - code: a2
-        desc: BaLog Index(closed/void/tagsも見える一覧)の実験場
+        desc: BaLog Index
         href: https://moriyatakashi.github.io/a2/

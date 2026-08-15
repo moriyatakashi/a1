@@ -58,18 +58,6 @@ function ensureHtmlDocsCount(id) {
     });
 }
 
-function renderSummary(threads) {
-  const maxSeq = threads.length ? Math.max(...threads.map((t) => t.seq || 0)) : 0;
-  document.getElementById("statMaxSeq").textContent = maxSeq || "—";
-  document.getElementById("statCount").textContent = threads.length;
-}
-
-// 各スレッドの「最終更新」= root作成時刻とnotesの最新作成時刻の大きい方(bb/app.jsのlastAtと同じ考え方)
-function lastActivityAt(t) {
-  const noteAt = t.notes.length ? t.notes[t.notes.length - 1].createdAt : null;
-  return noteAt && noteAt > (t.createdAt || "") ? noteAt : t.createdAt;
-}
-
 function noteRowHtml(n) {
   return `
     <div class="entry entry--note">
@@ -100,20 +88,26 @@ function detailBlockHtml(t) {
 
 function threadCardHtml(t) {
   const seqLabel = t.seq != null ? `aa-${t.seq}` : "aa-?";
-  const tagsHtml = parseTags(t.tags || "").map((x) => `<span class="tag">#${esc(x)}</span>`).join("");
-  // ba番号タグは新c1(a2)の該当行への外部リンク。カード自体の開閉トグルとは独立させる
+  // タグは今は押しても何も起きない(将来: タグ絞り込み)。summary内なのでクリックがカードの
+  // 開閉トグルへ抜けないようstopPropagationしておく
+  const tagsHtml = parseTags(t.tags || "")
+    .map((x) => `<span class="aa-tag" onclick="event.stopPropagation()">#${esc(x)}</span>`)
+    .join("");
+  // ba番号は新c1(a2)の該当行への外部リンク。gh-chip(既存の「外部参照」チップ)を流用し、
+  // タグ・aa番号と見た目で区別する。カード自体の開閉トグルとは独立させる
   const baHtml = t.baSeq != null
-    ? `<a class="tag" href="${BA_INDEX_URL}#ba-${esc(String(t.baSeq))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">→ ba-${esc(String(t.baSeq))}</a>`
+    ? `<a class="gh-chip" href="${BA_INDEX_URL}#ba-${esc(String(t.baSeq))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">→ ba-${esc(String(t.baSeq))}</a>`
     : "";
   return `
     <details class="thread-card">
       <summary>
         <div class="thread-top-row">
-          <span class="chevron">▶ 内容を見る</span>
+          <span class="chevron">▶</span>
+          <span class="expand-hint">内容を見る</span>
           <span class="tag">${esc(seqLabel)}</span>
           <span class="thread-title">${esc(t.title || "(無題)")}</span>
         </div>
-        <div class="meta-row">${tagsHtml}${baHtml}<span class="tag">最終更新 ${fmtTs(lastActivityAt(t))}</span></div>
+        <div class="meta-row">${tagsHtml}${baHtml}</div>
       </summary>
       <div class="thread-timeline">
         ${t.body ? `<div class="entry entry--new"><div class="entry-rail"></div><div><div class="entry-body">${esc(t.body)}</div></div></div>` : ""}
@@ -128,7 +122,6 @@ function render() {
   const threads = [...threadsCache.values()]
     .filter((t) => t.void !== true)
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-  renderSummary(threads);
   const listEl = document.getElementById("threadList");
   listEl.innerHTML = threads.length
     ? threads.map(threadCardHtml).join("")
