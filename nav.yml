@@ -1,13 +1,9 @@
 categories:
   - label: 記録
     items:
-      - code: n1
-        desc: 記録一覧
-        href: src/n1/
-        sub:
-          code: m1
-          desc: .
-          href: src/m1/
+      - code: m1
+        desc: 日々記録
+        href: src/m1/
       - code: n2
         desc: 訪問地図
         href: src/n2/
