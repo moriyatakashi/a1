@@ -8,9 +8,9 @@
 | `2-3-bc-casl-engine.test.js` | `bc` |
 | `2-4-k1-nes-smoke.test.js` | `k1` |
 | `2-5-k2-radar-chart.test.js` | `k2` |
-| `2-6-n1-n2-google-one-tap.test.js` | `n1`, `n2` |
+| `2-6-n1-n2-google-one-tap.test.js` | `m1`, `n2` |
 | `2-7-bd-password-decoder.test.js` | `bd` |
-| `2-8-persistent-session.test.js` | `n1`(`common/auth.js`) |
+| `2-8-persistent-session.test.js` | `ba`(`common/auth.js`) |
 | `2-9-bf-password-generator.test.js` | `bf` |
 | `2-10-bf-ui-smoke.test.js` | `bf` |
 | `2-14-ba-approval-queue.test.js` | `ba`(承認キュー) |
