@@ -88,18 +88,54 @@ def aa_lane(request):
         title = (body.get("title") or "").strip()
         if not title:
             return _json_response({"error": "title required"}, 400)
+        # ba-289改訂(スキーマ見直し): statusは持たない(open/closedの概念自体なし)。
+        # 代わりにba側のスレッドと1:1で紐づけるbaSeqを必須にする。baのlink(relSeq)と
+        # 同じ「人間が呼ぶseq番号をそのまま持つ」形。TODO: 実在確認は今回未実装
+        # (aa_laneはFirebase側、ba本体はAzure Table Storage側にあり、クラウドをまたいだ
+        # 問い合わせが要る。ひとまず正の整数であることのみ検証)。
+        ba_seq = body.get("baSeq")
+        if not isinstance(ba_seq, int) or isinstance(ba_seq, bool) or ba_seq <= 0:
+            return _json_response({"error": "baSeq must be a positive integer"}, 400)
+        body_format = (body.get("bodyFormat") or "text").strip()
+        if body_format not in ("text", "md", "html", "json", "other"):
+            return _json_response({"error": f"invalid bodyFormat: {body_format}"}, 400)
         if dry_run:
             return _json_response({"ok": True, "dry_run": True, "by": by, "title": title})
         doc_ref = db.collection("aaThreads").document()
         seq = _create_thread_with_seq(db.transaction(), doc_ref, {
             "title": title,
             "body": body.get("body", ""),
-            "class": body.get("class", ""),
+            "bodyFormat": body_format,
+            "tags": body.get("tags", ""),
+            "baSeq": ba_seq,
             "by": by,
             "createdAt": now,
-            "status": "open",
+            "void": False,
         })
         return _json_response({"ok": True, "threadId": doc_ref.id, "seq": seq, "by": by})
+
+    if action == "void":
+        # ba-289改訂: baと紐づいた後に不要になったスレッドを退役させる。
+        # 番号(seq)の再利用防止も兼ねる。内容フィールド(title/body/tags/bodyFormat)は
+        # null化するが、メタ情報(createdAt/by)と、void判断の根拠でもあるbaSeqは残す
+        # (「ゴミを消す/経緯は残す」の切り分け。3-8と同じ理屈をbaSeqにも適用)。
+        thread_id = body.get("threadId")
+        if not thread_id:
+            return _json_response({"error": "threadId required"}, 400)
+        thread_ref = db.collection("aaThreads").document(thread_id)
+        if not thread_ref.get().exists:
+            # rootless防止(note-addと同じ考え方)
+            return _json_response({"error": "thread not found (rootless防止)", "threadId": thread_id}, 400)
+        if dry_run:
+            return _json_response({"ok": True, "dry_run": True, "by": by, "threadId": thread_id})
+        thread_ref.update({
+            "void": True,
+            "title": None,
+            "body": None,
+            "tags": None,
+            "bodyFormat": None,
+        })
+        return _json_response({"ok": True, "threadId": thread_id, "by": by})
 
     if action == "note-add":
         thread_id = body.get("threadId")
