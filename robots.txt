@@ -1,7 +1,5 @@
 User-agent: *
-Disallow: /src/n1/
 Disallow: /src/ba/
 Disallow: /src/bb/
-Disallow: /src/k2/
 Disallow: /src/bd/wip/
 Disallow: /src/bd/bf/
