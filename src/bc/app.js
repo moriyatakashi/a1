@@ -9,7 +9,6 @@ import { CLASSIFICATIONS, findClassification } from "../common/utils.js";
 const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
 const BA_API = `${API_BASE}/ba`;
 const WEEKLY_API = `${API_BASE}/weekly-scores`;
-const MONTHLY_API = `${API_BASE}/monthly-scores`;
 
 // ba/app.jsのgroupThreadsを踏襲(status判定・PartitionKeyグルーピングのロジックを合わせるため)。
 function groupThreads(items) {
@@ -233,11 +232,12 @@ function renderWeeklyTable(theadRow, tbody, weeks) {
   }).join("");
 }
 
-// --- 月次得点(ba-165③のmonthly-scores API)----------------------------------
-// 生産(出版/YouTube/知名度)・予測(資産/体重)は月単位でしか意味を持たないため週次とは
-// 別集計。件数・軸の種類とも週次より少ない見込みのため、専用グラフは作らずテーブルのみにする
-// (ba-97: ページ/カードが増えすぎているというTakashiの指摘を踏まえ、既存タブに相乗りする)。
+// --- 月次集計(ba生ログを月別×分類別に集計)------------------------------------
+// monthly-scores API(ba-165③)が未稼働のため、baの生ログを月別に集計して積み上げ棒で描く。
+// 各スレッドを root の作成月に計上し、分類(ba-32/ba-181の6分類)ごとに積み上げる。
+// 分類はcomputeClassificationCountsと同じく「最新のnoteに付いた分類」を採用する。
 const MONTH_COUNT = 6;
+const MONTH_CLASS_COLORS = ["#6cf", "#5aa06a", "#c98a3a", "#a678d0", "#d06a6a", "#7a9ab0"];
 
 function monthsBack(n) {
   const now = new Date();
@@ -245,31 +245,101 @@ function monthsBack(n) {
   const out = [];
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth() - i, 1));
-    out.push({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 });
+    out.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
   }
   return out;
 }
 
-async function fetchMonthlyScores() {
-  const months = monthsBack(MONTH_COUNT);
-  const results = await Promise.all(months.map(async ({ year, month }) => {
-    try {
-      const key = `${year}-${String(month).padStart(2, "0")}`;
-      const res = await fetch(`${MONTHLY_API}/${key}`, { cache: "no-store" });
-      return res.ok ? await res.json() : null;
-    } catch (e) {
-      return null;
-    }
-  }));
-  return results.filter((r) => r && r.monthKey);
+// スレッドの現在分類(computeClassificationCountsと同じ判定: 最新のnoteに付いた分類)
+function threadClassification(thread) {
+  let latest = null;
+  thread.entries.forEach((e) => {
+    const found = findClassification(e.tags);
+    if (found) latest = found;
+  });
+  return latest;
 }
 
-function renderMonthlyTable(theadRow, tbody, months) {
-  theadRow.innerHTML = "<th>月</th><th>軸別内訳</th><th>合計</th>";
-  tbody.innerHTML = months.slice().reverse().map((m) => {
-    const breakdown = Object.entries(m.breakdownByAxis || {})
-      .map(([axis, pts]) => `${axis}:${pts}`).join(", ") || "—";
-    return `<tr><td>${m.monthKey}</td><td>${breakdown}</td><td>${m.monthScore}</td></tr>`;
+// monthKeys(YYYY-MM配列) × 分類 の集計。範囲外の月・分類無しスレッドは無視する。
+function computeMonthlyClassification(threads, monthKeys) {
+  const data = new Map(monthKeys.map((k) => [k, new Map(CLASSIFICATIONS.map((c) => [c, 0]))]));
+  threads.forEach((thread) => {
+    const mk = (thread.root.createdAt || "").slice(0, 7);
+    if (!data.has(mk)) return;
+    const cls = threadClassification(thread);
+    if (!cls) return;
+    const m = data.get(mk);
+    m.set(cls, (m.get(cls) || 0) + 1);
+  });
+  return data;
+}
+
+function monthTotal(data, key) {
+  let s = 0;
+  data.get(key).forEach((v) => (s += v));
+  return s;
+}
+
+// 週次の積み上げ棒と同じ流儀。分類ごとに下から積み上げ、下部に2列の凡例を置く。
+function drawMonthlyBars(svg, monthKeys, data) {
+  const W = 320, H = 320;
+  const rows = Math.ceil(CLASSIFICATIONS.length / 2);
+  const left = 30, right = 10, top = 16;
+  const bottom = 30 + rows * 15;
+  const plotW = W - left - right, plotH = H - top - bottom;
+  const totals = monthKeys.map((k) => monthTotal(data, k));
+  const maxVal = Math.max(1, ...totals);
+  const step = plotW / monthKeys.length;
+  const barW = Math.min(30, step * 0.6);
+  const parts = [];
+
+  for (let i = 0; i <= 4; i++) {
+    const v = Math.round((maxVal * i) / 4);
+    const y = top + plotH - (plotH * i) / 4;
+    parts.push(`<line x1="${left}" y1="${y}" x2="${W - right}" y2="${y}" stroke="#888" stroke-opacity="0.25"/>`);
+    parts.push(`<text x="${left - 5}" y="${y + 3}" font-size="8" fill="currentColor" opacity="0.65" text-anchor="end">${v}</text>`);
+  }
+
+  monthKeys.forEach((k, i) => {
+    const cx = left + step * i + step / 2;
+    const x = cx - barW / 2;
+    const m = data.get(k);
+    let yCursor = top + plotH;
+    CLASSIFICATIONS.forEach((cls, ci) => {
+      const val = m.get(cls) || 0;
+      if (val <= 0) return;
+      const h = (val / maxVal) * plotH;
+      yCursor -= h;
+      parts.push(`<rect x="${x}" y="${yCursor}" width="${barW}" height="${h}" fill="${MONTH_CLASS_COLORS[ci % MONTH_CLASS_COLORS.length]}"/>`);
+    });
+    if (totals[i] > 0) {
+      parts.push(`<text x="${cx}" y="${yCursor - 4}" font-size="8" fill="currentColor" text-anchor="middle">${totals[i]}</text>`);
+    }
+    parts.push(`<text x="${cx}" y="${top + plotH + 14}" font-size="9" fill="currentColor" opacity="0.75" text-anchor="middle">${Number(k.slice(5, 7))}月</text>`);
+  });
+
+  CLASSIFICATIONS.forEach((label, ci) => {
+    const col = ci % 2, row = Math.floor(ci / 2);
+    const lx = left + col * 82;
+    const ly = top + plotH + 26 + row * 15;
+    parts.push(`<rect x="${lx}" y="${ly - 8}" width="9" height="9" fill="${MONTH_CLASS_COLORS[ci % MONTH_CLASS_COLORS.length]}"/>`);
+    parts.push(`<text x="${lx + 13}" y="${ly}" font-size="9" fill="currentColor">${label}</text>`);
+  });
+
+  svg.innerHTML = parts.join("\n");
+}
+
+function renderMonthlyTable(theadRow, tbody, monthKeys, data) {
+  theadRow.innerHTML = `<th>月</th>${CLASSIFICATIONS.map((c) => `<th>${c}</th>`).join("")}<th>合計</th>`;
+  tbody.innerHTML = monthKeys.slice().reverse().map((k) => {
+    const m = data.get(k);
+    let total = 0;
+    const cells = CLASSIFICATIONS.map((c) => {
+      const v = m.get(c) || 0;
+      total += v;
+      return `<td>${v}</td>`;
+    }).join("");
+    return `<tr><td>${k}</td>${cells}<td>${total}</td></tr>`;
   }).join("");
 }
 
@@ -288,7 +358,6 @@ const VIEWS = {
 
 let currentThreads = [];
 let weeklyScores = [];
-let monthlyScores = [];
 let currentView = "poster";
 
 function render() {
@@ -297,7 +366,7 @@ function render() {
   const theadRow = document.getElementById("radarTableHead");
   const emptyEl = document.getElementById("radarEmpty");
 
-  if (!currentThreads.length && currentView !== "weekly" && currentView !== "monthly") {
+  if (!currentThreads.length && currentView !== "weekly") {
     emptyEl.style.display = "";
     svg.innerHTML = "";
     tbody.innerHTML = "";
@@ -319,14 +388,18 @@ function render() {
   }
 
   if (currentView === "monthly") {
-    svg.innerHTML = "";
-    if (!monthlyScores.length) {
-      emptyEl.textContent = "月次得点をまだ取得できていません";
-      emptyEl.style.display = "";
+    const monthKeys = monthsBack(MONTH_COUNT);
+    const data = computeMonthlyClassification(currentThreads, monthKeys);
+    const hasAny = monthKeys.some((k) => monthTotal(data, k) > 0);
+    if (!hasAny) {
+      svg.innerHTML = "";
       tbody.innerHTML = "";
+      emptyEl.textContent = "月次集計できるスレッドがまだありません";
+      emptyEl.style.display = "";
       return;
     }
-    renderMonthlyTable(theadRow, tbody, monthlyScores);
+    drawMonthlyBars(svg, monthKeys, data);
+    renderMonthlyTable(theadRow, tbody, monthKeys, data);
     return;
   }
 
@@ -358,8 +431,6 @@ async function load() {
     render();
     weeklyScores = await fetchWeeklyScores();
     if (currentView === "weekly") render();
-    monthlyScores = await fetchMonthlyScores();
-    if (currentView === "monthly") render();
   } catch (e) {
     emptyEl.textContent = `読み込みエラー: ${e.message}`;
     emptyEl.style.display = "";
