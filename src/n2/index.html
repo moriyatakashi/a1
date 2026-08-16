@@ -1,149 +1,165 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<script src="../common/config.js?v=202607160712"></script>
 <meta charset="UTF-8">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>n2 / 訪問地図・予定</title>
-<link rel="stylesheet" href="../common/base.css?v=202607141905">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>路歴（n2） / 訪問地図</title>
+<link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-  .stats { display: flex; gap: 20px; margin-bottom: 14px; }
-  .stat-item { text-align: center; }
-  .stat-num { font-size: 1.4rem; font-weight: 800; }
-  .stat-label { font-size: 0.7rem; color: var(--ink-soft); }
-  .map-wrap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 14px; position: relative; }
-  #mapCanvas { display: block; width: 100%; touch-action: none; }
-  .map-legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 8px 10px; border-top: 1px solid var(--line); font-size: 0.7rem; color: var(--ink-soft); }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .visit-row { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; cursor: pointer; }
-  .visit-row.active { border-color: var(--accent); }
-  .visit-row-place { font-weight: 600; font-size: 0.88rem; }
-  .visit-row-meta { font-size: 0.72rem; color: var(--ink-soft); margin-top: 2px; }
-  /* ポップアップは地図上の常設の吹き出しカードで、ページテーマに関わらず固定の白背景のまま(ba-8スコープ外) */
-  .popup { display: none; position: absolute; background: #fff; color: #222; border: 1px solid #ccc; border-radius: 8px; padding: 8px 12px; font-size: 0.8rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15); pointer-events: none; z-index: 10; max-width: 180px; }
-  .popup.show { display: block; }
-  .popup-place { font-weight: 700; margin-bottom: 2px; }
-  .popup-meta { color: #666; font-size: 0.7rem; }
-  .empty { text-align: center; color: var(--ink-soft); padding: 20px 0; }
-  .visit-form { display: flex; flex-direction: column; gap: 8px; }
-  .visit-form input { padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; box-sizing: border-box; background: var(--input-bg); color: var(--ink); }
-  .visit-row-inputs { display: flex; gap: 8px; }
-  .visit-row-inputs input { flex: 1; }
-  .btn-gps { padding: 8px 12px; border: 1px solid var(--accent); border-radius: 6px; background: #eef6ff; color: var(--accent); white-space: nowrap; }
-  .btn-add-visit { width: 100%; padding: 10px; border: 1px solid var(--accent); border-radius: 8px; background: #fff; color: var(--accent); font-size: 0.95rem; }
-  .visit-input-status { font-size: 0.78rem; color: var(--ink-soft); margin-top: 6px; text-align: center; min-height: 1.2em; }
-
-  /* n3(予定)統合分: 宣言(ba-160/ba-165)とGoogleカレンダー表示 */
-  .field-input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 10px; background: var(--input-bg); color: var(--ink); }
-  .btn-primary { width: 100%; padding: 10px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 0.95rem; }
-  .form-status { font-size: 0.78rem; color: var(--ink-soft); margin-top: 6px; text-align: center; min-height: 1.2em; }
-  .decl-row { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; }
-  .decl-row button { padding: 6px 12px; border: 1px solid var(--accent); border-radius: 5px; background: transparent; color: var(--accent); cursor: pointer; white-space: nowrap; }
-  .decl-row--done { opacity: 0.6; }
-  .cal-row { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; }
-  .cal-summary { font-weight: 600; font-size: 0.88rem; }
-  .cal-meta { font-size: 0.72rem; color: var(--ink-soft); margin-top: 2px; }
+  :root{ --ink:#22261c; --soft:#5f6368; --line:#d9dce0; --accent:#1d63d8; --panel:rgba(255,255,255,.94);
+         --visit:#1d63d8; --new:#e0483b; --go:#1d9d5b; --bg:#f5f6f7; }
+  @media (prefers-color-scheme: dark){
+    :root{ --ink:#e8eaed; --soft:#9aa0a6; --line:#2a2f34; --panel:rgba(20,23,26,.9); --bg:#0f1214; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{ font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+        background:var(--bg); color:var(--ink); padding:12px; max-width:640px; margin:0 auto }
+  a{color:var(--accent)}
+  .back{font-size:.82rem}
+  h1{font-size:1.05rem; margin:6px 0 2px}
+  .sub{font-size:.74rem; color:var(--soft); margin:0 0 10px}
+  .map-wrap{position:relative; border:1px solid var(--line); border-radius:12px; overflow:hidden}
+  #map{width:100%; height:60vh; background:#a9c9e8}
+  .status{position:absolute; left:10px; top:10px; z-index:500; background:var(--panel);
+    border:1px solid var(--line); border-radius:10px; padding:7px 11px; font-size:.8rem; max-width:70%}
+  .status .here{font-weight:700}
+  .status .tag{font-size:.72rem; padding:1px 7px; border-radius:999px; margin-left:4px}
+  .tag.old{background:rgba(29,157,91,.16); color:var(--go)}
+  .tag.new{background:rgba(224,72,59,.16); color:var(--new)}
+  .score{position:absolute; right:10px; top:10px; z-index:500; background:var(--panel);
+    border:1px solid var(--line); border-radius:10px; padding:7px 11px; font-size:.74rem; text-align:right}
+  .score b{font-size:1.05rem; font-variant-numeric:tabular-nums}
+  .cross{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:450;
+    pointer-events:none; color:var(--accent); font-size:20px}
+  .controls{display:grid; grid-template-columns:1fr 1fr 1.3fr; gap:8px; margin-top:10px}
+  .controls button{border:1px solid var(--line); background:var(--panel); color:var(--ink);
+    border-radius:10px; padding:12px 6px; font-size:.84rem; font-weight:700; cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
+  .controls button:active{transform:scale(.97)}
+  .controls .go{background:var(--go); color:#fff; border-color:var(--go)}
+  .controls .go:disabled{opacity:.45}
+  .quick{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; align-items:center}
+  .quick button{border:1px solid var(--line); background:var(--panel); color:var(--soft);
+    border-radius:999px; padding:5px 11px; font-size:.74rem; cursor:pointer}
+  .quick .clear{margin-left:auto; color:var(--soft)}
+  .note{font-size:.72rem; color:var(--soft); line-height:1.6; margin-top:10px}
 </style>
 </head>
 <body>
-  <p><a href="../../">← 戻る</a></p>
-  <h1>路歴（n2） / 訪問地図・予定</h1>
-  <p id="lastUpdated" style="font-size:0.8rem;color:#aaa;">最終更新: 2026-07-16 07:48 JST</p>
+  <p class="back"><a href="../../">← 戻る</a></p>
+  <h1>路歴（n2） / 訪問地図</h1>
+  <p class="sub">開くと布施駅にいます。新しい場所なら「✓ ここに行った！」で塗る。記録はこの端末に保存されます。</p>
 
-<!-- LOGIN_GATE:START -->
-  <div id="login-gate">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <div id="g_id_onload"
-      data-callback="handleCredentialResponse"
-      data-auto_prompt="false">
-    </div>
-    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
-    <div class="g_id_signin"></div>
-    <p id="status">未ログイン(ログインすると訪問地図・予定が表示されます)</p>
-  </div>
-<!-- LOGIN_GATE:END -->
-
-  <div id="content" style="display:none;">
-    <div class="section">
-      <div class="section-title">訪問記録を追加</div>
-      <div class="visit-form">
-        <div class="visit-row-inputs">
-          <input type="text" id="placeInput" placeholder="場所">
-          <button class="btn-gps" id="btnGps" type="button">📍 現在地</button>
-        </div>
-        <div class="visit-row-inputs">
-          <input type="date" id="dateInput">
-          <input type="time" id="timeInput">
-        </div>
-        <button class="btn-add-visit" id="btnAddVisit" type="button">＋ 追加</button>
-      </div>
-      <div class="visit-input-status" id="visitInputStatus"></div>
-    </div>
-
-    <div class="stats">
-      <div class="stat-item"><div class="stat-num" id="statTotal">—</div><div class="stat-label">訪問件数</div></div>
-      <div class="stat-item"><div class="stat-num" id="statPlaces">—</div><div class="stat-label">場所数</div></div>
-      <div class="stat-item"><div class="stat-num" id="statDays">—</div><div class="stat-label">訪問日数</div></div>
-    </div>
-
-    <div class="map-wrap">
-      <canvas id="mapCanvas" height="520"></canvas>
-      <div class="popup" id="popup">
-        <div class="popup-place" id="popupPlace"></div>
-        <div class="popup-meta" id="popupMeta"></div>
-      </div>
-      <div class="map-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#eef1f4;border:1px solid #8aa0b5;"></div>県境</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#cfe0f0;border:1px solid #6f97c0;"></div>訪問した市区町村</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#b5651d;"></div>訪問ポイント</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#3b7dd8;"></div>よく訪れた場所</div>
-      </div>
-    </div>
-
-    <div class="map-wrap">
-      <img src="data/prefectures_map_east.svg?v=202608110549" alt="近畿〜関東 県マップ" style="display:block;width:100%;">
-      <div class="map-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#d9534f;"></div>訪問済み</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#4a7ebb;"></div>未訪問</div>
-        <span style="margin-left:auto;">近畿〜関東 県マップ(ba-55)</span>
-      </div>
-    </div>
-
-    <div id="visitList"></div>
-    <p class="empty" id="emptyMsg" style="display:none;">訪問記録がありません</p>
-
-    <!-- n3(予定)統合分(ba-160/ba-165: 宣言+Googleカレンダー) -->
-    <div class="section">
-      <div class="section-title">宣言を追加(ba-160/ba-165: 先の週ほど高得点)</div>
-      <input class="field-input" id="declText" type="text" placeholder="例: 部屋を片付ける">
-      <select class="field-input" id="targetWeek"></select>
-      <button class="btn-primary" id="btnAddDecl">追加</button>
-      <div class="form-status" id="declStatus"></div>
-    </div>
-
-    <div class="section-title">未達成の宣言</div>
-    <div id="openDeclList"></div>
-    <p class="empty" id="openDeclEmpty" style="display:none;">未達成の宣言はありません</p>
-
-    <div class="section-title">達成済み</div>
-    <div id="doneDeclList"></div>
-
-    <div class="section-title">Googleカレンダーの直近の予定</div>
-    <p class="form-status" id="calendarStatus"></p>
-    <div id="calendarList"></div>
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="status" id="status">いまここ: —</div>
+    <div class="score">今週 <b id="wk">0</b><br><span style="color:var(--soft)">訪問エリア <b id="cnt" style="font-size:.85rem">0</b></span></div>
+    <div class="cross">＋</div>
   </div>
 
-  <script>window.AA_AUTH_EVENT = "n2-login-success"; window.AA_PUBLIC_VIEW = true;</script>
-  <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202607261316"></script>
-  <script type="module">
-    // ba-50で個別実装していたロジックをcommon/last-updated.jsへ共通化(ba-67/ba-68)。
-    import { applyLastUpdated } from "../common/last-updated.js";
-    applyLastUpdated("src/n2", "lastUpdated", "最終更新");
-  </script>
+  <div class="controls">
+    <button id="btnGps">📍 GPS</button>
+    <button id="btnTap">👆 タップ移動</button>
+    <button class="go" id="btnGo">✓ ここに行った！</button>
+  </div>
+  <div class="quick">
+    <span style="font-size:.74rem;color:var(--soft)">飛ぶ:</span>
+    <button data-lat="34.6672" data-lng="135.5641">布施駅</button>
+    <button data-lat="35.681" data-lng="139.767">東京</button>
+    <button data-lat="43.068" data-lng="141.351">札幌</button>
+    <button data-lat="36.2" data-lng="138.2" data-z="5">日本全体</button>
+    <button class="clear" id="btnClear">全消去</button>
+  </div>
+
+  <p class="note">
+    電車で座って開いて、新しければポチる——それだけの地図です。青い丸＝もう行った所。倍率・現在地・塗り・加点が、ひとつの地図に乗っています。<br>
+    ※これは新しい訪問地図の第一版です。粒度（市／丁目）や県ボーナス、月次集計、既存の週次得点との接続は、これから足していく予定の骨組みです。
+  </p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+  const FUSE={lat:34.6672,lng:135.5641,name:'布施駅'};
+  const R=750;                 // 訪問エリアの半径(m)
+  const KEY_V='n2_visited', KEY_W='n2_week';
+
+  // ---- 保存データの読み込み（端末に永続化） ----
+  let visited=[], week=0;
+  try{ visited=JSON.parse(localStorage.getItem(KEY_V)||'[]'); }catch(e){ visited=[]; }
+  try{ week=parseInt(localStorage.getItem(KEY_W)||'0',10)||0; }catch(e){ week=0; }
+  function save(){ try{ localStorage.setItem(KEY_V,JSON.stringify(visited)); localStorage.setItem(KEY_W,String(week)); }catch(e){} }
+
+  const map=L.map('map',{zoomControl:true}).setView([FUSE.lat,FUSE.lng],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+
+  const layer=L.layerGroup().addTo(map);
+  function drawVisited(){
+    layer.clearLayers();
+    visited.forEach(v=>L.circle([v.lat,v.lng],{radius:R,color:'#1d63d8',weight:1,
+      fillColor:'#1d63d8',fillOpacity:.28}).bindPopup(v.name||'訪問エリア').addTo(layer));
+  }
+  drawVisited();
+
+  const here=L.circleMarker([FUSE.lat,FUSE.lng],{radius:8,color:'#fff',weight:3,fillColor:'#e0483b',fillOpacity:1}).addTo(map);
+  let pos={lat:FUSE.lat,lng:FUSE.lng,name:FUSE.name};
+
+  const statusEl=document.getElementById('status');
+  const wkEl=document.getElementById('wk');
+  const cntEl=document.getElementById('cnt');
+  const goBtn=document.getElementById('btnGo');
+
+  function distM(p,v){
+    const dx=(p.lng-v.lng)*Math.cos(p.lat*Math.PI/180)*111000;
+    const dy=(p.lat-v.lat)*111000; return Math.hypot(dx,dy);
+  }
+  function isVisited(p){ return visited.some(v=>distM(p,v)<R); }
+
+  function refresh(){
+    cntEl.textContent=visited.length;
+    wkEl.textContent=week;
+    const done=isVisited(pos);
+    statusEl.innerHTML='<span class="here">いまここ: '+(pos.name||'この地点')+'</span>'+
+      (done?'<span class="tag old">訪問済</span>':'<span class="tag new">新しい！</span>');
+    goBtn.disabled=done;
+    goBtn.textContent=done?'✓ もう行った':'✓ ここに行った！';
+  }
+  function moveTo(lat,lng,name,z){
+    pos={lat,lng,name:name||null};
+    here.setLatLng([lat,lng]);
+    map.setView([lat,lng], z||Math.max(map.getZoom(),14));
+    refresh();
+  }
+
+  goBtn.onclick=()=>{
+    if(isVisited(pos)) return;
+    visited.push({name:pos.name||'新しいエリア',lat:pos.lat,lng:pos.lng});
+    week+=10; save(); drawVisited(); refresh();
+    const c=L.circle([pos.lat,pos.lng],{radius:R,color:'#e0483b',weight:2,fillColor:'#e0483b',fillOpacity:.5}).addTo(map);
+    setTimeout(()=>map.removeLayer(c),450);
+  };
+
+  document.getElementById('btnGps').onclick=()=>{
+    if(!navigator.geolocation){ moveTo(FUSE.lat,FUSE.lng,FUSE.name); return; }
+    navigator.geolocation.getCurrentPosition(
+      p=>moveTo(p.coords.latitude,p.coords.longitude,'現在地'),
+      ()=>moveTo(FUSE.lat,FUSE.lng,FUSE.name+'（GPS不可の初期値）'),
+      {enableHighAccuracy:true,timeout:8000});
+  };
+  let tap=false;
+  document.getElementById('btnTap').onclick=()=>{ tap=true; statusEl.querySelector('.here')&&(statusEl.firstChild); };
+  map.on('click',e=>{ if(tap){ moveTo(e.latlng.lat,e.latlng.lng,'この地点'); } });
+
+  document.querySelectorAll('.quick button[data-lat]').forEach(b=>{
+    b.onclick=()=>moveTo(+b.dataset.lat,+b.dataset.lng,b.textContent,b.dataset.z?+b.dataset.z:null);
+  });
+  document.getElementById('btnClear').onclick=()=>{
+    if(confirm('この端末の訪問記録と得点を全部消しますか？')){ visited=[]; week=0; save(); drawVisited(); refresh(); }
+  };
+
+  refresh();
+})();
+</script>
 </body>
 </html>
