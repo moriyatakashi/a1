@@ -1,0 +1,409 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>BaLog Index</title>
+<style>
+:root{
+  --bg:#f3f6ef;
+  --bg-stripe:#e7eee0;
+  --surface:#ffffff;
+  --ink:#22301f;
+  --ink-muted:#5b6b54;
+  --line:#c9d4bf;
+  --line-soft:#dde6d4;
+  --accent:#2f6b4a;
+  --flag:#9c5a1f;
+  --flag-soft:#f3e4d3;
+  --shadow: 0 1px 2px rgba(34,48,31,0.06), 0 6px 16px -8px rgba(34,48,31,0.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121810; --bg-stripe:#171f14; --surface:#182015;
+    --ink:#e7f1e0; --ink-muted:#93a68c; --line:#2c3a27; --line-soft:#232f1f;
+    --accent:#7bd39d; --flag:#e6a15c; --flag-soft:#332417;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 20px -10px rgba(0,0,0,0.5);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121810; --bg-stripe:#171f14; --surface:#182015;
+  --ink:#e7f1e0; --ink-muted:#93a68c; --line:#2c3a27; --line-soft:#232f1f;
+  --accent:#7bd39d; --flag:#e6a15c; --flag-soft:#332417;
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 20px -10px rgba(0,0,0,0.5);
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Hiragino Sans","Yu Gothic UI","Segoe UI",system-ui,sans-serif;
+  line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+.page{ max-width:920px; margin:0 auto; padding:2.5rem 1.5rem 5rem; }
+.back-row{ margin:0 0 1rem; }
+.back-row a{ color:var(--accent); text-decoration:none; font-size:.85rem; }
+.back-row a:hover{ text-decoration:underline; }
+header.masthead{
+  display:flex; flex-direction:column; gap:.6rem;
+  padding-bottom:1.75rem; margin-bottom:1.75rem; border-bottom:2px solid var(--ink);
+}
+.eyebrow{
+  font-family:"SF Mono","Cascadia Code",Consolas,"Courier New",monospace;
+  font-size:.78rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-muted);
+}
+h1{
+  font-family:Rockwell,"Roboto Slab","Hiragino Mincho ProN",Georgia,serif;
+  font-weight:700; font-size:clamp(1.7rem,4vw,2.3rem); margin:0;
+  text-wrap:balance; letter-spacing:-.01em;
+}
+.masthead-meta{
+  display:flex; flex-wrap:wrap; gap:1.75rem; margin-top:.4rem;
+  font-family:"SF Mono","Cascadia Code",Consolas,"Courier New",monospace;
+  font-variant-numeric:tabular-nums;
+}
+.meta-item{display:flex; flex-direction:column; gap:.15rem;}
+.meta-num{font-size:1.35rem; font-weight:700; color:var(--accent);}
+.meta-label{font-size:.72rem; color:var(--ink-muted); letter-spacing:.04em;}
+.status-note{
+  font-size:.85rem; color:var(--ink-muted); background:var(--bg-stripe);
+  border:1px solid var(--line-soft); border-radius:6px; padding:.6rem .9rem; margin:0 0 1.75rem;
+}
+.status-note.is-error{ color:var(--flag); background:var(--flag-soft); border-color:var(--flag); }
+.ledger{ display:flex; flex-direction:column; gap:.85rem; }
+.folio{
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  box-shadow:var(--shadow); overflow:hidden;
+}
+.folio summary{
+  list-style:none; cursor:pointer; display:flex; align-items:center; gap:1rem;
+  padding:1rem 1.25rem; user-select:none;
+}
+.folio summary::-webkit-details-marker{display:none;}
+.folio summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+.folio-range{
+  font-family:"SF Mono","Cascadia Code",Consolas,"Courier New",monospace;
+  font-weight:600; font-size:1rem; flex:0 0 auto;
+}
+.folio-count{
+  font-family:"SF Mono","Cascadia Code",Consolas,"Courier New",monospace;
+  font-variant-numeric:tabular-nums; font-weight:700; font-size:1.15rem;
+  color:var(--accent); margin-left:auto;
+}
+.folio-unit{font-size:.7rem; font-weight:500; color:var(--ink-muted); margin-left:.2rem;}
+.folio-chev{
+  width:.6rem; height:.6rem; border-right:2px solid var(--ink-muted); border-bottom:2px solid var(--ink-muted);
+  transform:rotate(-45deg); transition:transform .18s ease; flex:0 0 auto;
+}
+.folio[open] .folio-chev{transform:rotate(45deg);}
+.folio-other{border-color:var(--flag); border-width:1.5px;}
+.folio-other .folio-range, .folio-other .folio-count{color:var(--flag);}
+.folio-other .folio-chev{border-color:var(--flag);}
+.folio-body{ border-top:1px solid var(--line); max-height:60vh; overflow-y:auto; }
+.folio-note{
+  margin:0; padding:.75rem 1.25rem; font-size:.82rem; color:var(--flag);
+  background:var(--flag-soft); border-bottom:1px solid var(--line);
+}
+/* スレッド行(ba番号を持つ実スレッド)。押すと本文・追記を展開する */
+.row-thread{ border-bottom:1px solid var(--line-soft); }
+.row-thread:last-child{ border-bottom:none; }
+.row-thread:nth-child(even){ background:var(--bg-stripe); }
+.row-thread > summary{ list-style:none; cursor:pointer; display:flex; gap:.75rem; align-items:baseline; padding:.55rem 1.25rem; }
+.row-thread > summary::-webkit-details-marker{ display:none; }
+.row-thread:target{ outline:2px solid var(--accent); outline-offset:-2px; }
+.row-seq{
+  font-family:"SF Mono","Cascadia Code",Consolas,"Courier New",monospace; font-variant-numeric:tabular-nums;
+  font-weight:600; color:var(--accent); flex:0 0 auto;
+}
+.row-main{ display:flex; flex-direction:column; gap:.3rem; min-width:0; flex:1; }
+.row-title{ color:var(--ink); font-size:.88rem; }
+.row-title.row-empty{ color:var(--ink-muted); font-style:italic; }
+.row-chips{ display:flex; gap:.35rem; flex-wrap:wrap; }
+.chip{ font-size:.68rem; padding:.1rem .5rem; border-radius:999px; border:1px solid var(--line); color:var(--ink-muted); white-space:nowrap; }
+.chip-closed{ color:var(--flag); border-color:var(--flag); }
+.chip-void{ color:var(--flag); border-color:var(--flag); background:var(--flag-soft); }
+.chip-tag{ color:var(--accent); border-color:var(--accent); }
+.row-detail{ padding:.4rem 1.25rem 1rem 3.2rem; font-size:.85rem; color:var(--ink-muted); display:flex; flex-direction:column; gap:.5rem; }
+.row-detail-body{ margin:0; color:var(--ink); white-space:pre-wrap; }
+.row-detail-empty{ margin:0; font-style:italic; }
+.row-detail-entry{ display:flex; flex-wrap:wrap; gap:.5rem; align-items:baseline; font-size:.8rem; }
+.row-detail-entry-type{ font-weight:600; color:var(--accent); }
+.row-detail-entry-by{ color:var(--ink-muted); }
+.row-detail-entry-time{ color:var(--ink-muted); font-size:.75rem; }
+.row-detail-entry-body{ flex-basis:100%; color:var(--ink); white-space:pre-wrap; }
+/* 「その他」(seq不明の行)は従来通りの固定グリッド表示のまま */
+.row{
+  display:grid; grid-template-columns:4.2rem 11.5rem 1fr; gap:.75rem;
+  padding:.55rem 1.25rem; border-bottom:1px solid var(--line-soft); font-size:.88rem; align-items:baseline;
+}
+.row:nth-child(even){background:var(--bg-stripe);}
+.row:last-child{border-bottom:none;}
+.row-head{
+  font-family:"SF Mono","Cascadia Code",Consolas,"Courier New",monospace;
+  font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-muted);
+  position:sticky; top:0; background:var(--surface) !important; z-index:1;
+}
+.row-id, .row-type{
+  font-family:"SF Mono","Cascadia Code",Consolas,"Courier New",monospace; font-variant-numeric:tabular-nums;
+}
+.row-id{color:var(--ink-muted); font-size:.8rem; overflow-wrap:anywhere;}
+.row-other{grid-template-columns:5.5rem 11.5rem 1fr;}
+.row-type{color:var(--flag); font-weight:600;}
+.row-thread-cell{color:var(--ink-muted); font-size:.8rem; overflow-wrap:anywhere;}
+@media (max-width:640px){
+  .row, .row-other{grid-template-columns:1fr; gap:.15rem; padding:.7rem 1rem;}
+  .row-head{display:none;}
+  .row-id{font-size:.72rem;}
+  .row-detail{padding-left:1.25rem;}
+}
+</style>
+
+<div class="page">
+  <p class="back-row"><a href="../../">&larr; 戻る</a></p>
+  <header class="masthead">
+    <span class="eyebrow">a2 / c1.html</span>
+    <h1>BaLog Index</h1>
+    <div class="masthead-meta" id="meta"></div>
+  </header>
+  <p class="status-note" id="status">読み込み中…</p>
+  <div class="ledger" id="ledger"></div>
+</div>
+
+<script>
+// minimalは使わない(行を展開して本文を見せる仕様のため、bodyを含む全件を取る)
+const API = "https://ab-board-api.azurewebsites.net/api/ba";
+const GROUP_COUNT = 6;
+
+// ba-32の分類予約語。タグとして出すときはここに含まれるものを除く(classとしては出さない)
+const CLASSIFICATIONS = ["案件", "確定仕様", "気づき", "保留論点", "旧仕様", "記録"];
+const BY_LABEL = { "claude-pc": "利尻", "claude-mobile": "すまさん", "takashi": "takashi" };
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function fmtTs(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const jst = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(d);
+  return jst.replace(",", "") + " JST";
+}
+
+function buildRow(cells, cls) {
+  const row = el("div", "row" + (cls ? " " + cls : ""));
+  for (const [text, cellCls] of cells) {
+    row.appendChild(el("span", cellCls, text));
+  }
+  return row;
+}
+
+// エントリ1件の表示用テキスト(a1のcommon/thread-logic.jsのentryTypeLabelに相当する簡易版)
+function entryLabel(e) {
+  if (e.type === "note") return e.body || "";
+  if (e.type === "correction") return "訂正: " + (e.title || e.body || "");
+  if (e.type === "gist") return "gist: " + (e.text || "");
+  if (e.type === "status") return "status → " + (e.status || "");
+  if (e.type === "void") return "void = " + (e.value ? "true" : "false");
+  return "";
+}
+
+// スレッド化: threadIdでグルーピングし、closed/void/tagsを計算する。
+// a1のsrc/common/thread-logic.js(groupThreads)を、a2(単体HTML完結スタイル)向けに
+// 必要な部分だけ縮小コピーしたもの。全部は持ち込まない。
+function groupThreads(items) {
+  const byThread = new Map();
+  items.forEach((e) => {
+    if (!byThread.has(e.threadId)) byThread.set(e.threadId, []);
+    byThread.get(e.threadId).push(e);
+  });
+
+  const threads = [];
+  byThread.forEach((entries, threadId) => {
+    const root = entries.find((e) => e.id === threadId) || entries[0];
+    if (root.type !== "new") return; // 根なしスレッドは対象外(bug由来の産物)
+    const children = entries.filter((e) => e.id !== threadId);
+
+    // void判定: claude視点・takashi視点の両方が最新でtrueならvoid(a1と同じ規則)
+    const voidView = {};
+    let status = "open";
+    entries.forEach((e) => {
+      if (e.type === "void" && e.by) voidView[e.by.startsWith("claude") ? "claude" : "takashi"] = !!e.value;
+      if (e.type === "status" && e.status) status = e.status;
+    });
+    const hiddenVoid = voidView.claude === true && voidView.takashi === true;
+
+    const tags = (Array.isArray(root.tags) ? root.tags : []).filter((t) => !CLASSIFICATIONS.includes(t));
+
+    threads.push({ threadId, root, children, status, hiddenVoid, tags });
+  });
+  return threads;
+}
+
+function buildChips(thread) {
+  const wrap = el("div", "row-chips");
+  // void/closedの両方があればvoidが勝つ(closedは出さない)。classはそもそも出さない
+  if (thread.hiddenVoid) {
+    wrap.appendChild(el("span", "chip chip-void", "void"));
+  } else if (thread.status === "closed") {
+    wrap.appendChild(el("span", "chip chip-closed", "closed"));
+  }
+  thread.tags.forEach((t) => wrap.appendChild(el("span", "chip chip-tag", "#" + t)));
+  return wrap;
+}
+
+function buildEntryRow(e) {
+  const row = el("div", "row-detail-entry");
+  row.appendChild(el("span", "row-detail-entry-type", e.type));
+  row.appendChild(el("span", "row-detail-entry-by", BY_LABEL[e.by] || e.by || ""));
+  row.appendChild(el("span", "row-detail-entry-time", fmtTs(e.createdAt)));
+  const label = entryLabel(e);
+  if (label) row.appendChild(el("div", "row-detail-entry-body", label));
+  return row;
+}
+
+// 1スレッド=1行。押すと本文・追記が展開される(details/summary)。
+// idにba-<seq>を振り、aaページ等からの外部リンク(#ba-<N>)の着地点にする。
+function buildThreadRow(thread) {
+  const details = el("details", "row-thread");
+  details.id = "ba-" + thread.root.seq;
+
+  const summary = el("summary");
+  summary.appendChild(el("span", "row-seq", "ba-" + thread.root.seq));
+  const main = el("div", "row-main");
+  main.appendChild(el("span", "row-title" + (thread.root.title ? "" : " row-empty"), thread.root.title || "(無題)"));
+  main.appendChild(buildChips(thread));
+  summary.appendChild(main);
+  details.appendChild(summary);
+
+  const detail = el("div", "row-detail");
+  if (thread.root.body) detail.appendChild(el("p", "row-detail-body", thread.root.body));
+  thread.children.forEach((e) => detail.appendChild(buildEntryRow(e)));
+  if (!thread.root.body && !thread.children.length) detail.appendChild(el("p", "row-detail-empty", "本文・追記なし"));
+  details.appendChild(detail);
+
+  return details;
+}
+
+function buildThreadFolio(rangeLabel, threads) {
+  const details = el("details", "folio");
+  const summary = el("summary");
+  summary.appendChild(el("span", "folio-range", rangeLabel));
+  const countSpan = el("span", "folio-count", String(threads.length));
+  countSpan.appendChild(el("span", "folio-unit", "件"));
+  summary.appendChild(countSpan);
+  summary.appendChild(el("span", "folio-chev"));
+  details.appendChild(summary);
+
+  const body = el("div", "folio-body");
+  threads.forEach((t) => body.appendChild(buildThreadRow(t)));
+  details.appendChild(body);
+  return details;
+}
+
+function buildFolio({ rangeLabel, count, isOther, headCells, bodyRows, note }) {
+  const details = el("details", "folio" + (isOther ? " folio-other" : ""));
+  const summary = el("summary");
+  summary.appendChild(el("span", "folio-range", rangeLabel));
+  const countSpan = el("span", "folio-count", String(count));
+  countSpan.appendChild(el("span", "folio-unit", "件"));
+  summary.appendChild(countSpan);
+  summary.appendChild(el("span", "folio-chev"));
+  details.appendChild(summary);
+
+  const body = el("div", "folio-body");
+  if (note) body.appendChild(el("p", "folio-note", note));
+  body.appendChild(buildRow(headCells, isOther ? "row-head row-head-other" : "row-head"));
+  for (const cells of bodyRows) {
+    body.appendChild(buildRow(cells, isOther ? "row-other" : ""));
+  }
+  details.appendChild(body);
+  return details;
+}
+
+// URLの#ba-<N>を見て、該当行を開いてスクロールする(ba/app.jsのjumpToSeqと同じ考え方の簡易版)
+function jumpToHash() {
+  const m = location.hash.match(/^#ba-(\d+)$/);
+  if (!m) return;
+  const target = document.getElementById("ba-" + m[1]);
+  if (!target) return;
+  target.open = true;
+  const folio = target.closest(".folio");
+  if (folio) folio.open = true;
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+window.addEventListener("hashchange", jumpToHash);
+
+async function main() {
+  const statusEl = document.getElementById("status");
+  const metaEl = document.getElementById("meta");
+  const ledgerEl = document.getElementById("ledger");
+
+  let data;
+  try {
+    const res = await fetch(API);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    data = await res.json();
+  } catch (err) {
+    statusEl.textContent = "取得に失敗しました: " + err.message;
+    statusEl.classList.add("is-error");
+    return;
+  }
+
+  const allThreads = groupThreads(data);
+  const threads = allThreads.filter((t) => t.root.seq != null);
+  const threadBySeq = new Map(threads.map((t) => [t.root.seq, t]));
+  const threadIds = new Set(allThreads.map((t) => t.threadId));
+  const maxSeq = threads.length ? Math.max(...threadBySeq.keys()) : 0;
+
+  const others = data.filter((e) => e.type !== "new" && !threadIds.has(e.threadId));
+
+  metaEl.appendChild(makeMetaItem(maxSeq, "最大ba番号"));
+  metaEl.appendChild(makeMetaItem(threads.length, "実スレッド数"));
+  metaEl.appendChild(makeMetaItem(others.length, "その他(seq不明)"));
+
+  statusEl.textContent =
+    "取得完了(" + new Date().toLocaleString("ja-JP") + ")。ページを開くたびに最新のBaLogを取得します。";
+
+  const groupSize = Math.max(1, Math.ceil(maxSeq / GROUP_COUNT));
+  for (let i = 0; i < GROUP_COUNT; i++) {
+    const lo = i * groupSize + 1;
+    const hi = Math.min((i + 1) * groupSize, maxSeq);
+    const items = [];
+    for (let s = lo; s <= hi; s++) {
+      const t = threadBySeq.get(s);
+      if (t) items.push(t);
+    }
+    const rangeLabel = lo > maxSeq ? "ba-" + lo + "〜" : "ba-" + lo + "〜" + hi;
+    ledgerEl.appendChild(buildThreadFolio(rangeLabel, items));
+  }
+
+  ledgerEl.appendChild(
+    buildFolio({
+      rangeLabel: "その他",
+      count: others.length,
+      isOther: true,
+      note: "threadIdを辿っても元スレッド(new)が見つからず、ba番号を割り出せない行。",
+      headCells: [["type"], ["id"], ["threadId(手がかり)"]],
+      bodyRows: others.map((o) => [
+        [o.type, "row-type"],
+        [o.id, "row-id"],
+        ["↳ " + o.threadId, "row-thread-cell"],
+      ]),
+    })
+  );
+
+  jumpToHash();
+}
+
+function makeMetaItem(num, label) {
+  const item = el("div", "meta-item");
+  item.appendChild(el("span", "meta-num", String(num)));
+  item.appendChild(el("span", "meta-label", label));
+  return item;
+}
+
+main();
+</script>

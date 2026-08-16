@@ -50,8 +50,6 @@ categories:
       - code: bf
         desc: 訪問地図(新)
         href: src/bf/
-  - label: 姉妹サイト
-    items:
       - code: a2
         desc: BaLog Index
-        href: https://moriyatakashi.github.io/a2/
+        href: src/a2/
