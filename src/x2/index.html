@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>x2 — ba 生JSON</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --fg: #1a1a1a; --bg: #ffffff; --muted: #666; --border: #d8d8d8;
+    --stripe: #f5f5f5; --btn-bg: #eef1f5; --error-bg: #fdecea; --error-fg: #7a1f1f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e8e8e8; --bg: #1b1b1b; --muted: #999; --border: #3a3a3a;
+      --stripe: #242424; --btn-bg: #2a2f3a; --error-bg: #3a1f1f; --error-fg: #ff9d9d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
+    font-size: 14px; line-height: 1.5;
+  }
+  h1 { font-size: 16px; margin: 0 0 8px; }
+  .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  button {
+    font: inherit; padding: 6px 12px; border: 1px solid var(--border);
+    background: var(--btn-bg); color: var(--fg); border-radius: 6px; cursor: pointer;
+  }
+  button:active { transform: translateY(1px); }
+  #status { color: var(--muted); }
+  #status.error { color: var(--error-fg); background: var(--error-bg); border-radius: 6px; padding: 4px 8px; }
+  #out {
+    width: 100%; height: 70vh; resize: vertical;
+    background: var(--stripe); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 6px; padding: 10px;
+    font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  #meta { color: var(--muted); margin-top: 10px; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>x2 — ba 生JSON</h1>
+<div class="bar">
+  <button id="reload">更新</button>
+  <button id="copy">コピー</button>
+  <span id="status">読み込み中…</span>
+</div>
+<textarea id="out" readonly spellcheck="false"></textarea>
+<div id="meta"></div>
+
+<script type="module">
+// x2/index.html — a1のba API(GET /api/ba)をブラウザから毎回fetchし、レスポンス本文を
+// そのままtextareaに出す。整形せず「APIと全く同じ」出力を最新状態で表示する。
+// GitHub Pages(静的)から同APIを直接叩く(CORSは既存の窓ページ同様GETが通る前提)。
+// 2026-08-16、takashi依頼。
+const BA_API_URL = "https://ab-board-api.azurewebsites.net/api/ba";
+const out = document.getElementById("out");
+const statusEl = document.getElementById("status");
+const metaEl = document.getElementById("meta");
+
+function setStatus(text, isError = false) {
+  statusEl.textContent = text;
+  statusEl.classList.toggle("error", isError);
+}
+
+async function load() {
+  setStatus("取得中…");
+  try {
+    const res = await fetch(BA_API_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    out.value = text;
+    let n = null;
+    try { const d = JSON.parse(text); if (Array.isArray(d)) n = d.length; } catch {}
+    setStatus(n != null ? `取得完了(${n}件)` : "取得完了");
+    metaEl.textContent = `最終取得: ${new Date().toISOString()}(APIの生レスポンスをそのまま表示。更新で再取得)`;
+  } catch (e) {
+    setStatus(`取得失敗: ${e.message}`, true);
+  }
+}
+
+document.getElementById("reload").addEventListener("click", load);
+document.getElementById("copy").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(out.value);
+    setStatus("コピーしました");
+  } catch {
+    out.select(); document.execCommand("copy");
+    setStatus("コピーしました");
+  }
+});
+
+load();
+</script>
+</body>
+</html>
