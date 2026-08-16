@@ -3,3 +3,4 @@ Disallow: /src/ba/
 Disallow: /src/bb/
 Disallow: /src/bd/wip/
 Disallow: /src/bd/bf/
+Disallow: /src/x2/
