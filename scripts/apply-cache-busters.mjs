@@ -28,7 +28,11 @@ function listHtml(dir) {
   return readdirSync(dir, { recursive: true, withFileTypes: true })
     .filter((d) => d.isFile() && d.name.endsWith(".html"))
     .map((d) => path.join(d.parentPath ?? d.path, d.name))
-    .filter((f) => !f.split(path.sep).includes("node_modules") && !f.split(path.sep).includes(".git"));
+    .filter((f) => !f.split(path.sep).includes("node_modules") && !f.split(path.sep).includes(".git"))
+    // 以降はpath.posixで解決する(check-cache-busters.mjsと規則を揃えるため)ので、
+    // ここでOS依存の区切り文字(Windowsの\)をposixの/に統一しておく。揃えないと
+    // Windows上でpath.posix.dirname()がパス全体を1トークンとして扱い、参照解決が丸ごと壊れる。
+    .map((f) => f.split(path.sep).join("/"));
 }
 
 function main() {

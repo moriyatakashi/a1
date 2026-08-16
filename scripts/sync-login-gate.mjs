@@ -14,6 +14,11 @@ const rootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 const APPS = {
   ba: "未ログイン(ログインするとログが表示されます)",
+  m1: "未ログイン(ログインすると記録一覧が表示されます)",
+  m2: "未ログイン(ログインすると訪問地図・予定が表示されます)",
+  m3: "未ログイン(ログインすると記入フォームが表示されます)",
+  bc: "未ログイン(ログインするとチャートが表示されます)",
+  cc: "未ログイン(ログインするとチャートが表示されます)",
 };
 
 const START = "<!-- LOGIN_GATE:START -->";
