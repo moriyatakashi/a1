@@ -50,6 +50,6 @@ categories:
       - code: bf
         desc: 訪問地図(新)
         href: src/bf/
-      - code: a2
+      - code: bg
         desc: BaLog Index
-        href: src/a2/
+        href: src/bg/
