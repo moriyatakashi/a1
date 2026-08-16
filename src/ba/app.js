@@ -4,7 +4,7 @@
 // config.jsを自分でimportする(ba-9追補)。HTML側の<script>読込に依存しないため、
 // 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
 import "../common/config.js";
-import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, parseTags, filterFreeTags, withCredential } from "../common/utils.js";
+import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../common/utils.js";
 import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
 
 const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
@@ -347,45 +347,8 @@ async function load() {
   }
 }
 
-function initNewEntryForm() {
-  const elTitle = document.getElementById("newTitle");
-  const elTags = document.getElementById("newTags");
-  const elBody = document.getElementById("newBody");
-  const elJson = document.getElementById("newJson");
-  const elSubmit = document.getElementById("btnAddThread");
-
-  elSubmit.addEventListener("click", async () => {
-    try {
-      let payload;
-      if (elJson.value.trim()) {
-        const parsed = JSON.parse(elJson.value);
-        payload = { type: "new", title: parsed.title, tags: parsed.tags, body: parsed.body };
-      } else {
-        const title = elTitle.value.trim();
-        if (!title) { elTitle.focus(); return; }
-        payload = { type: "new", title, tags: parseTags(elTags.value), body: elBody.value.trim() };
-      }
-      // ba-32/ba-33: 分類を必ずtagsに含める(JSON貼り付け側に既に分類があればそれを尊重)。
-      const curTags = Array.isArray(payload.tags) ? payload.tags : [];
-      if (!curTags.some((t) => CLASSIFICATIONS.includes(t))) {
-        const clsEl = document.querySelector('input[name="newCls"]:checked');
-        if (clsEl) payload.tags = [clsEl.value, ...curTags];
-      }
-      await postEntry(payload);
-      elTitle.value = "";
-      elTags.value = "";
-      elBody.value = "";
-      elJson.value = "";
-      load();
-    } catch (e) {
-      alert("新規スレッドの追加に失敗しました: " + e.message);
-    }
-  });
-}
-
 // issue #8対応(案B)の踏襲: auth.jsの実行順は変えず、起動時にwindow.__loginStateを直接チェックする。
 function onLoginSuccess() {
-  initNewEntryForm();
   document.getElementById("btnToggleVoid").addEventListener("click", () => {
     showVoided = !showVoided;
     render();

@@ -46,29 +46,16 @@ h1 { font-size: 1.3rem; margin: 6px 0 2px; }
 .stat-num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 1.2rem; font-weight: 700; }
 .stat-label { font-size: 0.62rem; color: var(--ink-soft); margin-top: 2px; }
 
-.new-entry-card {
-  border: 1px solid var(--line); border-top: 3px solid var(--accent);
-  border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; background: var(--paper);
-}
-.new-entry-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 2px; }
-.new-entry-sub { font-size: 0.7rem; color: var(--ink-soft); margin-bottom: 8px; }
+/* 新規スレッド投稿フォーム(new-entry-card一式・cls-radio)は2026-08-16にm3(src/m3/)へ
+   分離し、baからは使われなくなった。field-inputはbaSearch(検索欄)がまだ使うため残す。
+   lane-form-labelは別物(各スレッドの「人間レーンから追記」欄のラベル)なので残す。 */
 .lane-form-label {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.65rem;
   color: var(--ink-soft); display: block; margin: 8px 0 4px;
 }
-.field-input, .field-textarea {
+.field-input {
   width: 100%; font-size: 0.85rem; padding: 7px 9px; border: 1px solid var(--line);
   border-radius: 5px; background: var(--paper-band); color: var(--ink); font-family: inherit; box-sizing: border-box;
-}
-.field-textarea { resize: vertical; min-height: 46px; }
-.json-paste { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.74rem; min-height: 54px; }
-.new-entry-divider {
-  display: flex; align-items: center; gap: 10px; font-size: 0.66rem; color: var(--ink-soft); margin: 14px 0 8px;
-}
-.new-entry-divider::before, .new-entry-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-.new-entry-submit {
-  margin-top: 10px; font-size: 0.8rem; padding: 8px 16px; border: 1px solid var(--accent);
-  border-radius: 6px; background: transparent; color: var(--accent); font-weight: 600; cursor: pointer;
 }
 
 .thread-list { display: flex; flex-direction: column; gap: 12px; }
@@ -241,12 +228,3 @@ details[open] .chevron { transform: rotate(90deg); }
 .cls-chip--on.cls-chip--kiroku { color: var(--cls-kiroku-ink); border-color: var(--cls-kiroku); }
 
 .list-controls { gap: 8px; }
-
-/* ba: 新規フォームの分類ラジオ(ba-33) */
-.cls-radio { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
-.cls-radio label {
-  font-size: 0.76rem; padding: 4px 12px; border: 1px solid var(--line); border-radius: 5px;
-  color: var(--ink-soft); cursor: pointer;
-}
-.cls-radio input { display: none; }
-.cls-radio label:has(input:checked) { color: var(--ink); border-color: var(--ink-soft); background: var(--paper-band); }
