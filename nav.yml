@@ -39,17 +39,17 @@ categories:
         sub:
           code: cd
           desc: .
-          href: src/cd/
+          href: src/bd/cd/
       - code: be
         desc: WIP作業台
-        href: src/be/
+        href: src/bd/wip/
         sub:
           code: ce
           desc: .
-          href: src/ce/
+          href: src/bd/ce/
       - code: bf
         desc: 訪問地図(新)
-        href: src/bf/
+        href: src/bd/bf/
       - code: bg
         desc: BaLog Index
-        href: src/bg/
+        href: src/bd/bg/

@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>cd / カタログ＋旧absite一覧</title>
-  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
-  <link rel="stylesheet" href="../bd/base.css">
+  <link rel="icon" type="image/svg+xml" href="../../../favicon.svg">
+  <link rel="stylesheet" href="../base.css">
   <style>
     /* index.html固有の見た目(カード一覧)のみ。トークン・基本レイアウトはbase.css側。 */
     #cards { display: flex; flex-direction: column; gap: 12px; }
@@ -60,7 +60,7 @@
     .toggle-row a:hover, .toggle-row a:focus-visible { color: var(--accent); text-decoration: underline; }
 
     /* be統合分(旧absite)。bd/index.htmlと同じ#be-embedスコープをそのまま複製。
-       実ページ(t/s)はbd/be/を複製せず共有するため、リンク先は../bd/be/を指す */
+       実ページ(t/s)はbd/be/を複製せず共有するため、リンク先は../be/を指す */
     #be-embed {
       --be-line: #33362c; --be-accent: #6cc9b6; --be-dim: #9a9a90;
       --be-now: #c8ff4d; --be-now-soft: #1e2a10; --be-accent-soft: #1e2b28;
@@ -102,7 +102,7 @@
 <body>
   <div class="wrap">
     <div class="back-row">
-      <a href="../../">&larr; 戻る</a>
+      <a href="../../../">&larr; 戻る</a>
     </div>
 
     <div>
@@ -120,68 +120,68 @@
       <div class="tier now">
         <div class="tier-head"><span class="tier-title">今すぐ</span><span class="tier-note">今、見て・考えて・動かしたいもの</span></div>
         <div class="nav-list">
-          <a class="nav-item" href="../bd/be/t4.html"><span class="nav-code">⚡ t4</span><span class="nav-desc">k1×n2ゲーム化（ba-52/ba-55、成熟度3タブ）</span></a>
-          <a class="nav-item" href="../bd/be/t5.html"><span class="nav-code">⚡ t5</span><span class="nav-desc">トップページの得点・目標・運勢カード（ba-70、成熟度3タブ）</span></a>
-          <a class="nav-item" href="../bd/be/t8.html"><span class="nav-code">⚡ t8</span><span class="nav-desc">n1日次スコアの0-120化・二値保持（ba-71、保留論点の可視化）</span></a>
-          <a class="nav-item" href="../bd/be/t11.html"><span class="nav-code">⚡ t11</span><span class="nav-desc">環境変数の命名ルール（ba-82、確定仕様の可視化）</span></a>
-          <a class="nav-item" href="../bd/be/t13.html"><span class="nav-code">⚡ t13</span><span class="nav-desc">COBOLレクチャー機能（ba-90、案件の可視化）</span></a>
-          <a class="nav-item" href="../bd/be/t14.html"><span class="nav-code">⚡ t14</span><span class="nav-desc">地図アプリ・地図ゲームの充実（ba-91、案件の可視化・発散）</span></a>
-          <a class="nav-item" href="../bd/be/t18.html"><span class="nav-code">⚡ t18</span><span class="nav-desc">aaトップページ再設計（ba-97、議論中・図解）</span></a>
+          <a class="nav-item" href="../be/t4.html"><span class="nav-code">⚡ t4</span><span class="nav-desc">k1×n2ゲーム化（ba-52/ba-55、成熟度3タブ）</span></a>
+          <a class="nav-item" href="../be/t5.html"><span class="nav-code">⚡ t5</span><span class="nav-desc">トップページの得点・目標・運勢カード（ba-70、成熟度3タブ）</span></a>
+          <a class="nav-item" href="../be/t8.html"><span class="nav-code">⚡ t8</span><span class="nav-desc">n1日次スコアの0-120化・二値保持（ba-71、保留論点の可視化）</span></a>
+          <a class="nav-item" href="../be/t11.html"><span class="nav-code">⚡ t11</span><span class="nav-desc">環境変数の命名ルール（ba-82、確定仕様の可視化）</span></a>
+          <a class="nav-item" href="../be/t13.html"><span class="nav-code">⚡ t13</span><span class="nav-desc">COBOLレクチャー機能（ba-90、案件の可視化）</span></a>
+          <a class="nav-item" href="../be/t14.html"><span class="nav-code">⚡ t14</span><span class="nav-desc">地図アプリ・地図ゲームの充実（ba-91、案件の可視化・発散）</span></a>
+          <a class="nav-item" href="../be/t18.html"><span class="nav-code">⚡ t18</span><span class="nav-desc">aaトップページ再設計（ba-97、議論中・図解）</span></a>
         </div>
       </div>
 
       <div class="tier asneeded">
         <div class="tier-head"><span class="tier-title">随時</span><span class="tier-note">必要な時だけ見ればいい参照書</span></div>
         <div class="nav-list">
-          <a class="nav-item" href="../bd/be/t3.html"><span class="nav-code">t3</span><span class="nav-desc">スレッド分類規約 — 6分類・2軸の仕組み（ba-32、確定仕様の厳密化）</span></a>
-          <a class="nav-item" href="../bd/be/t6.html"><span class="nav-code">t6</span><span class="nav-desc">baのメンテ担当方針（ba-21、確定仕様の可視化）</span></a>
-          <a class="nav-item" href="../bd/be/t7.html"><span class="nav-code">t7</span><span class="nav-desc">ba⇄ab(tXページ)のバックリンク方式（ba-219、確定仕様の可視化）</span></a>
-          <a class="nav-item" href="../bd/be/t9.html"><span class="nav-code">t9</span><span class="nav-desc">確定仕様の状態遷移(2軸)・索引化を整理する（ba-180、案件の可視化）</span></a>
-          <a class="nav-item" href="../bd/be/t12.html"><span class="nav-code">t12</span><span class="nav-desc">abトップページのグルーピング規約（ba-222、確定仕様の可視化）</span></a>
-          <a class="nav-item" href="../bd/be/t15.html"><span class="nav-code">t15</span><span class="nav-desc">仕様来歴の三層規約（ba-36、確定仕様の可視化）</span></a>
-          <a class="nav-item" href="../bd/be/t16.html"><span class="nav-code">t16</span><span class="nav-desc">c1由来の失敗ログ2件の教訓（ba-39、記録の可視化）</span></a>
-          <a class="nav-item" href="../bd/be/t17.html"><span class="nav-code">t17</span><span class="nav-desc">引っかかりを残したまま動かす（ba-73、確定仕様の可視化）</span></a>
-          <a class="nav-item" href="../bd/be/t19.html"><span class="nav-code">t19</span><span class="nav-desc">トークン削減の運用 — ?open/?minimal実装ほか（ba-174、確定・記録の可視化／ba-172・173・174集約）</span></a>
-          <a class="nav-item" href="../bd/be/t20.html"><span class="nav-code">t20</span><span class="nav-desc">スコア加点軸の発散（ba-53、発散の可視化／ba-140〜156集約）</span></a>
-          <a class="nav-item" href="../bd/be/t21.html"><span class="nav-code">t21</span><span class="nav-desc">探偵ごっこ雑学（ba-226、お遊びの記録／ba-119・226・227集約）</span></a>
-          <a class="nav-item" href="../bd/be/t22.html"><span class="nav-code">t22</span><span class="nav-desc">ba運用・分類の初期Q&A（ba-181、答えの出た問答／ba-96〜164集約）</span></a>
-          <a class="nav-item" href="../bd/be/t23.html"><span class="nav-code">t23</span><span class="nav-desc">ロレキ哲学（ba-198、設計思想の束／ba-182〜210集約）</span></a>
-          <a class="nav-item" href="../bd/be/t24.html"><span class="nav-code">t24</span><span class="nav-desc">旅・生活のメモ（宝箱／ba-115〜240集約）</span></a>
-          <a class="nav-item" href="../bd/be/t25.html"><span class="nav-code">t25</span><span class="nav-desc">レーダー・得点の可視化案（ba-133、見せ方／ba-98〜158集約）</span></a>
-          <a class="nav-item" href="../bd/be/t26.html"><span class="nav-code">t26</span><span class="nav-desc">ca の現況（Firebase後継環境／ba-242・248、バックエンドP1〜P4デプロイ済）</span></a>
-          <a class="nav-item" href="../bd/be/t27.html"><span class="nav-code">t27</span><span class="nav-desc">abの新方針（外部AI向けba公開窓口構想／ba-261、未着手）</span></a>
+          <a class="nav-item" href="../be/t3.html"><span class="nav-code">t3</span><span class="nav-desc">スレッド分類規約 — 6分類・2軸の仕組み（ba-32、確定仕様の厳密化）</span></a>
+          <a class="nav-item" href="../be/t6.html"><span class="nav-code">t6</span><span class="nav-desc">baのメンテ担当方針（ba-21、確定仕様の可視化）</span></a>
+          <a class="nav-item" href="../be/t7.html"><span class="nav-code">t7</span><span class="nav-desc">ba⇄ab(tXページ)のバックリンク方式（ba-219、確定仕様の可視化）</span></a>
+          <a class="nav-item" href="../be/t9.html"><span class="nav-code">t9</span><span class="nav-desc">確定仕様の状態遷移(2軸)・索引化を整理する（ba-180、案件の可視化）</span></a>
+          <a class="nav-item" href="../be/t12.html"><span class="nav-code">t12</span><span class="nav-desc">abトップページのグルーピング規約（ba-222、確定仕様の可視化）</span></a>
+          <a class="nav-item" href="../be/t15.html"><span class="nav-code">t15</span><span class="nav-desc">仕様来歴の三層規約（ba-36、確定仕様の可視化）</span></a>
+          <a class="nav-item" href="../be/t16.html"><span class="nav-code">t16</span><span class="nav-desc">c1由来の失敗ログ2件の教訓（ba-39、記録の可視化）</span></a>
+          <a class="nav-item" href="../be/t17.html"><span class="nav-code">t17</span><span class="nav-desc">引っかかりを残したまま動かす（ba-73、確定仕様の可視化）</span></a>
+          <a class="nav-item" href="../be/t19.html"><span class="nav-code">t19</span><span class="nav-desc">トークン削減の運用 — ?open/?minimal実装ほか（ba-174、確定・記録の可視化／ba-172・173・174集約）</span></a>
+          <a class="nav-item" href="../be/t20.html"><span class="nav-code">t20</span><span class="nav-desc">スコア加点軸の発散（ba-53、発散の可視化／ba-140〜156集約）</span></a>
+          <a class="nav-item" href="../be/t21.html"><span class="nav-code">t21</span><span class="nav-desc">探偵ごっこ雑学（ba-226、お遊びの記録／ba-119・226・227集約）</span></a>
+          <a class="nav-item" href="../be/t22.html"><span class="nav-code">t22</span><span class="nav-desc">ba運用・分類の初期Q&A（ba-181、答えの出た問答／ba-96〜164集約）</span></a>
+          <a class="nav-item" href="../be/t23.html"><span class="nav-code">t23</span><span class="nav-desc">ロレキ哲学（ba-198、設計思想の束／ba-182〜210集約）</span></a>
+          <a class="nav-item" href="../be/t24.html"><span class="nav-code">t24</span><span class="nav-desc">旅・生活のメモ（宝箱／ba-115〜240集約）</span></a>
+          <a class="nav-item" href="../be/t25.html"><span class="nav-code">t25</span><span class="nav-desc">レーダー・得点の可視化案（ba-133、見せ方／ba-98〜158集約）</span></a>
+          <a class="nav-item" href="../be/t26.html"><span class="nav-code">t26</span><span class="nav-desc">ca の現況（Firebase後継環境／ba-242・248、バックエンドP1〜P4デプロイ済）</span></a>
+          <a class="nav-item" href="../be/t27.html"><span class="nav-code">t27</span><span class="nav-desc">abの新方針（外部AI向けba公開窓口構想／ba-261、未着手）</span></a>
         </div>
       </div>
 
       <div class="tier always">
         <div class="tier-head"><span class="tier-title">常時</span><span class="tier-note">毎回携えておく、考える対象ではないもの</span></div>
         <div class="nav-list">
-          <a class="nav-item" href="../bd/be/t10.html"><span class="nav-code">t10</span><span class="nav-desc">すま・利尻 運用約束（ba-167、確定仕様の可視化）</span></a>
+          <a class="nav-item" href="../be/t10.html"><span class="nav-code">t10</span><span class="nav-desc">すま・利尻 運用約束（ba-167、確定仕様の可視化）</span></a>
         </div>
       </div>
 
       <div class="tier tools">
         <div class="tier-head"><span class="tier-title">ツール・手順</span></div>
         <div class="nav-list">
-          <a class="nav-item" href="../bd/be/s2.html"><span class="nav-code">s2</span><span class="nav-desc">Google OAuthクライアントID 発行手順</span></a>
-          <a class="nav-item" href="../bd/be/s3.html"><span class="nav-code">s3</span><span class="nav-desc">自作Google Drive MCPサーバー セットアップ</span></a>
-          <a class="nav-item" href="../bd/be/s4.html"><span class="nav-code">s4</span><span class="nav-desc">GitHub PAT(すまさん用)更新手順</span></a>
-          <a class="nav-item" href="../bd/be/s5.html"><span class="nav-code">s5</span><span class="nav-desc">rbookが叩く外部API一覧(GitHub/Azure/Firestore・Firebase/その他)</span></a>
-          <a class="nav-item" href="../bd/be/s6.html"><span class="nav-code">s6</span><span class="nav-desc">タグ集計ビュー（ba-260、タグから逆引き・void/closed込み切替）</span></a>
+          <a class="nav-item" href="../be/s2.html"><span class="nav-code">s2</span><span class="nav-desc">Google OAuthクライアントID 発行手順</span></a>
+          <a class="nav-item" href="../be/s3.html"><span class="nav-code">s3</span><span class="nav-desc">自作Google Drive MCPサーバー セットアップ</span></a>
+          <a class="nav-item" href="../be/s4.html"><span class="nav-code">s4</span><span class="nav-desc">GitHub PAT(すまさん用)更新手順</span></a>
+          <a class="nav-item" href="../be/s5.html"><span class="nav-code">s5</span><span class="nav-desc">rbookが叩く外部API一覧(GitHub/Azure/Firestore・Firebase/その他)</span></a>
+          <a class="nav-item" href="../be/s6.html"><span class="nav-code">s6</span><span class="nav-desc">タグ集計ビュー（ba-260、タグから逆引き・void/closed込み切替）</span></a>
         </div>
       </div>
 
       <div class="tier">
         <div class="tier-head"><span class="tier-title">あそび</span><span class="tier-note">各gN/が個別アプリ</span></div>
         <div class="nav-list">
-          <a class="nav-item" href="../g/g8/"><span class="nav-code">g8</span><span class="nav-desc">複数AIの同時書き込みログ（旧ca、設計メモはc1）</span></a>
-          <a class="nav-item" href="../g/g1/"><span class="nav-code">g1</span><span class="nav-desc">NES Emulator</span></a>
-          <a class="nav-item" href="../g/g2/"><span class="nav-code">g2</span><span class="nav-desc">CASL II シミュレータ</span></a>
-          <a class="nav-item" href="../g/g3/"><span class="nav-code">g3</span><span class="nav-desc">ふっかつのじゅもん解析器</span></a>
-          <a class="nav-item" href="../g/g4/"><span class="nav-code">g4</span><span class="nav-desc">DQ2 ふっかつのじゅもん生成器</span></a>
-          <a class="nav-item" href="../g/g5/"><span class="nav-code">g5</span><span class="nav-desc">NASM x86 エミュレータ</span></a>
-          <a class="nav-item" href="../g/g6/"><span class="nav-code">g6</span><span class="nav-desc">COBOL ミニインタプリタ</span></a>
-          <a class="nav-item" href="../g/g7/"><span class="nav-code">g7</span><span class="nav-desc">Roulette</span></a>
+          <a class="nav-item" href="../../g/g8/"><span class="nav-code">g8</span><span class="nav-desc">複数AIの同時書き込みログ（旧ca、設計メモはc1）</span></a>
+          <a class="nav-item" href="../../g/g1/"><span class="nav-code">g1</span><span class="nav-desc">NES Emulator</span></a>
+          <a class="nav-item" href="../../g/g2/"><span class="nav-code">g2</span><span class="nav-desc">CASL II シミュレータ</span></a>
+          <a class="nav-item" href="../../g/g3/"><span class="nav-code">g3</span><span class="nav-desc">ふっかつのじゅもん解析器</span></a>
+          <a class="nav-item" href="../../g/g4/"><span class="nav-code">g4</span><span class="nav-desc">DQ2 ふっかつのじゅもん生成器</span></a>
+          <a class="nav-item" href="../../g/g5/"><span class="nav-code">g5</span><span class="nav-desc">NASM x86 エミュレータ</span></a>
+          <a class="nav-item" href="../../g/g6/"><span class="nav-code">g6</span><span class="nav-desc">COBOL ミニインタプリタ</span></a>
+          <a class="nav-item" href="../../g/g7/"><span class="nav-code">g7</span><span class="nav-desc">Roulette</span></a>
         </div>
       </div>
     </div>
@@ -268,7 +268,7 @@
       renderCards();
     });
 
-    fetch("../bd/data/card.json")
+    fetch("../data/card.json")
       .then((res) => res.json())
       .then((cards) => {
         allCards = cards;

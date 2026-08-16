@@ -3,5 +3,5 @@ Disallow: /src/n1/
 Disallow: /src/ba/
 Disallow: /src/bb/
 Disallow: /src/k2/
-Disallow: /src/be/
-Disallow: /src/bf/
+Disallow: /src/bd/wip/
+Disallow: /src/bd/bf/
