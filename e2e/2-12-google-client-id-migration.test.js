@@ -22,7 +22,7 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
 const EXPECTED_CLIENT_ID = "550466095352-50h92anfullp137l4gq4gdi7ogjk0auc.apps.googleusercontent.com";
 
 // Stage 2はbc(旧k2)のみが対象(パイロット)、Stage 4で残り4ページを追加。
-const PAGES = ["bc", "m1", "n2", "ba"];
+const PAGES = ["bc", "m1", "ba"];
 
 function serveStatic() {
   return new Promise((resolve) => {

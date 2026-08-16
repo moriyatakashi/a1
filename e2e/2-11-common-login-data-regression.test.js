@@ -1,5 +1,5 @@
 // ba-9の残タスク(2): API_BASEをcommon/config.jsへ集約したリファクタ後、
-// m1/n2/bc(旧k2)/baがクリーンな状態(localStorageなし)でログイン→config.js解決→
+// m1/bc(旧k2)/baがクリーンな状態(localStorageなし)でログイン→config.js解決→
 // データ取得まで通しで壊れていないかの回帰確認。
 // config.jsの自己importが効いていない場合、AA_API_BASEがundefinedになり
 // フェッチ先が".../undefined/..."になる(2026-07-16の表示不具合と同型)ため、
@@ -47,14 +47,6 @@ const PAGES = {
     async assertLoaded(page) {
       await page.waitForSelector("#scoreChartSection", { state: "visible", timeout: 5000 });
       assert.equal(await page.textContent("#statLatest"), "80");
-    },
-  },
-  n2: {
-    routes: {
-      [`${API_BASE}/visits`]: () => ({ status: 200, body: [{ id: "1", date: "2026-07-18", time: "10:00", place: "Osaka Castle", lat: 34.687, lng: 135.526 }] }),
-    },
-    async assertLoaded(page) {
-      await page.waitForFunction(() => document.getElementById("statTotal")?.textContent === "1", null, { timeout: 5000 });
     },
   },
   bc: {

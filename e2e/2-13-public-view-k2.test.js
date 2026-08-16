@@ -1,7 +1,7 @@
 // ba-35残課題(2): ログイン無しで閲覧できる「公開閲覧モード」(common/auth.jsのAA_PUBLIC_VIEW)を
 // 検証する。ログインイベントを一切発火させずに#contentが表示され、データも取得できることを
 // 確認する(bc(旧k2)・beは元々書き込みUIを持たないため、閲覧のみのシンプルなケース)。
-// m1・n2は書き込みフォームを持つため、未ログインで書き込みボタンを押すと通信(401)せずに
+// m1は書き込みフォームを持つため、未ログインで書き込みボタンを押すと通信(401)せずに
 // ログインへ誘導される(window.aaShowLoginGate)ことも検証する。
 // Stage2はbc(旧k2)のみが対象(パイロット)、Stage4でbe、Stage5でn1/n2を追加(のちにn1はm1に統合)。
 import { test } from "node:test";
@@ -54,20 +54,6 @@ const PAGES = {
     async assertWriteRequiresLogin(page) {
       await page.click("#btnSaveScore");
       assert.equal(await page.textContent("#scoreSaved"), "保存にはログインが必要です");
-      assert.equal(await page.isVisible("#login-gate"), true, "書き込み試行後はログインゲートが表示されるはず");
-    },
-  },
-  n2: {
-    routes: {
-      [`${API_BASE}/visits`]: () => ({ status: 200, body: [{ id: "1", date: "2026-07-18", time: "10:00", place: "Osaka Castle", lat: 34.687, lng: 135.526 }] }),
-    },
-    async assertLoaded(page) {
-      await page.waitForFunction(() => document.getElementById("statTotal")?.textContent === "1", null, { timeout: 5000 });
-    },
-    async assertWriteRequiresLogin(page) {
-      await page.fill("#placeInput", "テスト地点");
-      await page.click("#btnAddVisit");
-      assert.equal(await page.textContent("#visitInputStatus"), "追加にはログインが必要です");
       assert.equal(await page.isVisible("#login-gate"), true, "書き込み試行後はログインゲートが表示されるはず");
     },
   },
