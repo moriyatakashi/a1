@@ -83,14 +83,28 @@ async function load() {
 }
 
 document.getElementById("reload").addEventListener("click", load);
-document.getElementById("copy").addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(out.value);
-    setStatus("コピーしました");
-  } catch {
-    out.select(); document.execCommand("copy");
-    setStatus("コピーしました");
+async function copyText(text) {
+  // 1) Clipboard API(HTTPS/セキュアコンテキストのみ)
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(text); return true; } catch {}
   }
+  // 2) フォールバック: readonlyを一時解除して選択→execCommand(iOS対応)
+  const wasReadonly = out.hasAttribute("readonly");
+  out.removeAttribute("readonly");
+  out.focus();
+  out.setSelectionRange(0, out.value.length);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch { ok = false; }
+  if (wasReadonly) out.setAttribute("readonly", "");
+  const sel = window.getSelection && window.getSelection();
+  if (sel && sel.removeAllRanges) sel.removeAllRanges();
+  return ok;
+}
+
+document.getElementById("copy").addEventListener("click", async () => {
+  if (!out.value) { setStatus("コピーする内容がありません", true); return; }
+  const ok = await copyText(out.value);
+  setStatus(ok ? "コピーしました" : "コピーできませんでした(テキストを長押しで手動選択してください)", !ok);
 });
 
 load();
