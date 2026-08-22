@@ -10,6 +10,9 @@ categories:
       - code: m3
         desc: 記入(仮)
         href: src/m3/
+      - code: m4
+        desc: 現在地マップ
+        href: src/m4/
   - label: 内部メモ
     items:
       - code: ba
