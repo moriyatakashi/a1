@@ -13,6 +13,9 @@ categories:
       - code: m4
         desc: 現在地マップ
         href: src/m4/
+      - code: m5
+        desc: 現在地マップ(実座標版)
+        href: src/m5/
       - code: bf
         desc: 訪問地図(別系統)
         href: src/bd/bf/
