@@ -5,7 +5,7 @@ categories:
         desc: 日々記録
         href: src/m1/
       - code: m2
-        desc: 訪問地図
+        desc: 訪問地図・予定
         href: src/m2/
       - code: m3
         desc: 記入(仮)
@@ -13,20 +13,77 @@ categories:
       - code: m4
         desc: 現在地マップ
         href: src/m4/
-  - label: 内部メモ
+      - code: bf
+        desc: 訪問地図(別系統)
+        href: src/bd/bf/
+  - label: baを見る
     items:
       - code: ba
-        desc: 気づきログ
+        desc: 気づきログ(台帳本体)
         href: src/ba/
       - code: bb
-        desc: ba現在形ビューワ
+        desc: 現在形ビュー
         href: src/bb/
       - code: bc
-        desc: baレーダーチャート
+        desc: レーダーチャート
         href: src/bc/
-      - code: bd
-        desc: card
-        href: src/bd/
+      - code: cb
+        desc: 現在形ビュー(別系統)
+        href: src/cb/
+      - code: cc
+        desc: レーダーチャート(別系統)
+        href: src/cc/
+  - label: baのデータ
+    items:
+      - code: x1
+        desc: SQLビュー
+        href: src/x1/
+      - code: x2
+        desc: 生JSON
+        href: src/x2/
       - code: bg
         desc: BaLog Index
         href: src/bd/bg/
+      - code: aa
+        desc: オープン台帳(Firestore)
+        href: src/aa/
+  - label: あそび
+    items:
+      - code: g1
+        desc: NES Emulator
+        href: src/g/g1/
+      - code: g2
+        desc: CASL II シミュレータ
+        href: src/g/g2/
+      - code: g3
+        desc: ふっかつのじゅもん解析器
+        href: src/g/g3/
+      - code: g4
+        desc: ふっかつのじゅもん生成器
+        href: src/g/g4/
+      - code: g5
+        desc: NASM x86 エミュレータ
+        href: src/g/g5/
+      - code: g6
+        desc: COBOL ミニインタプリタ
+        href: src/g/g6/
+      - code: g7
+        desc: Roulette
+        href: src/g/g7/
+      - code: g8
+        desc: 複数AIの同時書き込みログ
+        href: src/g/g8/
+  - label: まとめ・文書・設計
+    items:
+      - code: bd
+        desc: カタログ＋be文書/設計メモ(be・gあそび・c群を収容)
+        href: src/bd/
+      - code: cd
+        desc: カタログ(別系統)
+        href: src/bd/cd/
+      - code: ce
+        desc: WIP作業台
+        href: src/bd/ce/
+      - code: wip
+        desc: WIP作業台(別系統)
+        href: src/bd/wip/
