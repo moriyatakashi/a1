@@ -1,0 +1,32 @@
+<meta charset="utf-8">
+<script>
+const RAD = Math.PI / 180;
+const mercY = lat => Math.log(Math.tan(Math.PI / 4 + lat * RAD / 2));
+function project(win, box) {
+  const [W, S, E, N] = win, [px, py, pw, ph] = box;
+  const x0 = W * RAD, y0 = mercY(N);
+  const bw = (E - W) * RAD, bh = y0 - mercY(S);
+  const s = Math.min(pw / bw, ph / bh);
+  const ox = px + (pw - bw * s) / 2, oy = py + (ph - bh * s) / 2;
+  return ([lon, lat]) => [ox + (lon * RAD - x0) * s, oy + (y0 - mercY(lat)) * s];
+}
+function toPath(geom, p) {
+  const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
+  return polys.flat().map(ring =>
+    ring.map((pt, i) => (i ? "L" : "M") + p(pt).map(v => v.toFixed(1)).join(" ")).join("") + "Z"
+  ).join("");
+}
+function layer(gj, keep, win, box) {
+  const p = project(win, box);
+  return gj.features
+    .filter(f => keep(f.properties.N03_001))
+    .map(f => `<path class="pref" d="${toPath(f.geometry, p)}"/>`)
+    .join("");
+}
+fetch("a1.geojson").then(r => r.json()).then(gj => {
+  document.body.innerHTML = `<svg viewBox="0 0 760 760">`
+    + layer(gj, n => n !== "沖縄県", [129.5, 30, 148.5, 46], [24, 20, 712, 716])
+    + layer(gj, n => n === "沖縄県", [127, 26, 128, 27], [42, 64, 156, 120])
+    + `</svg>`;
+});
+</script>
