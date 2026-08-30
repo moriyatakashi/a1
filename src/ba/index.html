@@ -6,11 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ba</title>
 <link rel="stylesheet" href="../common/ledger.css">
-<style>
-  #lastUpdated { font-size: .8rem; color: var(--ink-soft); }
-  .ba-search { margin: 12px 0; }
-  .post-link { font-size: .8rem; }
-</style>
 </head>
 <body>
   <p><a href="../../">← 戻る</a></p>
@@ -29,9 +24,6 @@
       <div class="stat"><div class="stat-num" id="statClosed">—</div><div class="stat-label">クローズ</div></div>
       <div class="stat"><div class="stat-num" id="statLatestBy">—</div><div class="stat-label">直近の記入者</div></div>
     </div>
-    <div class="ba-search">
-      <button type="button" class="btn-search-reset" id="btnSearchReset" style="display:none;">リセット</button>
-    </div>
     <div class="cls-filter" id="clsFilter"></div>
     <div class="list-controls">
       <button type="button" class="btn-toggle-voided" id="btnToggleClosed">closedも表示</button>
@@ -42,9 +34,5 @@
   <script>window.AA_AUTH_EVENT = "ba-login-success";</script>
   <script src="../common/auth.js"></script>
   <script type="module" src="app.js"></script>
-  <script type="module">
-    import { applyLastUpdated } from "../common/last-updated.js";
-    applyLastUpdated("src/ba", "lastUpdated", "最終更新");
-  </script>
 </body>
 </html>
