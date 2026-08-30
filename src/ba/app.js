@@ -1,5 +1,5 @@
 import "../common/config.js";
-import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../common/utils.js";
+import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, postBa } from "../common/utils.js";
 import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
 const BA_API = `${window.AA_API_BASE}/ba`;
 const AUTO_EXPAND_MAX = 6;
@@ -127,18 +127,9 @@ function threadCardHtml(thread, seqTitle, autoExpand) {
       </div>
     </details>`;
 }
-async function postEntry(body) {
-  const res = await fetch(BA_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(withCredential(body)),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
 async function runAction(failMsg, body) {
   try {
-    await postEntry(body);
+    await postBa(body);
     load();
   } catch (e) {
     alert(failMsg + ": " + e.message);
@@ -154,7 +145,7 @@ function attachThreadHandlers(container, thread) {
     const body = noteInput.value.trim();
     if (!body) return;
     try {
-      await postEntry({ ref: id, type: "note", body });
+      await postBa({ ref: id, type: "note", body });
       noteInput.value = "";
       load();
     } catch (e) {

@@ -16,18 +16,8 @@ body {
   max-width: 680px; margin: 0 auto; padding: 16px;
 }
 a { color: var(--accent); }
-.eyebrow { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.7rem; letter-spacing: 0.08em; color: var(--ink-soft); }
 h1 { font-size: 1.3rem; margin: 6px 0 2px; }
-.lede { font-size: 0.8rem; color: var(--ink-soft); margin: 0 0 8px; }
 #login-gate { margin: 20px 0; }
-.lane-legend {
-  display: flex; gap: 16px; flex-wrap: wrap; margin: 10px 0 20px;
-  font-size: 0.72rem; color: var(--ink-soft);
-}
-.lane-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.lane-dot { width: 8px; height: 8px; border-radius: 50%; }
-.lane-dot--claude { background: var(--accent); }
-.lane-dot--human { background: var(--open); }
 .summary-bar {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
   background: var(--line); border: 1px solid var(--line); border-radius: 8px;
@@ -39,10 +29,6 @@ h1 { font-size: 1.3rem; margin: 6px 0 2px; }
 .lane-form-label {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.65rem;
   color: var(--ink-soft); display: block; margin: 8px 0 4px;
-}
-.field-input {
-  width: 100%; font-size: 0.85rem; padding: 7px 9px; border: 1px solid var(--line);
-  border-radius: 5px; background: var(--paper-band); color: var(--ink); font-family: inherit; box-sizing: border-box;
 }
 .thread-list { display: flex; flex-direction: column; gap: 12px; }
 .empty { color: var(--ink-soft); text-align: center; padding: 20px 0; font-size: 0.85rem; }
@@ -95,7 +81,6 @@ details[open] .chevron { transform: rotate(90deg); }
 .entry:last-child { border-bottom: none; }
 .entry-rail { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; justify-self: center; }
 .entry--new .entry-rail { background: var(--accent); }
-.entry--note .entry-rail { background: var(--ink-soft); }
 .entry--correction .entry-rail { background: var(--red); }
 .entry--priority .entry-rail { background: var(--open); }
 .entry--status .entry-rail { background: var(--closed); }
@@ -129,12 +114,6 @@ details[open] .chevron { transform: rotate(90deg); }
   border-radius: 5px; background: var(--paper); color: var(--ink); font-family: inherit;
 }
 .lane-form-hint { font-size: 0.62rem; color: var(--ink-soft); margin-top: 6px; }
-.ba-search { display: flex; gap: 8px; }
-.ba-search .field-input { flex: 1; }
-.btn-search-reset {
-  font-size: 0.72rem; padding: 5px 12px; border: 1px solid var(--ink-soft); border-radius: 5px;
-  background: transparent; color: var(--ink-soft); cursor: pointer; white-space: nowrap;
-}
 .list-controls { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 .btn-toggle-voided {
   font-size: 0.72rem; padding: 5px 12px; border: 1px solid var(--ink-soft); border-radius: 5px;

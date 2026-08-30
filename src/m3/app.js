@@ -1,15 +1,5 @@
 import "../common/config.js";
-import { CLASSIFICATIONS, parseTags, withCredential } from "../common/utils.js";
-const BA_API = `${window.AA_API_BASE}/ba`;
-async function postEntry(body) {
-  const res = await fetch(BA_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(withCredential(body)),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
+import { CLASSIFICATIONS, parseTags, postBa } from "../common/utils.js";
 function initNewEntryForm() {
   const elTitle = document.getElementById("newTitle");
   const elTags = document.getElementById("newTags");
@@ -24,7 +14,7 @@ function initNewEntryForm() {
         const clsEl = document.querySelector('input[name="newCls"]:checked');
         if (clsEl) payload.tags = [clsEl.value, ...payload.tags];
       }
-      const result = await postEntry(payload);
+      const result = await postBa(payload);
       elTitle.value = "";
       elTags.value = "";
       elBody.value = "";
