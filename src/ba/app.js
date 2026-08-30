@@ -2,13 +2,12 @@ import "../common/config.js";
 import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../common/utils.js";
 import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
 
-const API_BASE = window.AA_API_BASE;
-const BA_API = `${API_BASE}/ba`;
+const BA_API = `${window.AA_API_BASE}/ba`;
 
 function renderSummary(threads) {
   const openCount = threads.filter((t) => t.status === "open").length;
   const allEntries = threads.flatMap((t) => t.entries);
-  const latest = allEntries.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const latest = allEntries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
 
   document.getElementById("statTotal").textContent = threads.length;
   document.getElementById("statOpen").textContent = openCount;
@@ -212,23 +211,15 @@ function attachThreadHandlers(container, thread) {
 let showVoided = false;
 let showClosed = false;
 let filterCls = "all";
-let searchQuery = "";
 let cachedThreads = [];
 
 const AUTO_EXPAND_MAX = 6;
 
-function parseSeqInput(q) {
-  const m = q.trim().match(/^(?:ba-|#)?(\d+)$/i);
-  return m ? m[1] : null;
-}
-
+// 「関連: ba-NN」チップから対象スレッドへ飛ぶ。確実に見えるようフィルタを全解除してからスクロール。
 function jumpToSeq(seq) {
   showVoided = true;
   showClosed = true;
   filterCls = "all";
-  searchQuery = "";
-  const searchEl = document.getElementById("baSearch");
-  if (searchEl) searchEl.value = "";
   render();
   const target = document.querySelector(`[data-seq="${seq}"]`);
   if (target) {
@@ -237,23 +228,14 @@ function jumpToSeq(seq) {
   }
 }
 
-function threadMatchesTag(thread, q) {
-  const needle = q.trim().toLowerCase();
-  if (!needle) return true;
-  const allTags = (thread.entries || []).flatMap((e) => (Array.isArray(e.tags) ? e.tags : []));
-  return allTags.some((t) => String(t).toLowerCase().includes(needle));
-}
-
 function render() {
   const listEl = document.getElementById("threadList");
   const hiddenCount = cachedThreads.filter((t) => t.hiddenVoid).length;
   const closedCount = cachedThreads.filter((t) => t.status !== "open").length;
-  const searching = searchQuery.trim() !== "";
   let visible = showVoided ? cachedThreads : cachedThreads.filter((t) => !t.hiddenVoid);
 
-  if (!showClosed && !searching) visible = visible.filter((t) => t.status === "open");
+  if (!showClosed) visible = visible.filter((t) => t.status === "open");
   if (filterCls !== "all") visible = visible.filter((t) => t.cls === filterCls);
-  if (searching) visible = visible.filter((t) => threadMatchesTag(t, searchQuery));
 
   renderSummary(cachedThreads);
   renderClsFilter();
@@ -265,13 +247,7 @@ function render() {
   const closedEl = document.getElementById("btnToggleClosed");
   closedEl.textContent = showClosed ? `closedを隠す(${closedCount})` : `closedも表示(${closedCount})`;
 
-  const resetEl = document.getElementById("btnSearchReset");
-  if (resetEl) resetEl.style.display = searching ? "" : "none";
-
-  const emptyMsg = searching
-    ? `<p class="empty">タグ「${esc(searchQuery.trim())}」に一致するスレッドはありません</p>`
-    : `<p class="empty">表示できるスレッドがありません(分類フィルタと「closedも表示」を確認)</p>`;
-
+  const emptyMsg = `<p class="empty">表示できるスレッドがありません(分類フィルタと「closedも表示」を確認)</p>`;
   const autoExpand = visible.length <= AUTO_EXPAND_MAX;
   listEl.innerHTML = visible.map((t) => threadCardHtml(t, cachedThreads.seqTitle, autoExpand)).join("") || emptyMsg;
   visible.forEach((t) => attachThreadHandlers(listEl, t));
@@ -314,38 +290,6 @@ function onLoginSuccess() {
     filterCls = btn.dataset.cls;
     render();
   });
-
-  const searchEl = document.getElementById("baSearch");
-  const searchResetEl = document.getElementById("btnSearchReset");
-  if (searchEl) {
-    searchEl.addEventListener("input", (ev) => {
-      const val = ev.target.value;
-      if (parseSeqInput(val) !== null) {
-        if (searchQuery !== "") { searchQuery = ""; render(); }
-        return;
-      }
-      searchQuery = val;
-      render();
-    });
-
-    searchEl.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter") return;
-      const seq = parseSeqInput(ev.target.value);
-      if (seq !== null) {
-        ev.preventDefault();
-        jumpToSeq(seq);
-      }
-    });
-  }
-
-  if (searchResetEl) {
-    searchResetEl.addEventListener("click", () => {
-      searchQuery = "";
-      if (searchEl) searchEl.value = "";
-      render();
-    });
-  }
-
   document.getElementById("threadList").addEventListener("click", (ev) => {
     const btn = ev.target.closest(".related-chip");
     if (!btn) return;
