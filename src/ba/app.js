@@ -135,44 +135,39 @@ async function runAction(failMsg, body) {
     alert(failMsg + ": " + e.message);
   }
 }
-function attachThreadHandlers(container, thread) {
-  const card = container.querySelector(`[data-thread-id="${thread.threadId}"]`);
-  if (!card) return;
+function threadById(id) {
+  return cachedThreads.find((t) => String(t.threadId) === String(id));
+}
+function onThreadListClick(ev) {
+  const related = ev.target.closest(".related-chip");
+  if (related) { jumpToSeq(related.dataset.jumpSeq); return; }
+  const card = ev.target.closest(".thread-card[data-thread-id]");
+  const thread = card && threadById(card.dataset.threadId);
+  if (!thread) return;
   const id = thread.threadId;
-  const $ = (sel) => card.querySelector(sel);
-  const noteInput = $(".note-input");
-  $(".btn-add-note").addEventListener("click", async () => {
-    const body = noteInput.value.trim();
+  if (ev.target.closest(".btn-add-note")) {
+    const input = card.querySelector(".note-input");
+    const body = input.value.trim();
     if (!body) return;
-    try {
-      await postBa({ ref: id, type: "note", body });
-      noteInput.value = "";
-      load();
-    } catch (e) {
-      alert("追記に失敗しました: " + e.message);
-    }
-  });
-  $(".btn-toggle-void").addEventListener("click", () =>
-    runAction("無効フラグの切り替えに失敗しました", { ref: id, type: "void", value: !thread.voidView.takashi }));
-  $(".btn-toggle-status").addEventListener("click", () =>
-    runAction("ステータス変更に失敗しました", { ref: id, type: "status", status: thread.status === "open" ? "closed" : "open" }));
-  $(".btn-toggle-react").addEventListener("click", () =>
-    runAction("反応の切り替えに失敗しました", { ref: id, type: "react", value: !thread.reactByLane.takashi }));
-  const reclassSelect = $(".reclass-select");
-  $(".btn-reclassify").addEventListener("click", () => {
-    if (reclassSelect.value) runAction("分類の変更に失敗しました", { ref: id, type: "note", tags: [reclassSelect.value] });
-  });
-  const titleFixInput = $(".title-fix-input");
-  $(".btn-fix-title").addEventListener("click", () => {
-    const newTitle = titleFixInput.value.trim();
-    if (newTitle && newTitle !== (thread.displayTitle || "")) {
-      runAction("タイトルの訂正に失敗しました", { ref: id, type: "correction", title: newTitle });
-    }
-  });
-  card.querySelectorAll(".btn-approve").forEach((btn) => {
-    btn.addEventListener("click", () =>
-      runAction("承認に失敗しました", { ref: id, type: "approval", approvesId: btn.dataset.approveId }));
-  });
+    postBa({ ref: id, type: "note", body })
+      .then(() => { input.value = ""; load(); })
+      .catch((e) => alert("追記に失敗しました: " + e.message));
+  } else if (ev.target.closest(".btn-toggle-void")) {
+    runAction("無効フラグの切り替えに失敗しました", { ref: id, type: "void", value: !thread.voidView.takashi });
+  } else if (ev.target.closest(".btn-toggle-status")) {
+    runAction("ステータス変更に失敗しました", { ref: id, type: "status", status: thread.status === "open" ? "closed" : "open" });
+  } else if (ev.target.closest(".btn-toggle-react")) {
+    runAction("反応の切り替えに失敗しました", { ref: id, type: "react", value: !thread.reactByLane.takashi });
+  } else if (ev.target.closest(".btn-reclassify")) {
+    const v = card.querySelector(".reclass-select").value;
+    if (v) runAction("分類の変更に失敗しました", { ref: id, type: "note", tags: [v] });
+  } else if (ev.target.closest(".btn-fix-title")) {
+    const nt = card.querySelector(".title-fix-input").value.trim();
+    if (nt && nt !== (thread.displayTitle || "")) runAction("タイトルの訂正に失敗しました", { ref: id, type: "correction", title: nt });
+  } else {
+    const approve = ev.target.closest(".btn-approve");
+    if (approve) runAction("承認に失敗しました", { ref: id, type: "approval", approvesId: approve.dataset.approveId });
+  }
 }
 function jumpToSeq(seq) {
   showVoided = true;
@@ -202,7 +197,6 @@ function render() {
   const emptyMsg = `<p class="empty">表示できるスレッドがありません(分類フィルタと「closedも表示」を確認)</p>`;
   const autoExpand = visible.length <= AUTO_EXPAND_MAX;
   listEl.innerHTML = visible.map((t) => threadCardHtml(t, cachedThreads.seqTitle, autoExpand)).join("") || emptyMsg;
-  visible.forEach((t) => attachThreadHandlers(listEl, t));
 }
 function renderClsFilter() {
   const el = document.getElementById("clsFilter");
@@ -237,10 +231,7 @@ function onLoginSuccess() {
     const btn = ev.target.closest(".cls-chip");
     if (btn) { filterCls = btn.dataset.cls; render(); }
   });
-  document.getElementById("threadList").addEventListener("click", (ev) => {
-    const btn = ev.target.closest(".related-chip");
-    if (btn) jumpToSeq(btn.dataset.jumpSeq);
-  });
+  document.getElementById("threadList").addEventListener("click", onThreadListClick);
   load();
 }
 if (window.__loginState && window.__loginState.loggedIn) {
