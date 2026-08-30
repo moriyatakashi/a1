@@ -3,8 +3,8 @@
    ページ固有の見出し・文言はindex.html側のインラインstyleかclassで上書きしてよい。 */
 
 :root {
-  --paper: #14170f;
-  --paper-band: #1b1f14;
+  --paper: #181022;
+  --paper-band: #221732;
   --ink: #dfe3d2;
   --ink-soft: #8b9280;
   --line: #333a28;

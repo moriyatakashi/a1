@@ -10,7 +10,7 @@
    root/n1/n2の各インラインstyleもこの変数を参照する(--accentはn1/n2共通のボタン色用)。 */
 
 :root {
-  --paper: #14170f;
+  --paper: #181022;
   --ink: #eeeeee;
   --ink-soft: #aaaaaa;
   --line: #444444;
@@ -20,7 +20,7 @@
 
 @media (prefers-color-scheme: light) {
   :root {
-    --paper: #f7f6f0;
+    --paper: #f1ecf8;
     --ink: #22261c;
     --ink-soft: #6b7160;
     --line: #d8d5c4;
