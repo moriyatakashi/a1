@@ -1,13 +1,10 @@
-// app.js — ba(n4後継の追記ログ)。1件=1つの出来事(new/note/correction/priority/status/void/...)を
-// 追記していくだけの台帳を表示・操作する。過去の行は書き換えない(赤黒帳票方式)。
-// 画面側ログインゲートを通過した後にのみデータを取得・表示する(GETもcredentialヘッダで認証)。
-// config.jsを自分でimportする(ba-9追補)。HTML側の<script>読込に依存しないため、
-// 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
+
+
 import "../common/config.js";
 import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../common/utils.js";
 import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
 
-const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
+const API_BASE = window.AA_API_BASE;
 const BA_API = `${API_BASE}/ba`;
 
 const HUMAN_TYPES = ["note", "void", "status"];
@@ -27,11 +24,10 @@ function renderSummary(threads) {
 function entryRowHtml(e) {
   const voidClass = e.type === "void" ? (e.value ? " entry--void-true" : " entry--void-false") : "";
   const typeClass = e.type === "correction" ? " entry--correction" : e.type === "priority" ? " entry--priority" : e.type === "status" ? " entry--status" : e.type === "new" ? " entry--new" : e.type === "verified_on_device" ? " entry--verified" : "";
-  // new/correctionのtitleはタイムライン上にも出す。訂正で見出しが変わっても、
-  // 元のタイトルと訂正の経緯がスレッドを開けば読めるようにするため。
+
   const titleLine = e.title && (e.type === "new" || e.type === "correction")
     ? `<div class="entry-title">${e.type === "correction" ? "タイトル → " : ""}${esc(e.title)}</div>` : "";
-  // ba-77: 承認キュー。proposeFor:"takashi"付きのエントリだけバッジ(+承認待ちならボタン)を出す。
+
   const approvalHtml = e.pendingApproval
     ? `<span class="approval-badge approval-badge--pending">takashi代筆・承認待ち</span><button type="button" class="btn-approve" data-approve-id="${esc(e.id)}">承認</button>`
     : e.approved
@@ -48,7 +44,6 @@ function entryRowHtml(e) {
     </div>`;
 }
 
-// react: 3レーンそれぞれの軽い反応(参考程度、正式な承認・決定条件ではない)。
 const REACT_LANES = ["claude-pc", "claude-mobile", "takashi"];
 function reactRowHtml(reactByLane) {
   const chips = REACT_LANES.map((lane) => {
@@ -69,8 +64,6 @@ function perspectiveRowHtml(voidView) {
   return `<div class="perspective-row"><span class="perspective-label">無効フラグ:</span>${chip(c, "C")}${chip(t, "T")}</div>`;
 }
 
-// ba-162: 関連番号(link)のチップ行。seqTitleは groupThreads が返す配列に生えている
-// threads.seqTitle(seq→タイトル先頭10文字)を渡す想定。
 function relatedRowHtml(relatedSeqs, seqTitle) {
   if (!relatedSeqs || !relatedSeqs.length) return "";
   const chips = relatedSeqs
@@ -86,15 +79,15 @@ function threadCardHtml(thread, seqTitle, autoExpand) {
   const { threadId, root, children, status } = thread;
   const title = thread.displayTitle || root.body || "(無題)";
   const tags = Array.isArray(root.tags) ? root.tags : [];
-  // 分類はバッジで出すため、自由タグ列からは除外して二重表示を避ける(ba-33)。
+
   const tagsHtml = filterFreeTags(tags).map((t) => `<span class="tag">#${esc(t)}</span>`).join("");
   const ghHtml = root.github_issue ? `<span class="gh-chip">gh #${esc(root.github_issue)}</span>` : "";
-  // 分類バッジ(ba-33)。note由来の分類は来歴として小さく「note」を添える(赤黒帳票の思想)。
+
   const clsHtml = thread.cls
     ? `<span class="cls-badge cls-badge--${CLS_KEY[thread.cls]}">${thread.cls}${thread.clsVia === "note" ? '<span class="cls-via">note</span>' : ""}</span>`
     : "";
   const isOpen = status === "open";
-  // 表示件数が多いときはautoExpand=falseにして、openスレッドも既定でたたんでおく(手動で開ける)。
+
   const expand = isOpen && autoExpand;
   const takashiVoid = thread.voidView.takashi;
   const takashiReact = thread.reactByLane.takashi;
@@ -201,8 +194,6 @@ function attachThreadHandlers(container, thread) {
     }
   });
 
-  // ba-130: 分類はnew投稿時にしか選べなかった問題への対応。noteにtagsを載せて追記し、
-  // thread-logic.jsのfindClassification(new/noteのtagsを時系列で見て最新優先)に乗せる。
   const reclassSelect = card.querySelector(".reclass-select");
   card.querySelector(".btn-reclassify").addEventListener("click", async () => {
     const value = reclassSelect.value;
@@ -215,9 +206,6 @@ function attachThreadHandlers(container, thread) {
     }
   });
 
-  // タイトル訂正。追記オンリーの制約上、直接書き換えではなくtitle付きcorrectionを
-  // 積む(thread-logic.jsのdisplayTitle解決が最新のcorrectionを優先する)。
-  // 元のnewエントリのtitleは変わらず残るため、付け直しの履歴もタイムラインに残る。
   const titleFixInput = card.querySelector(".title-fix-input");
   card.querySelector(".btn-fix-title").addEventListener("click", async () => {
     const newTitle = titleFixInput.value.trim();
@@ -230,7 +218,6 @@ function attachThreadHandlers(container, thread) {
     }
   });
 
-  // ba-77: 承認キュー。1スレッドに承認待ちが複数あり得るため全ボタンに付ける。
   card.querySelectorAll(".btn-approve").forEach((btn) => {
     btn.addEventListener("click", async () => {
       try {
@@ -243,28 +230,22 @@ function attachThreadHandlers(container, thread) {
   });
 }
 
-// 両視点そろって無効のスレッドは既定で一覧から隠す。トグルONのときだけ薄色で表示する。
 let showVoided = false;
-// ba-33: 既定はopenのみ表示。確定仕様はcloseしない規約(ba-32)なので参照の邪魔にならない。
+
 let showClosed = false;
-// ba-33: 分類フィルタ(単一選択)。"all"は分類なしスレッドも含めて表示。
+
 let filterCls = "all";
-// 検索ボックスの現在値。数字ならジャンプ、それ以外ならタグ抽出に使う(空なら絞り込みなし)。
+
 let searchQuery = "";
 let cachedThreads = [];
 
-// 表示中のカード数がこれを超えたら、openスレッドも既定でたたむ(1件ずつクリックで開ける)。
-// 少数なら今まで通り中身が見えたほうが便利なので、閾値以下は自動展開のまま。
 const AUTO_EXPAND_MAX = 6;
 
-// "50" "ba-50" "#50" のような数字入力を判定する。マッチすれば番号部分(文字列)を返す(なければnull)。
 function parseSeqInput(q) {
   const m = q.trim().match(/^(?:ba-|#)?(\d+)$/i);
   return m ? m[1] : null;
 }
 
-// 指定seqのスレッドへジャンプする。絞り込みで隠れていても辿り着けるよう、
-// void/closed/分類/検索をすべて解除してから開いてスクロールする(ba-162の関連チップと同じ動き)。
 function jumpToSeq(seq) {
   showVoided = true;
   showClosed = true;
@@ -280,8 +261,6 @@ function jumpToSeq(seq) {
   }
 }
 
-// タグのみで絞り込む(タイトル・本文は見ない)。分類変更のnote(ba-130)で乗ったタグも拾うため、
-// rootだけでなく全エントリのtagsを見る。大文字小文字は無視、部分一致。
 function threadMatchesTag(thread, q) {
   const needle = q.trim().toLowerCase();
   if (!needle) return true;
@@ -295,7 +274,7 @@ function render() {
   const closedCount = cachedThreads.filter((t) => t.status !== "open").length;
   const searching = searchQuery.trim() !== "";
   let visible = showVoided ? cachedThreads : cachedThreads.filter((t) => !t.hiddenVoid);
-  // タグ抽出中はclosedも対象にする(過去の案件をタグで辿れるように)。
+
   if (!showClosed && !searching) visible = visible.filter((t) => t.status === "open");
   if (filterCls !== "all") visible = visible.filter((t) => t.cls === filterCls);
   if (searching) visible = visible.filter((t) => threadMatchesTag(t, searchQuery));
@@ -310,20 +289,18 @@ function render() {
   const closedEl = document.getElementById("btnToggleClosed");
   closedEl.textContent = showClosed ? `closedを隠す(${closedCount})` : `closedも表示(${closedCount})`;
 
-  // ③タグ抽出中(②)だけリセットボタンを出す。
   const resetEl = document.getElementById("btnSearchReset");
   if (resetEl) resetEl.style.display = searching ? "" : "none";
 
   const emptyMsg = searching
     ? `<p class="empty">タグ「${esc(searchQuery.trim())}」に一致するスレッドはありません</p>`
     : `<p class="empty">表示できるスレッドがありません(分類フィルタと「closedも表示」を確認)</p>`;
-  // 表示件数がAUTO_EXPAND_MAXを超えたら、openスレッドも既定でたたんで一覧を見渡しやすくする。
+
   const autoExpand = visible.length <= AUTO_EXPAND_MAX;
   listEl.innerHTML = visible.map((t) => threadCardHtml(t, cachedThreads.seqTitle, autoExpand)).join("") || emptyMsg;
   visible.forEach((t) => attachThreadHandlers(listEl, t));
 }
 
-// ba-33: 分類フィルタのチップ(単一選択+件数)。分類なしスレッドは「すべて」でのみ表示される。
 function renderClsFilter() {
   const el = document.getElementById("clsFilter");
   if (!el) return;
@@ -336,8 +313,8 @@ function renderClsFilter() {
 async function load() {
   const listEl = document.getElementById("threadList");
   try {
-    const res = await fetch(BA_API, { cache: "no-store" }); // GET認証は2026-07-15に廃止済み(ba-35)。無意味だった旧ヘッダーを削除
-    // 失敗ステータスを黙って空一覧にしない(2026-07-16の不具合でエラーが不可視だった教訓)
+    const res = await fetch(BA_API, { cache: "no-store" });
+
     if (!res.ok) throw new Error(`status=${res.status}`);
     const items = await res.json();
     cachedThreads = groupThreads(items);
@@ -347,7 +324,6 @@ async function load() {
   }
 }
 
-// issue #8対応(案B)の踏襲: auth.jsの実行順は変えず、起動時にwindow.__loginStateを直接チェックする。
 function onLoginSuccess() {
   document.getElementById("btnToggleVoid").addEventListener("click", () => {
     showVoided = !showVoided;
@@ -366,7 +342,7 @@ function onLoginSuccess() {
   const searchEl = document.getElementById("baSearch");
   const searchResetEl = document.getElementById("btnSearchReset");
   if (searchEl) {
-    // ②数字以外はタグ絞り込みを都度適用。数字入力中(ジャンプ待ち)はタグ絞り込みをかけない。
+
     searchEl.addEventListener("input", (ev) => {
       const val = ev.target.value;
       if (parseSeqInput(val) !== null) {
@@ -376,7 +352,7 @@ function onLoginSuccess() {
       searchQuery = val;
       render();
     });
-    // ①番号+Enterでジャンプ。
+
     searchEl.addEventListener("keydown", (ev) => {
       if (ev.key !== "Enter") return;
       const seq = parseSeqInput(ev.target.value);
@@ -386,7 +362,7 @@ function onLoginSuccess() {
       }
     });
   }
-  // ③タグ絞り込み(②)のリセットボタン。
+
   if (searchResetEl) {
     searchResetEl.addEventListener("click", () => {
       searchQuery = "";
@@ -394,7 +370,7 @@ function onLoginSuccess() {
       render();
     });
   }
-  // ba-162: 関連チップのジャンプも同じ経路(jumpToSeq)に統一。
+
   document.getElementById("threadList").addEventListener("click", (ev) => {
     const btn = ev.target.closest(".related-chip");
     if (!btn) return;

@@ -1,15 +1,12 @@
-// app.js — a2学習用サンドボックス版(すま, 2026-08-30)
-// 変更点: Scores APIへの通信(GET一覧/GET今日/PUT保存)をすべて localStorage に付け替えた。
-//   - ネットワークにも本番ba backendにも一切送らない。データはこのブラウザの中だけ。
-//   - ログイン不要にした(未ログインでも入力・保存・グラフが動く)。
-//   本番挙動を学びたくなったら、この app_local 版ではなく a1 の src/m1/app.js を参照すること。
+// [a2学習用] スコア保存はlocalStorageのみ。本番baにもネットにも一切送らない。
+
+
 import "../common/config.js";
 import { todayStr } from "../common/utils.js";
 
-const LS_KEY = "a2_m1_scores"; // { "YYYY-MM-DD": { score:Number, note:String } }
+const LS_KEY = "a2_m1_scores";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// ---- localStorage 層(本番の SCORES_API の代わり) ----
 function lsGetAll() {
   try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
   catch (e) { return {}; }
@@ -26,7 +23,7 @@ function lsPutDay(date, entry) {
   all[date] = entry;
   lsSetAll(all);
 }
-// 初回だけ、学習用のサンプルを数点入れておく(空だとグラフが出ないため)。
+
 function seedIfEmpty() {
   if (Object.keys(lsGetAll()).length > 0) return;
   const seed = {
@@ -170,7 +167,7 @@ function initScoreInput() {
   });
 
   function loadTodayScore() {
-    const data = lsGetDay(today); // localStorage版
+    const data = lsGetDay(today);
     if (data) {
       setScore(data.score);
       elNoteInput.value = data.note || "";
@@ -182,7 +179,7 @@ function initScoreInput() {
   }
 
   elBtnSaveScore.addEventListener("click", () => {
-    // localStorage版: ログイン不要。このブラウザ内に保存するだけ。
+
     const score = Number(elSlider.value);
     const note = elNoteInput.value.trim();
     lsPutDay(today, { score, note });
@@ -199,7 +196,7 @@ function load() {
   const chartSection = document.getElementById("scoreChartSection");
   chartSection.style.display = "none";
 
-  const scoreMap = lsGetAll(); // localStorage版(全件)
+  const scoreMap = lsGetAll();
   const chartRows = Object.entries(scoreMap)
     .filter(([date, v]) => DATE_RE.test(date) && v && typeof v.score === "number")
     .map(([date, v]) => ({ date, score: v.score, note: v.note || "" }))
@@ -212,7 +209,6 @@ function load() {
   }
 }
 
-// 起動: 学習用にログインを介さず、自分でゲートを開けて即表示する。
 function bootSandbox() {
   const gate = document.getElementById("login-gate");
   const content = document.getElementById("content");

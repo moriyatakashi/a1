@@ -1,14 +1,3 @@
-/* common/base.css — root/n1/n2で完全一致していた基本スタイルの切り出し(ba-9, 2026-07-14)
-   対象は「本当にbyte単位で重複していた」部分のみ:
-     - bodyの基本レイアウト・配色(ba-13で決着した基準色 #14170f を反映)
-     - .section / .section-title (n1/n2で完全一致していたカードパターン)
-   .emptyはpaddingが数値違いだったため、あえて対象外・各ページ側に残している。
-   ページ固有のスタイルは引き続き各index.html側のインラインstyleに残す方針。
-   k1(NESエミュレータ)は見た目の系統が異なるため対象外(--bgのみ自前でこの値に合わせている)。
-
-   ba-8(2026-07-20): ライト/ダーク両対応のためCSS変数化。既定値(ダーク)は従来と同じ。
-   root/n1/n2の各インラインstyleもこの変数を参照する(--accentはn1/n2共通のボタン色用)。 */
-
 :root {
   --paper: #181022;
   --ink: #eeeeee;
@@ -37,10 +26,6 @@ body {
 .section { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
 .section-title { font-size: 0.75rem; font-weight: 700; color: var(--ink-soft); margin-bottom: 10px; }
 
-/* ba-8: common/auth.jsのログイン/ログアウトピル(.aa-corner-link)は、色がダーク前提の
-   固定インラインstyleのまま(rgba(0,0,0,0.35)+#888)。ba/bb/k2/be等の常時ダークな
-   ページではそのままで問題ないためインラインstyle自体は変更せず、ライトモード時だけ
-   ここで上書きしてコントラストを保つ(ledger.css側は今回未対応のため対象外)。 */
 @media (prefers-color-scheme: light) {
   .aa-corner-link {
     background: rgba(0, 0, 0, 0.12) !important;

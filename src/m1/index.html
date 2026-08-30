@@ -7,7 +7,7 @@
 <title>m1 / 記録一覧</title>
 <link rel="stylesheet" href="../common/base.css?v=a2plum">
 <style>
-  /* ba-8(2026-07-20): このページ固有の色をローカル変数化(共有色はbase.cssのvar()を参照) */
+
   :root {
     --row-text: #dddddd;
   }
@@ -27,8 +27,6 @@
   .btn-save-score { width: 100%; padding: 10px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 0.95rem; }
   .score-saved { font-size: 0.78rem; color: var(--ink-soft); margin-top: 6px; text-align: center; min-height: 1.2em; }
 
-  /* be(スコア推移グラフ)統合分。summary-bar/statはsrc/common/ledger.cssから移植、
-     --paper-bandはbase.cssに無いためn1既存の--input-bgで代用する。 */
   .chart-wrap { margin: 20px 0 4px; }
   #scoreSvg { width: 100%; height: auto; display: block; overflow: visible; }
   .gridline { stroke: var(--line); stroke-width: 1; }
@@ -62,7 +60,6 @@
   <h1>路歴（m1） / 記録一覧</h1>
   <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: 2026-07-16 07:48 JST</p>
 
-<!-- OMIKUJI:START (ba-190 真っ赤なウソ / m1を開くと勝手に回る運勢。表示だけ・スコアには触らない) -->
   <style>
     #omikuji{position:relative;border:1px solid var(--line,#2c3237);border-radius:14px;background-image:linear-gradient(rgba(230,80,80,0.06),rgba(230,80,80,0.06));padding:16px;margin:14px 0;overflow:hidden}
     #omikuji .omk-badge{position:absolute;top:10px;right:12px;font-size:0.6rem;letter-spacing:.04em;padding:1px 8px;border-radius:999px;background:rgba(230,80,80,0.16);color:#e65050}
@@ -81,9 +78,7 @@
     <div class="omk-kekka" id="omkKekka"></div>
     <div class="omk-again"><button id="omkAgain" type="button">もう一回まわす</button></div>
   </div>
-<!-- OMIKUJI:END -->
 
-<!-- LOGIN_GATE:START -->
   <div id="login-gate">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <div id="g_id_onload"
@@ -94,7 +89,6 @@
     <div class="g_id_signin"></div>
     <p id="status">未ログイン(ログインすると記録一覧が表示されます)</p>
   </div>
-<!-- LOGIN_GATE:END -->
 
   <div id="content" style="display:none;">
     <div class="section">
@@ -130,7 +124,7 @@
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/m1", "lastUpdated", "最終更新");
   </script>
-<!-- OMIKUJI SCRIPT (表示だけ・スコアには一切触らない) -->
+
   <script>
   (function(){
     var FACES=[

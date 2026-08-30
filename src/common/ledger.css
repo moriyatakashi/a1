@@ -1,7 +1,3 @@
-/* common/ledger.css — n4で作った「追記オンリー帳票」デザインの共通化(2026-07-13)
-   n4/baなど、同じ形の台帳ページ(赤黒帳票方式・スレッド一覧)で共有する。
-   ページ固有の見出し・文言はindex.html側のインラインstyleかclassで上書きしてよい。 */
-
 :root {
   --paper: #181022;
   --paper-band: #221732;
@@ -46,9 +42,6 @@ h1 { font-size: 1.3rem; margin: 6px 0 2px; }
 .stat-num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 1.2rem; font-weight: 700; }
 .stat-label { font-size: 0.62rem; color: var(--ink-soft); margin-top: 2px; }
 
-/* 新規スレッド投稿フォーム(new-entry-card一式・cls-radio)は2026-08-16にm3(src/m3/)へ
-   分離し、baからは使われなくなった。field-inputはbaSearch(検索欄)がまだ使うため残す。
-   lane-form-labelは別物(各スレッドの「人間レーンから追記」欄のラベル)なので残す。 */
 .lane-form-label {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.65rem;
   color: var(--ink-soft); display: block; margin: 8px 0 4px;
@@ -64,7 +57,7 @@ h1 { font-size: 1.3rem; margin: 6px 0 2px; }
 .thread-card { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
 .thread-card > summary { list-style: none; cursor: pointer; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
 .thread-card > summary::-webkit-details-marker { display: none; }
-/* ba-99: バッジ列とタイトルが1行目を取り合わないよう、タイトルは常に次行から全幅で始める */
+
 .thread-top-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .chevron { font-family: ui-monospace, monospace; font-size: 0.72rem; color: var(--ink-soft); transition: transform 0.15s; flex-shrink: 0; }
 details[open] .chevron { transform: rotate(90deg); }
@@ -88,7 +81,7 @@ details[open] .chevron { transform: rotate(90deg); }
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.66rem;
   color: var(--accent); border: 1px dashed var(--accent); border-radius: 4px; padding: 2px 7px;
 }
-/* ba-162: 関連番号(link)チップ。表示層はthread-logic.jsのrelatedSeqs/seqTitleを使う(2026-08-02) */
+
 .related-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 20px; margin-top: 2px; }
 .related-label { font-size: 0.66rem; color: var(--ink-soft); }
 .related-chip {
@@ -104,7 +97,6 @@ details[open] .chevron { transform: rotate(90deg); }
 .perspective-chip--active { color: var(--accent); border: 1px solid var(--accent); }
 .perspective-chip--void { color: var(--red); border: 1px solid var(--red); }
 
-/* react: 参考程度の反応(判断根拠にしない)。3レーンそれぞれの有無だけを淡く表示する。 */
 .react-row { display: flex; gap: 6px; align-items: center; padding-left: 20px; margin-top: 2px; }
 .react-label { font-size: 0.62rem; color: var(--ink-soft); cursor: help; }
 .react-chip {
@@ -125,14 +117,13 @@ details[open] .chevron { transform: rotate(90deg); }
 .entry--void-true .entry-rail { background: var(--red); }
 .entry--void-false .entry-rail { background: var(--accent); }
 .entry--void-true .entry-type, .entry--void-true .entry-body { color: var(--red); }
-/* ba-1: verified_on_device(実機確認)。他の種別と見分けやすいよう closed と同系色 + 太字にする */
+
 .entry--verified .entry-rail { background: var(--closed); }
 .entry--verified .entry-type { color: var(--closed); font-weight: 700; }
 .entry-head { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.64rem; color: var(--ink-soft); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .entry-type { font-weight: 700; }
 .entry-body { font-size: 0.83rem; margin-top: 3px; line-height: 1.5; word-break: break-all; }
 
-/* ba-77: 承認キュー(claudeがtakashi代筆で提案し、takashi本人の実ログインだけが承認できる) */
 .approval-badge { font-size: 0.62rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
 .approval-badge--pending { color: var(--open); border: 1px solid var(--open); }
 .approval-badge--approved { color: var(--closed); border: 1px solid var(--closed); }
@@ -157,7 +148,6 @@ details[open] .chevron { transform: rotate(90deg); }
 }
 .lane-form-hint { font-size: 0.62rem; color: var(--ink-soft); margin-top: 6px; }
 
-/* ba: 検索欄(数字+Enterでジャンプ/それ以外はタグ抽出)とそのリセットボタン */
 .ba-search { display: flex; gap: 8px; }
 .ba-search .field-input { flex: 1; }
 .btn-search-reset {
@@ -165,7 +155,6 @@ details[open] .chevron { transform: rotate(90deg); }
   background: transparent; color: var(--ink-soft); cursor: pointer; white-space: nowrap;
 }
 
-/* ba: 両視点そろって無効のスレッドは既定で隠し、トグルONのときだけ薄色+取り消し線で表示する */
 .list-controls { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 .btn-toggle-voided {
   font-size: 0.72rem; padding: 5px 12px; border: 1px solid var(--ink-soft); border-radius: 5px;
@@ -173,19 +162,15 @@ details[open] .chevron { transform: rotate(90deg); }
 }
 .thread-card--void { opacity: 0.55; }
 .thread-card--void .thread-title { text-decoration: line-through; }
-/* ba: correctionによるタイトル訂正(有事用)。見出しは最新titleで上書き表示し、チップで訂正済みと分かるようにする */
+
 .title-corrected-chip {
   font-size: 0.66rem; color: var(--ink-soft); border: 1px dashed var(--ink-soft);
   border-radius: 10px; padding: 2px 8px; white-space: nowrap;
 }
-/* ba-175: gist(確定仕様スレッドの「今の結論」一言)。抜粋(entry-body)より濃く強調する */
+
 .thread-gist { font-size: 0.85rem; font-weight: 600; color: var(--ink); margin-top: 4px; }
 .entry-title { font-size: 0.85rem; font-weight: 700; margin-top: 3px; line-height: 1.5; word-break: break-all; }
 
-/* ba: 分類バッジ・分類フィルタ(ba-32の分類、ba-33で表示対応。2026-07-14。旧仕様は2026-07-26追加、
-   記録はba-181・第2版ドラフトで2026-07-30追加)
-   朱=案件(手を動かす)、金茶=確定仕様(恒久)、若葉=気づき、鈍青=保留論点、鈍色=旧仕様(色褪せた金茶)、
-   鈍青緑=記録(確定仕様・旧仕様と同じ参照側だが、決定でも退役でもない「ただの情報」を示す寒色) */
 :root {
   --cls-anken: #c2452f;
   --cls-shiyou: #b98a2e;
