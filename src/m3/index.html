@@ -51,13 +51,8 @@
     <div class="g_id_signin"></div>
     <p id="status">未ログイン(ログインすると記入フォームが表示されます)</p>
   </div>
-
   <div id="content" style="display:none;">
     <div class="new-entry-card">
-      <div class="new-entry-title">新規スレッドを追加</div>
-      <div class="new-entry-sub">type=new / by=takashi に固定。id・ts は自動採番。</div>
-
-      <label class="lane-form-label">分類(いずれか1つ)</label>
       <div class="cls-radio">
         <label><input type="radio" name="newCls" value="案件"><span>案件</span></label>
         <label><input type="radio" name="newCls" value="確定仕様"><span>確定仕様</span></label>
@@ -65,24 +60,16 @@
         <label><input type="radio" name="newCls" value="保留論点"><span>保留論点</span></label>
         <label><input type="radio" name="newCls" value="記録"><span>記録</span></label>
       </div>
-
       <label class="lane-form-label">タイトル</label>
       <input class="field-input" id="newTitle" type="text" placeholder="例: baページのレイアウト崩れ">
-
       <label class="lane-form-label">タグ(自由・複数可)</label>
       <input class="field-input" id="newTags" type="text" placeholder="#設計 #ba #スマホ">
-
       <label class="lane-form-label">本文(任意)</label>
       <textarea class="field-textarea" id="newBody" placeholder="経緯やメモ、気づいた状況など"></textarea>
-
-      <div class="new-entry-divider">または、スマホClaudeが作ったJSONを貼り付け</div>
-      <textarea class="field-textarea json-paste" id="newJson" placeholder='{"title": "...", "tags": ["...", "..."], "body": "..."}'></textarea>
-
       <button class="new-entry-submit" type="button" id="btnAddThread">追加する</button>
       <div class="post-result" id="postResult"></div>
     </div>
   </div>
-
   <script>window.AA_AUTH_EVENT = "m3-login-success";</script>
   <script src="../common/auth.js"></script>
   <script type="module" src="app.js"></script>
