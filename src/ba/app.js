@@ -1,5 +1,3 @@
-
-
 import "../common/config.js";
 import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../common/utils.js";
 import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
@@ -7,23 +5,28 @@ import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
 const API_BASE = window.AA_API_BASE;
 const BA_API = `${API_BASE}/ba`;
 
-const HUMAN_TYPES = ["note", "void", "status"];
-
 function renderSummary(threads) {
   const openCount = threads.filter((t) => t.status === "open").length;
-  const closedCount = threads.length - openCount;
   const allEntries = threads.flatMap((t) => t.entries);
   const latest = allEntries.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
 
   document.getElementById("statTotal").textContent = threads.length;
   document.getElementById("statOpen").textContent = openCount;
-  document.getElementById("statClosed").textContent = closedCount;
+  document.getElementById("statClosed").textContent = threads.length - openCount;
   document.getElementById("statLatestBy").textContent = latest ? latest.by : "—";
 }
 
+const ENTRY_TYPE_CLASS = {
+  correction: " entry--correction",
+  priority: " entry--priority",
+  status: " entry--status",
+  new: " entry--new",
+  verified_on_device: " entry--verified",
+};
+
 function entryRowHtml(e) {
   const voidClass = e.type === "void" ? (e.value ? " entry--void-true" : " entry--void-false") : "";
-  const typeClass = e.type === "correction" ? " entry--correction" : e.type === "priority" ? " entry--priority" : e.type === "status" ? " entry--status" : e.type === "new" ? " entry--new" : e.type === "verified_on_device" ? " entry--verified" : "";
+  const typeClass = ENTRY_TYPE_CLASS[e.type] || "";
 
   const titleLine = e.title && (e.type === "new" || e.type === "correction")
     ? `<div class="entry-title">${e.type === "correction" ? "タイトル → " : ""}${esc(e.title)}</div>` : "";
@@ -54,8 +57,7 @@ function reactRowHtml(reactByLane) {
 }
 
 function perspectiveRowHtml(voidView) {
-  const c = voidView.claude;
-  const t = voidView.takashi;
+  const { claude: c, takashi: t } = voidView;
   if (c === undefined && t === undefined) return "";
   const chip = (val, label) =>
     val === undefined
@@ -150,16 +152,28 @@ async function postEntry(body) {
   return res.json();
 }
 
+// 追記系の共通ラッパ: 失敗時は「<failMsg>: <理由>」で alert、成功時は再読込
+async function runAction(failMsg, body) {
+  try {
+    await postEntry(body);
+    load();
+  } catch (e) {
+    alert(failMsg + ": " + e.message);
+  }
+}
+
 function attachThreadHandlers(container, thread) {
   const card = container.querySelector(`[data-thread-id="${thread.threadId}"]`);
   if (!card) return;
+  const id = thread.threadId;
+  const $ = (sel) => card.querySelector(sel);
 
-  const noteInput = card.querySelector(".note-input");
-  card.querySelector(".btn-add-note").addEventListener("click", async () => {
+  const noteInput = $(".note-input");
+  $(".btn-add-note").addEventListener("click", async () => {
     const body = noteInput.value.trim();
     if (!body) return;
     try {
-      await postEntry({ ref: thread.threadId, type: "note", body });
+      await postEntry({ ref: id, type: "note", body });
       noteInput.value = "";
       load();
     } catch (e) {
@@ -167,75 +181,37 @@ function attachThreadHandlers(container, thread) {
     }
   });
 
-  card.querySelector(".btn-toggle-void").addEventListener("click", async () => {
-    try {
-      await postEntry({ ref: thread.threadId, type: "void", value: !thread.voidView.takashi });
-      load();
-    } catch (e) {
-      alert("無効フラグの切り替えに失敗しました: " + e.message);
-    }
+  $(".btn-toggle-void").addEventListener("click", () =>
+    runAction("無効フラグの切り替えに失敗しました", { ref: id, type: "void", value: !thread.voidView.takashi }));
+
+  $(".btn-toggle-status").addEventListener("click", () =>
+    runAction("ステータス変更に失敗しました", { ref: id, type: "status", status: thread.status === "open" ? "closed" : "open" }));
+
+  $(".btn-toggle-react").addEventListener("click", () =>
+    runAction("反応の切り替えに失敗しました", { ref: id, type: "react", value: !thread.reactByLane.takashi }));
+
+  const reclassSelect = $(".reclass-select");
+  $(".btn-reclassify").addEventListener("click", () => {
+    if (reclassSelect.value) runAction("分類の変更に失敗しました", { ref: id, type: "note", tags: [reclassSelect.value] });
   });
 
-  card.querySelector(".btn-toggle-status").addEventListener("click", async () => {
-    try {
-      await postEntry({ ref: thread.threadId, type: "status", status: thread.status === "open" ? "closed" : "open" });
-      load();
-    } catch (e) {
-      alert("ステータス変更に失敗しました: " + e.message);
-    }
-  });
-
-  card.querySelector(".btn-toggle-react").addEventListener("click", async () => {
-    try {
-      await postEntry({ ref: thread.threadId, type: "react", value: !thread.reactByLane.takashi });
-      load();
-    } catch (e) {
-      alert("反応の切り替えに失敗しました: " + e.message);
-    }
-  });
-
-  const reclassSelect = card.querySelector(".reclass-select");
-  card.querySelector(".btn-reclassify").addEventListener("click", async () => {
-    const value = reclassSelect.value;
-    if (!value) return;
-    try {
-      await postEntry({ ref: thread.threadId, type: "note", tags: [value] });
-      load();
-    } catch (e) {
-      alert("分類の変更に失敗しました: " + e.message);
-    }
-  });
-
-  const titleFixInput = card.querySelector(".title-fix-input");
-  card.querySelector(".btn-fix-title").addEventListener("click", async () => {
+  const titleFixInput = $(".title-fix-input");
+  $(".btn-fix-title").addEventListener("click", () => {
     const newTitle = titleFixInput.value.trim();
-    if (!newTitle || newTitle === (thread.displayTitle || "")) return;
-    try {
-      await postEntry({ ref: thread.threadId, type: "correction", title: newTitle });
-      load();
-    } catch (e) {
-      alert("タイトルの訂正に失敗しました: " + e.message);
+    if (newTitle && newTitle !== (thread.displayTitle || "")) {
+      runAction("タイトルの訂正に失敗しました", { ref: id, type: "correction", title: newTitle });
     }
   });
 
   card.querySelectorAll(".btn-approve").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      try {
-        await postEntry({ ref: thread.threadId, type: "approval", approvesId: btn.dataset.approveId });
-        load();
-      } catch (e) {
-        alert("承認に失敗しました: " + e.message);
-      }
-    });
+    btn.addEventListener("click", () =>
+      runAction("承認に失敗しました", { ref: id, type: "approval", approvesId: btn.dataset.approveId }));
   });
 }
 
 let showVoided = false;
-
 let showClosed = false;
-
 let filterCls = "all";
-
 let searchQuery = "";
 let cachedThreads = [];
 
@@ -314,7 +290,6 @@ async function load() {
   const listEl = document.getElementById("threadList");
   try {
     const res = await fetch(BA_API, { cache: "no-store" });
-
     if (!res.ok) throw new Error(`status=${res.status}`);
     const items = await res.json();
     cachedThreads = groupThreads(items);
@@ -339,10 +314,10 @@ function onLoginSuccess() {
     filterCls = btn.dataset.cls;
     render();
   });
+
   const searchEl = document.getElementById("baSearch");
   const searchResetEl = document.getElementById("btnSearchReset");
   if (searchEl) {
-
     searchEl.addEventListener("input", (ev) => {
       const val = ev.target.value;
       if (parseSeqInput(val) !== null) {
