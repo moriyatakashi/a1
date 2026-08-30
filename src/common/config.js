@@ -1,7 +1,7 @@
-// [a2学習用] AA_API_BASEは .invalid = 本番baに繋がない。本番化する時だけ該当行を戻す。
-
-
-window.AA_API_BASE = "https://a2-sandbox.invalid/api";
+// [a2] 本番baに接続(Takashi指示、2026-08-30 / すまの0b53e70「本番非接続の枠」を意図的に解除)。
+// ba UIの読み書きは本番の共有台帳に直結する。サンドボックスでの操作もそのまま本番反映される点に注意。
+// 再び切り離す時は AA_API_BASE を "https://a2-sandbox.invalid/api" に戻す。
+window.AA_API_BASE = "https://ab-board-api.azurewebsites.net/api";
 window.AA_GOOGLE_CLIENT_ID = "550466095352-50h92anfullp137l4gq4gdi7ogjk0auc.apps.googleusercontent.com";
 
 (function(){
