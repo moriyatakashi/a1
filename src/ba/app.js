@@ -3,18 +3,7 @@ import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCre
 import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
 
 const BA_API = `${window.AA_API_BASE}/ba`;
-
-function renderSummary(threads) {
-  const openCount = threads.filter((t) => t.status === "open").length;
-  const allEntries = threads.flatMap((t) => t.entries);
-  const latest = allEntries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-
-  document.getElementById("statTotal").textContent = threads.length;
-  document.getElementById("statOpen").textContent = openCount;
-  document.getElementById("statClosed").textContent = threads.length - openCount;
-  document.getElementById("statLatestBy").textContent = latest ? latest.by : "—";
-}
-
+const AUTO_EXPAND_MAX = 6;
 const ENTRY_TYPE_CLASS = {
   correction: " entry--correction",
   priority: " entry--priority",
@@ -22,14 +11,27 @@ const ENTRY_TYPE_CLASS = {
   new: " entry--new",
   verified_on_device: " entry--verified",
 };
+const REACT_LANES = ["claude-pc", "claude-mobile", "takashi"];
+
+let showVoided = false;
+let showClosed = false;
+let filterCls = "all";
+let cachedThreads = [];
+
+function renderSummary(threads) {
+  const openCount = threads.filter((t) => t.status === "open").length;
+  const latest = threads.flatMap((t) => t.entries).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  document.getElementById("statTotal").textContent = threads.length;
+  document.getElementById("statOpen").textContent = openCount;
+  document.getElementById("statClosed").textContent = threads.length - openCount;
+  document.getElementById("statLatestBy").textContent = latest ? latest.by : "—";
+}
 
 function entryRowHtml(e) {
   const voidClass = e.type === "void" ? (e.value ? " entry--void-true" : " entry--void-false") : "";
   const typeClass = ENTRY_TYPE_CLASS[e.type] || "";
-
   const titleLine = e.title && (e.type === "new" || e.type === "correction")
     ? `<div class="entry-title">${e.type === "correction" ? "タイトル → " : ""}${esc(e.title)}</div>` : "";
-
   const approvalHtml = e.pendingApproval
     ? `<span class="approval-badge approval-badge--pending">takashi代筆・承認待ち</span><button type="button" class="btn-approve" data-approve-id="${esc(e.id)}">承認</button>`
     : e.approved
@@ -46,7 +48,6 @@ function entryRowHtml(e) {
     </div>`;
 }
 
-const REACT_LANES = ["claude-pc", "claude-mobile", "takashi"];
 function reactRowHtml(reactByLane) {
   const chips = REACT_LANES.map((lane) => {
     const val = reactByLane[lane];
@@ -67,12 +68,10 @@ function perspectiveRowHtml(voidView) {
 
 function relatedRowHtml(relatedSeqs, seqTitle) {
   if (!relatedSeqs || !relatedSeqs.length) return "";
-  const chips = relatedSeqs
-    .map((seq) => {
-      const preview = (seqTitle && seqTitle[seq]) || "";
-      return `<button type="button" class="related-chip" data-jump-seq="${seq}">ba-${seq}${preview ? " " + esc(preview) : ""}</button>`;
-    })
-    .join("");
+  const chips = relatedSeqs.map((seq) => {
+    const preview = (seqTitle && seqTitle[seq]) || "";
+    return `<button type="button" class="related-chip" data-jump-seq="${seq}">ba-${seq}${preview ? " " + esc(preview) : ""}</button>`;
+  }).join("");
   return `<div class="related-row"><span class="related-label">関連:</span>${chips}</div>`;
 }
 
@@ -80,19 +79,15 @@ function threadCardHtml(thread, seqTitle, autoExpand) {
   const { threadId, root, children, status } = thread;
   const title = thread.displayTitle || root.body || "(無題)";
   const tags = Array.isArray(root.tags) ? root.tags : [];
-
   const tagsHtml = filterFreeTags(tags).map((t) => `<span class="tag">#${esc(t)}</span>`).join("");
   const ghHtml = root.github_issue ? `<span class="gh-chip">gh #${esc(root.github_issue)}</span>` : "";
-
   const clsHtml = thread.cls
     ? `<span class="cls-badge cls-badge--${CLS_KEY[thread.cls]}">${thread.cls}${thread.clsVia === "note" ? '<span class="cls-via">note</span>' : ""}</span>`
     : "";
   const isOpen = status === "open";
-
   const expand = isOpen && autoExpand;
   const takashiVoid = thread.voidView.takashi;
   const takashiReact = thread.reactByLane.takashi;
-
   return `
     <details class="thread-card${thread.hiddenVoid ? " thread-card--void" : ""}" data-thread-id="${threadId}" data-seq="${root.seq || ""}" ${expand ? "open" : ""}>
       <summary>
@@ -151,7 +146,6 @@ async function postEntry(body) {
   return res.json();
 }
 
-// 追記系の共通ラッパ: 失敗時は「<failMsg>: <理由>」で alert、成功時は再読込
 async function runAction(failMsg, body) {
   try {
     await postEntry(body);
@@ -166,7 +160,6 @@ function attachThreadHandlers(container, thread) {
   if (!card) return;
   const id = thread.threadId;
   const $ = (sel) => card.querySelector(sel);
-
   const noteInput = $(".note-input");
   $(".btn-add-note").addEventListener("click", async () => {
     const body = noteInput.value.trim();
@@ -179,21 +172,16 @@ function attachThreadHandlers(container, thread) {
       alert("追記に失敗しました: " + e.message);
     }
   });
-
   $(".btn-toggle-void").addEventListener("click", () =>
     runAction("無効フラグの切り替えに失敗しました", { ref: id, type: "void", value: !thread.voidView.takashi }));
-
   $(".btn-toggle-status").addEventListener("click", () =>
     runAction("ステータス変更に失敗しました", { ref: id, type: "status", status: thread.status === "open" ? "closed" : "open" }));
-
   $(".btn-toggle-react").addEventListener("click", () =>
     runAction("反応の切り替えに失敗しました", { ref: id, type: "react", value: !thread.reactByLane.takashi }));
-
   const reclassSelect = $(".reclass-select");
   $(".btn-reclassify").addEventListener("click", () => {
     if (reclassSelect.value) runAction("分類の変更に失敗しました", { ref: id, type: "note", tags: [reclassSelect.value] });
   });
-
   const titleFixInput = $(".title-fix-input");
   $(".btn-fix-title").addEventListener("click", () => {
     const newTitle = titleFixInput.value.trim();
@@ -201,21 +189,12 @@ function attachThreadHandlers(container, thread) {
       runAction("タイトルの訂正に失敗しました", { ref: id, type: "correction", title: newTitle });
     }
   });
-
   card.querySelectorAll(".btn-approve").forEach((btn) => {
     btn.addEventListener("click", () =>
       runAction("承認に失敗しました", { ref: id, type: "approval", approvesId: btn.dataset.approveId }));
   });
 }
 
-let showVoided = false;
-let showClosed = false;
-let filterCls = "all";
-let cachedThreads = [];
-
-const AUTO_EXPAND_MAX = 6;
-
-// 「関連: ba-NN」チップから対象スレッドへ飛ぶ。確実に見えるようフィルタを全解除してからスクロール。
 function jumpToSeq(seq) {
   showVoided = true;
   showClosed = true;
@@ -233,20 +212,15 @@ function render() {
   const hiddenCount = cachedThreads.filter((t) => t.hiddenVoid).length;
   const closedCount = cachedThreads.filter((t) => t.status !== "open").length;
   let visible = showVoided ? cachedThreads : cachedThreads.filter((t) => !t.hiddenVoid);
-
   if (!showClosed) visible = visible.filter((t) => t.status === "open");
   if (filterCls !== "all") visible = visible.filter((t) => t.cls === filterCls);
-
   renderSummary(cachedThreads);
   renderClsFilter();
-
   const toggleEl = document.getElementById("btnToggleVoid");
   toggleEl.style.display = hiddenCount ? "" : "none";
   toggleEl.textContent = showVoided ? `無効スレッドを隠す(${hiddenCount})` : `無効スレッドも表示(${hiddenCount})`;
-
   const closedEl = document.getElementById("btnToggleClosed");
   closedEl.textContent = showClosed ? `closedを隠す(${closedCount})` : `closedも表示(${closedCount})`;
-
   const emptyMsg = `<p class="empty">表示できるスレッドがありません(分類フィルタと「closedも表示」を確認)</p>`;
   const autoExpand = visible.length <= AUTO_EXPAND_MAX;
   listEl.innerHTML = visible.map((t) => threadCardHtml(t, cachedThreads.seqTitle, autoExpand)).join("") || emptyMsg;
@@ -286,14 +260,11 @@ function onLoginSuccess() {
   });
   document.getElementById("clsFilter").addEventListener("click", (ev) => {
     const btn = ev.target.closest(".cls-chip");
-    if (!btn) return;
-    filterCls = btn.dataset.cls;
-    render();
+    if (btn) { filterCls = btn.dataset.cls; render(); }
   });
   document.getElementById("threadList").addEventListener("click", (ev) => {
     const btn = ev.target.closest(".related-chip");
-    if (!btn) return;
-    jumpToSeq(btn.dataset.jumpSeq);
+    if (btn) jumpToSeq(btn.dataset.jumpSeq);
   });
   load();
 }
