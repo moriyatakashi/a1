@@ -4,22 +4,21 @@
 <script src="../common/config.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ba / n4後継ログ</title>
+<title>ba</title>
 <link rel="stylesheet" href="../common/ledger.css">
+<style>
+  #lastUpdated { font-size: .8rem; color: var(--ink-soft); }
+  .ba-search { margin: 12px 0; }
+  .post-link { font-size: .8rem; }
+</style>
 </head>
 <body>
   <p><a href="../../">← 戻る</a></p>
-  <div class="eyebrow">ロレキ内部メモ</div>
-  <h1>路歴（ba） / n4後継ログ</h1>
-  <p class="lede">n4の骨組み(追記オンリー・赤黒帳票)を引き継ぎつつ、Claude CodeレーンをPC/スマホで別鍵にした台帳。実機で確認できたことは verified on device として記録する(この項目はPCレーンのみ書込可)。</p>
-  <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: 2026-07-20 05:43 JST</p>
+  <h1>ba</h1>
 
   <div id="login-gate">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <div id="g_id_onload"
-      data-callback="handleCredentialResponse"
-      data-auto_prompt="false">
-    </div>
+    <div id="g_id_onload" data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
     <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
     <div class="g_id_signin"></div>
     <p id="status">未ログイン(ログインするとログが表示されます)</p>
@@ -38,9 +37,9 @@
       <div class="stat"><div class="stat-num" id="statLatestBy">—</div><div class="stat-label">直近の記入者</div></div>
     </div>
 
-    <p style="font-size:0.8rem;"><a href="https://moriyatakashi.github.io/a1/src/m3/">→ 新規スレッドの投稿はm3へ(a1)</a></p>
+    <p class="post-link"><a href="https://moriyatakashi.github.io/a1/src/m3/">→ 新規スレッドの投稿はm3へ(a1)</a></p>
 
-    <div class="ba-search" style="margin:12px 0;">
+    <div class="ba-search">
       <input class="field-input" id="baSearch" type="search" placeholder="番号(例: 50)+Enterでジャンプ / それ以外はタグで抽出">
       <button type="button" class="btn-search-reset" id="btnSearchReset" style="display:none;">リセット</button>
     </div>
