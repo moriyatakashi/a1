@@ -1,16 +1,45 @@
-// app.js — ab/src/main/m1(記録一覧)のロジックをaa向けに移植したもの。
-// 画面側ログインゲートを通過した後にのみデータを取得・表示する。GETもcredentialヘッダで認証する(ba-16)。
-// config.jsを自分でimportする(ba-9追補)。HTML側の<script>読込に依存しないため、
-// 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
+// app.js — a2学習用サンドボックス版(すま, 2026-08-30)
+// 変更点: Scores APIへの通信(GET一覧/GET今日/PUT保存)をすべて localStorage に付け替えた。
+//   - ネットワークにも本番ba backendにも一切送らない。データはこのブラウザの中だけ。
+//   - ログイン不要にした(未ログインでも入力・保存・グラフが動く)。
+//   本番挙動を学びたくなったら、この app_local 版ではなく a1 の src/m1/app.js を参照すること。
 import "../common/config.js";
-import { todayStr, withCredential } from "../common/utils.js";
-const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
-const SCORES_API = `${API_BASE}/scores`;
+import { todayStr } from "../common/utils.js";
 
+const LS_KEY = "a2_m1_scores"; // { "YYYY-MM-DD": { score:Number, note:String } }
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// be(スコア推移グラフ)統合分(2026-07-29): n1が既に持つscoreMapを描画するだけで、
-// 独自fetchは持たない。k2のページ構造・ログイン待ちパターンを踏襲していた元コードのまま移植。
+// ---- localStorage 層(本番の SCORES_API の代わり) ----
+function lsGetAll() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+function lsSetAll(obj) {
+  localStorage.setItem(LS_KEY, JSON.stringify(obj));
+}
+function lsGetDay(date) {
+  const all = lsGetAll();
+  return all[date] || null;
+}
+function lsPutDay(date, entry) {
+  const all = lsGetAll();
+  all[date] = entry;
+  lsSetAll(all);
+}
+// 初回だけ、学習用のサンプルを数点入れておく(空だとグラフが出ないため)。
+function seedIfEmpty() {
+  if (Object.keys(lsGetAll()).length > 0) return;
+  const seed = {
+    "2026-08-24": { score: 78, note: "サンプル" },
+    "2026-08-25": { score: 82, note: "サンプル" },
+    "2026-08-26": { score: 75, note: "サンプル" },
+    "2026-08-27": { score: 88, note: "サンプル" },
+    "2026-08-28": { score: 84, note: "サンプル" },
+    "2026-08-29": { score: 91, note: "サンプル" },
+  };
+  lsSetAll(seed);
+}
+
 const Y_MIN = 60;
 const Y_MAX = 100;
 const VB_W = 680, VB_H = 300;
@@ -23,7 +52,6 @@ function svgEl(tag, attrs) {
   for (const k in attrs) el.setAttribute(k, attrs[k]);
   return el;
 }
-
 function xFor(i, n) {
   return MARGIN.left + (n === 1 ? PLOT_W / 2 : (i / (n - 1)) * PLOT_W);
 }
@@ -120,7 +148,6 @@ function renderStats(rows) {
   document.getElementById("statMin").textContent = Math.min(...scores);
 }
 
-// スコア入力(ab/src/main/n1のスコア機能を移植)
 function initScoreInput() {
   const today = todayStr();
   const elScoreDate = document.getElementById("scoreDate");
@@ -142,91 +169,62 @@ function initScoreInput() {
     elScoreNum.textContent = elSlider.value;
   });
 
-  async function loadTodayScore() {
-    try {
-      const res = await fetch(`${SCORES_API}/${today}`, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } });
-      const data = res.ok ? await res.json() : null;
-      if (data) {
-        setScore(data.score);
-        elNoteInput.value = data.note || "";
-        elBtnSaveScore.textContent = "更新";
-      } else {
-        setScore(80);
-        elBtnSaveScore.textContent = "保存";
-      }
-    } catch (e) {
+  function loadTodayScore() {
+    const data = lsGetDay(today); // localStorage版
+    if (data) {
+      setScore(data.score);
+      elNoteInput.value = data.note || "";
+      elBtnSaveScore.textContent = "更新";
+    } else {
       setScore(80);
+      elBtnSaveScore.textContent = "保存";
     }
   }
 
-  elBtnSaveScore.addEventListener("click", async () => {
-    // ba-35残課題(2): 公開閲覧モードでは未ログインでも閲覧できるため、書き込み時に
-    // credentialの有無を確認し、無ければ通信(401)ではなくログインへ誘導する。
-    if (!window.__credential) {
-      elScoreSaved.textContent = "保存にはログインが必要です";
-      if (window.aaShowLoginGate) window.aaShowLoginGate();
-      return;
-    }
+  elBtnSaveScore.addEventListener("click", () => {
+    // localStorage版: ログイン不要。このブラウザ内に保存するだけ。
     const score = Number(elSlider.value);
     const note = elNoteInput.value.trim();
-    try {
-      const res = await fetch(`${SCORES_API}/${today}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(withCredential({ score, note })),
-      });
-      if (!res.ok) { elScoreSaved.textContent = "エラー: 保存に失敗しました"; return; }
-      elBtnSaveScore.textContent = "更新";
-      elScoreSaved.textContent = "✓ 保存しました";
-      setTimeout(() => elScoreSaved.textContent = "", 2000);
-      load();
-    } catch (e) {
-      elScoreSaved.textContent = "エラー: " + e.message;
-    }
+    lsPutDay(today, { score, note });
+    elBtnSaveScore.textContent = "更新";
+    elScoreSaved.textContent = "✓ 保存しました(このブラウザ内)";
+    setTimeout(() => elScoreSaved.textContent = "", 2000);
+    load();
   });
 
   loadTodayScore();
 }
 
-async function load() {
+function load() {
   const chartSection = document.getElementById("scoreChartSection");
   chartSection.style.display = "none";
 
-  try {
-    const res = await fetch(SCORES_API, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } });
-    const scoreRows = res.ok ? await res.json() : [];
+  const scoreMap = lsGetAll(); // localStorage版(全件)
+  const chartRows = Object.entries(scoreMap)
+    .filter(([date, v]) => DATE_RE.test(date) && v && typeof v.score === "number")
+    .map(([date, v]) => ({ date, score: v.score, note: v.note || "" }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 
-    const scoreMap = {};
-    scoreRows.forEach(r => {
-      if (DATE_RE.test(r.date) && typeof r.score === "number") {
-        scoreMap[r.date] = { score: r.score, note: r.note || "" };
-      }
-    });
-
-    const chartRows = Object.entries(scoreMap)
-      .map(([date, v]) => ({ date, score: v.score, note: v.note }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-    if (chartRows.length > 0) {
-      chartSection.style.display = "block";
-      drawChart(document.getElementById("scoreSvg"), chartRows);
-      renderStats(chartRows);
-    }
-  } catch (e) {
-    console.error(e);
+  if (chartRows.length > 0) {
+    chartSection.style.display = "block";
+    drawChart(document.getElementById("scoreSvg"), chartRows);
+    renderStats(chartRows);
   }
 }
 
-// issue #8対応(案B): auth.jsの実行順は変えず、起動時にwindow.__loginStateを直接チェックする。
-// auth.js(通常script)はHTML解析中に同期実行されるため、このモジュール(type="module"でdefer)が
-// 動く時点では既にwindow.__loginStateがセット済みの可能性がある。その場合はイベントを待たずに即実行し、
-// まだ未ログインならこれまで通りm1-login-successイベントを待つ(通常のログインボタン操作に対応)。
-function onLoginSuccess() {
+// 起動: 学習用にログインを介さず、自分でゲートを開けて即表示する。
+function bootSandbox() {
+  const gate = document.getElementById("login-gate");
+  const content = document.getElementById("content");
+  if (gate) gate.style.display = "none";
+  if (content) content.style.display = "block";
+  seedIfEmpty();
   initScoreInput();
   load();
 }
 
-if (window.__loginState && window.__loginState.loggedIn) {
-  onLoginSuccess();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootSandbox, { once: true });
 } else {
-  window.addEventListener("m1-login-success", onLoginSuccess, { once: true });
+  bootSandbox();
 }
