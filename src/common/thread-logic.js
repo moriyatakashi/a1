@@ -1,5 +1,3 @@
-
-
 import { CLASSIFICATIONS, findClassification } from "./utils.js";
 
 function applyApprovalFlags(entries) {
@@ -28,8 +26,6 @@ export function groupThreads(items) {
     const children = entries.filter((e) => e.id !== threadId);
 
     const voidView = {};
-    const priorityByLane = {};
-
     const reactByLane = {};
     let status = "open";
     let displayTitle = root.title;
@@ -40,7 +36,6 @@ export function groupThreads(items) {
     const linkValueBySeq = new Map();
     entries.forEach((e) => {
       if (e.type === "void" && e.by) voidView[e.by.startsWith("claude") ? "claude" : "takashi"] = !!e.value;
-      if (e.type === "priority" && e.by) priorityByLane[e.by] = e.value;
       if (e.type === "react" && e.by) reactByLane[e.by] = !!e.value;
       if (e.type === "status" && e.status) status = e.status;
 
@@ -62,7 +57,7 @@ export function groupThreads(items) {
 
     const hiddenVoid = isRootless || (voidView.claude === true && voidView.takashi === true);
 
-    threads.push({ threadId, root, children, entries, voidView, priorityByLane, reactByLane, status, displayTitle, titleCorrected, gist, hiddenVoid, cls, clsVia, forwardRelSeqs });
+    threads.push({ threadId, root, children, entries, voidView, reactByLane, status, displayTitle, titleCorrected, gist, hiddenVoid, cls, clsVia, forwardRelSeqs });
   });
 
   const seqTitle = {};
@@ -89,47 +84,6 @@ export function groupThreads(items) {
 
   threads.sort((a, b) => b.root.createdAt.localeCompare(a.root.createdAt));
   threads.seqTitle = seqTitle;
-  return threads;
-}
-
-export function projectThreads(items) {
-  const byThread = new Map();
-  items.forEach((it) => {
-    if (!byThread.has(it.threadId)) byThread.set(it.threadId, []);
-    byThread.get(it.threadId).push(it);
-  });
-
-  const threads = [];
-  byThread.forEach((entries, threadId) => {
-    entries.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    applyApprovalFlags(entries);
-    const root = entries.find((e) => e.id === threadId) || entries[0];
-
-    const voidView = {};
-    let status = "open";
-    let displayTitle = root.title;
-    let cls = null;
-    let gist = null;
-    let latestText = null;
-    entries.forEach((e) => {
-      if (e.type === "void" && e.by) voidView[e.by.startsWith("claude") ? "claude" : "takashi"] = !!e.value;
-      if (e.type === "status" && e.status) status = e.status;
-      if (e.type === "correction" && e.title) displayTitle = e.title;
-      if (e.type === "gist" && e.text) gist = e.text;
-      if (e.type === "new" || e.type === "note" || e.type === "correction") {
-        const found = findClassification(e.tags);
-        if (found) cls = found;
-        if (e.body) latestText = e.body;
-      }
-    });
-
-    const isRootless = root.type !== "new";
-    const hiddenVoid = isRootless || (voidView.claude === true && voidView.takashi === true);
-    const lastAt = entries[entries.length - 1].createdAt;
-    threads.push({ threadId, root, status, displayTitle, cls, gist, hiddenVoid, latestText, lastAt, count: entries.length });
-  });
-
-  threads.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
   return threads;
 }
 
