@@ -6,7 +6,6 @@
   --accent: #0066cc;
   --input-bg: #111111;
 }
-
 @media (prefers-color-scheme: light) {
   :root {
     --paper: #f1ecf8;
@@ -17,15 +16,12 @@
     --input-bg: #ffffff;
   }
 }
-
 body {
   font-family: sans-serif; max-width: 640px; margin: 0 auto; padding: 16px;
   background: var(--paper); color: var(--ink);
 }
-
 .section { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
 .section-title { font-size: 0.75rem; font-weight: 700; color: var(--ink-soft); margin-bottom: 10px; }
-
 @media (prefers-color-scheme: light) {
   .aa-corner-link {
     background: rgba(0, 0, 0, 0.12) !important;

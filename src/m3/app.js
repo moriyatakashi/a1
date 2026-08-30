@@ -1,9 +1,6 @@
-// m3 — 新規スレッド記入フォーム(type=new / by=takashi 固定)。投稿先は ba API。
 import "../common/config.js";
 import { CLASSIFICATIONS, parseTags, withCredential } from "../common/utils.js";
-
 const BA_API = `${window.AA_API_BASE}/ba`;
-
 async function postEntry(body) {
   const res = await fetch(BA_API, {
     method: "POST",
@@ -13,19 +10,16 @@ async function postEntry(body) {
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
-
 function initNewEntryForm() {
   const elTitle = document.getElementById("newTitle");
   const elTags = document.getElementById("newTags");
   const elBody = document.getElementById("newBody");
   const elResult = document.getElementById("postResult");
-
   document.getElementById("btnAddThread").addEventListener("click", async () => {
     try {
       const title = elTitle.value.trim();
       if (!title) { elTitle.focus(); return; }
       const payload = { type: "new", title, tags: parseTags(elTags.value), body: elBody.value.trim() };
-      // 分類を必ず tags に含める
       if (!payload.tags.some((t) => CLASSIFICATIONS.includes(t))) {
         const clsEl = document.querySelector('input[name="newCls"]:checked');
         if (clsEl) payload.tags = [clsEl.value, ...payload.tags];
@@ -41,7 +35,6 @@ function initNewEntryForm() {
     }
   });
 }
-
 if (window.__loginState && window.__loginState.loggedIn) {
   initNewEntryForm();
 } else {

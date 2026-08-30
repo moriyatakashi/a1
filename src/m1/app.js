@@ -1,35 +1,27 @@
-// m1 — 記録一覧(スコア入力 + 推移グラフ)。データは ${AA_API_BASE}/scores。
-// GET も credential ヘッダで認証。ログインゲート通過後に取得・表示する。
 import "../common/config.js";
 import { todayStr, withCredential } from "../common/utils.js";
-
 const SCORES_API = `${window.AA_API_BASE}/scores`;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
 const Y_MIN = 60;
 const Y_MAX = 100;
 const VB_W = 680, VB_H = 300;
 const MARGIN = { top: 16, right: 16, bottom: 32, left: 34 };
 const PLOT_W = VB_W - MARGIN.left - MARGIN.right;
 const PLOT_H = VB_H - MARGIN.top - MARGIN.bottom;
-
 function svgEl(tag, attrs) {
   const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
   for (const k in attrs) el.setAttribute(k, attrs[k]);
   return el;
 }
-
 function xFor(i, n) {
   return MARGIN.left + (n === 1 ? PLOT_W / 2 : (i / (n - 1)) * PLOT_W);
 }
 function yFor(v) {
   return MARGIN.top + PLOT_H - ((v - Y_MIN) / (Y_MAX - Y_MIN)) * PLOT_H;
 }
-
 function drawChart(svg, rows) {
   svg.innerHTML = "";
   const n = rows.length;
-
   const yTicks = [];
   for (let t = Y_MIN; t <= Y_MAX; t += 10) yTicks.push(t);
   yTicks.forEach((t) => {
@@ -41,7 +33,6 @@ function drawChart(svg, rows) {
     label.textContent = t;
     svg.appendChild(label);
   });
-
   const labelStep = Math.max(1, Math.ceil(n / 8));
   rows.forEach((r, i) => {
     if (i % labelStep === 0 || i === n - 1) {
@@ -50,29 +41,23 @@ function drawChart(svg, rows) {
       svg.appendChild(label);
     }
   });
-
   let areaD = `M ${xFor(0, n)} ${yFor(Y_MIN)} `;
   rows.forEach((r, i) => { areaD += `L ${xFor(i, n)} ${yFor(r.score)} `; });
   areaD += `L ${xFor(n - 1, n)} ${yFor(Y_MIN)} Z`;
   svg.appendChild(svgEl("path", { class: "score-area", d: areaD }));
-
   let lineD = "";
   rows.forEach((r, i) => { lineD += (i === 0 ? "M" : "L") + ` ${xFor(i, n)} ${yFor(r.score)} `; });
   svg.appendChild(svgEl("path", { class: "score-line", d: lineD }));
-
   const dots = rows.map((r, i) => {
     const dot = svgEl("circle", { class: "score-dot", cx: xFor(i, n), cy: yFor(r.score), r: 4 });
     svg.appendChild(dot);
     return dot;
   });
-
   const crosshair = svgEl("line", { class: "crosshair", y1: MARGIN.top, y2: MARGIN.top + PLOT_H });
   svg.appendChild(crosshair);
-
   const tooltip = document.getElementById("scoreTooltip");
   const hitArea = svgEl("rect", { class: "hit-area", x: MARGIN.left, y: MARGIN.top, width: PLOT_W, height: PLOT_H });
   svg.appendChild(hitArea);
-
   function showTooltip(i) {
     const r = rows[i];
     dots.forEach((dot, j) => dot.setAttribute("r", j === i ? 6 : 4));
@@ -91,7 +76,6 @@ function drawChart(svg, rows) {
     crosshair.style.opacity = 0;
     tooltip.style.opacity = 0;
   }
-
   hitArea.addEventListener("mousemove", (e) => {
     const rect = svg.getBoundingClientRect();
     const scaleX = rect.width / VB_W;
@@ -105,7 +89,6 @@ function drawChart(svg, rows) {
   });
   hitArea.addEventListener("mouseleave", hideTooltip);
 }
-
 function renderStats(rows) {
   const scores = rows.map((r) => r.score);
   const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
@@ -114,7 +97,6 @@ function renderStats(rows) {
   document.getElementById("statMax").textContent = Math.max(...scores);
   document.getElementById("statMin").textContent = Math.min(...scores);
 }
-
 function initScoreInput() {
   const today = todayStr();
   const elScoreDate = document.getElementById("scoreDate");
@@ -123,19 +105,15 @@ function initScoreInput() {
   const elNoteInput = document.getElementById("noteInput");
   const elBtnSaveScore = document.getElementById("btnSaveScore");
   const elScoreSaved = document.getElementById("scoreSaved");
-
   elScoreDate.textContent = today;
-
   function setScore(val) {
     const v = Math.min(100, Math.max(0, Number(val)));
     elSlider.value = v;
     elScoreNum.textContent = v;
   }
-
   elSlider.addEventListener("input", () => {
     elScoreNum.textContent = elSlider.value;
   });
-
   async function loadTodayScore() {
     try {
       const res = await fetch(`${SCORES_API}/${today}`, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } });
@@ -152,10 +130,7 @@ function initScoreInput() {
       setScore(80);
     }
   }
-
   elBtnSaveScore.addEventListener("click", async () => {
-    // 公開閲覧モードでは未ログインでも見られるので、書き込み時に credential を確認し、
-    // 無ければ 401 通信ではなくログインへ誘導する。
     if (!window.__credential) {
       elScoreSaved.textContent = "保存にはログインが必要です";
       if (window.aaShowLoginGate) window.aaShowLoginGate();
@@ -178,25 +153,20 @@ function initScoreInput() {
       elScoreSaved.textContent = "エラー: " + e.message;
     }
   });
-
   loadTodayScore();
 }
-
 async function load() {
   const chartSection = document.getElementById("scoreChartSection");
   chartSection.style.display = "none";
-
   try {
     const res = await fetch(SCORES_API, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } });
     const scoreRows = res.ok ? await res.json() : [];
-
     const scoreMap = {};
     scoreRows.forEach(r => {
       if (DATE_RE.test(r.date) && typeof r.score === "number") {
         scoreMap[r.date] = { score: r.score, note: r.note || "" };
       }
     });
-
     const chartRows = Object.entries(scoreMap)
       .map(([date, v]) => ({ date, score: v.score, note: v.note }))
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -209,12 +179,10 @@ async function load() {
     console.error(e);
   }
 }
-
 function onLoginSuccess() {
   initScoreInput();
   load();
 }
-
 if (window.__loginState && window.__loginState.loggedIn) {
   onLoginSuccess();
 } else {

@@ -1,9 +1,6 @@
-
-
 export function esc(v) {
   return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
-
 export function fmtTs(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -15,7 +12,6 @@ export function fmtTs(iso) {
   }).format(d);
   return jst.replace(",", "") + " JST";
 }
-
 export const CLASSIFICATIONS = ["案件", "確定仕様", "気づき", "保留論点", "旧仕様", "記録"];
 export const CLS_KEY = {
   "案件": "anken",
@@ -25,27 +21,21 @@ export const CLS_KEY = {
   "旧仕様": "kyuushiyou",
   "記録": "kiroku"
 };
-
 export const BY_LABEL = { "claude-pc": "利尻", "claude-mobile": "すまさん", "takashi": "takashi" };
-
 export function findClassification(tags) {
   const tagArray = Array.isArray(tags) ? tags : [];
   return tagArray.find((t) => CLASSIFICATIONS.includes(t)) || null;
 }
-
 export function todayStr() {
   return new Date().toLocaleDateString("sv-SE");
 }
-
 export function withCredential(body = {}) {
   return { ...body, credential: window.__credential };
 }
-
 export function filterFreeTags(tags) {
   const tagArray = Array.isArray(tags) ? tags : [];
   return tagArray.filter((t) => !CLASSIFICATIONS.includes(t));
 }
-
 export function parseTags(text) {
   return text
     .split(/[\s,、]+/)

@@ -1,7 +1,6 @@
 import "../common/config.js";
 import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../common/utils.js";
 import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
-
 const BA_API = `${window.AA_API_BASE}/ba`;
 const AUTO_EXPAND_MAX = 6;
 const ENTRY_TYPE_CLASS = {
@@ -12,12 +11,10 @@ const ENTRY_TYPE_CLASS = {
   verified_on_device: " entry--verified",
 };
 const REACT_LANES = ["claude-pc", "claude-mobile", "takashi"];
-
 let showVoided = false;
 let showClosed = false;
 let filterCls = "all";
 let cachedThreads = [];
-
 function renderSummary(threads) {
   const openCount = threads.filter((t) => t.status === "open").length;
   const latest = threads.flatMap((t) => t.entries).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
@@ -26,7 +23,6 @@ function renderSummary(threads) {
   document.getElementById("statClosed").textContent = threads.length - openCount;
   document.getElementById("statLatestBy").textContent = latest ? latest.by : "—";
 }
-
 function entryRowHtml(e) {
   const voidClass = e.type === "void" ? (e.value ? " entry--void-true" : " entry--void-false") : "";
   const typeClass = ENTRY_TYPE_CLASS[e.type] || "";
@@ -47,7 +43,6 @@ function entryRowHtml(e) {
       </div>
     </div>`;
 }
-
 function reactRowHtml(reactByLane) {
   const chips = REACT_LANES.map((lane) => {
     const val = reactByLane[lane];
@@ -55,7 +50,6 @@ function reactRowHtml(reactByLane) {
   }).join("");
   return `<div class="react-row"><span class="react-label" title="参考程度の反応であり、正式な承認・決定条件ではない">反応:</span>${chips}</div>`;
 }
-
 function perspectiveRowHtml(voidView) {
   const { claude: c, takashi: t } = voidView;
   if (c === undefined && t === undefined) return "";
@@ -65,7 +59,6 @@ function perspectiveRowHtml(voidView) {
       : `<span class="perspective-chip ${val ? "perspective-chip--void" : "perspective-chip--active"}">${label}: ${val ? "無効" : "有効"}</span>`;
   return `<div class="perspective-row"><span class="perspective-label">無効フラグ:</span>${chip(c, "C")}${chip(t, "T")}</div>`;
 }
-
 function relatedRowHtml(relatedSeqs, seqTitle) {
   if (!relatedSeqs || !relatedSeqs.length) return "";
   const chips = relatedSeqs.map((seq) => {
@@ -74,7 +67,6 @@ function relatedRowHtml(relatedSeqs, seqTitle) {
   }).join("");
   return `<div class="related-row"><span class="related-label">関連:</span>${chips}</div>`;
 }
-
 function threadCardHtml(thread, seqTitle, autoExpand) {
   const { threadId, root, children, status } = thread;
   const title = thread.displayTitle || root.body || "(無題)";
@@ -135,7 +127,6 @@ function threadCardHtml(thread, seqTitle, autoExpand) {
       </div>
     </details>`;
 }
-
 async function postEntry(body) {
   const res = await fetch(BA_API, {
     method: "POST",
@@ -145,7 +136,6 @@ async function postEntry(body) {
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
-
 async function runAction(failMsg, body) {
   try {
     await postEntry(body);
@@ -154,7 +144,6 @@ async function runAction(failMsg, body) {
     alert(failMsg + ": " + e.message);
   }
 }
-
 function attachThreadHandlers(container, thread) {
   const card = container.querySelector(`[data-thread-id="${thread.threadId}"]`);
   if (!card) return;
@@ -194,7 +183,6 @@ function attachThreadHandlers(container, thread) {
       runAction("承認に失敗しました", { ref: id, type: "approval", approvesId: btn.dataset.approveId }));
   });
 }
-
 function jumpToSeq(seq) {
   showVoided = true;
   showClosed = true;
@@ -206,7 +194,6 @@ function jumpToSeq(seq) {
     target.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
-
 function render() {
   const listEl = document.getElementById("threadList");
   const hiddenCount = cachedThreads.filter((t) => t.hiddenVoid).length;
@@ -226,7 +213,6 @@ function render() {
   listEl.innerHTML = visible.map((t) => threadCardHtml(t, cachedThreads.seqTitle, autoExpand)).join("") || emptyMsg;
   visible.forEach((t) => attachThreadHandlers(listEl, t));
 }
-
 function renderClsFilter() {
   const el = document.getElementById("clsFilter");
   if (!el) return;
@@ -235,7 +221,6 @@ function renderClsFilter() {
     `<button type="button" class="cls-chip${filterCls === value ? " cls-chip--on" : ""}${value !== "all" ? ` cls-chip--${CLS_KEY[value]}` : ""}" data-cls="${value}">${label}<span class="cls-cnt">[${n}]</span></button>`;
   el.innerHTML = chip("all", "すべて", cachedThreads.length) + CLASSIFICATIONS.map((c) => chip(c, c, count(c))).join("");
 }
-
 async function load() {
   const listEl = document.getElementById("threadList");
   try {
@@ -248,7 +233,6 @@ async function load() {
     listEl.innerHTML = `<p class="empty">読み込みエラー: ${e.message}</p>`;
   }
 }
-
 function onLoginSuccess() {
   document.getElementById("btnToggleVoid").addEventListener("click", () => {
     showVoided = !showVoided;
@@ -268,7 +252,6 @@ function onLoginSuccess() {
   });
   load();
 }
-
 if (window.__loginState && window.__loginState.loggedIn) {
   onLoginSuccess();
 } else {

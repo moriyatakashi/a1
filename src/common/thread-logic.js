@@ -1,5 +1,4 @@
 import { CLASSIFICATIONS, findClassification } from "./utils.js";
-
 function applyApprovalFlags(entries) {
   const approvedIds = new Set(
     entries.filter((e) => e.type === "approval").map((e) => e.approvesId)
@@ -10,41 +9,34 @@ function applyApprovalFlags(entries) {
     e.pendingApproval = !e.approved;
   });
 }
-
 export function groupThreads(items) {
   const byThread = new Map();
   items.forEach((it) => {
     if (!byThread.has(it.threadId)) byThread.set(it.threadId, []);
     byThread.get(it.threadId).push(it);
   });
-
   const threads = [];
   byThread.forEach((entries, threadId) => {
     entries.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     applyApprovalFlags(entries);
     const root = entries.find((e) => e.id === threadId) || entries[0];
     const children = entries.filter((e) => e.id !== threadId);
-
     const voidView = {};
     const reactByLane = {};
     let status = "open";
     let displayTitle = root.title;
     let titleCorrected = false;
-
     let gist = null;
-
     const linkValueBySeq = new Map();
     entries.forEach((e) => {
       if (e.type === "void" && e.by) voidView[e.by.startsWith("claude") ? "claude" : "takashi"] = !!e.value;
       if (e.type === "react" && e.by) reactByLane[e.by] = !!e.value;
       if (e.type === "status" && e.status) status = e.status;
-
       if (e.type === "correction" && e.title) { displayTitle = e.title; titleCorrected = true; }
       if (e.type === "gist" && e.text) gist = e.text;
       if (e.type === "link" && Number.isInteger(e.relSeq)) linkValueBySeq.set(e.relSeq, e.value !== false);
     });
     const forwardRelSeqs = [...linkValueBySeq.entries()].filter(([, v]) => v).map(([seq]) => seq);
-
     let cls = null;
     let clsVia = null;
     entries.forEach((e) => {
@@ -52,14 +44,10 @@ export function groupThreads(items) {
       const found = findClassification(e.tags);
       if (found) { cls = found; clsVia = e.type; }
     });
-
     const isRootless = root.type !== "new";
-
     const hiddenVoid = isRootless || (voidView.claude === true && voidView.takashi === true);
-
     threads.push({ threadId, root, children, entries, voidView, reactByLane, status, displayTitle, titleCorrected, gist, hiddenVoid, cls, clsVia, forwardRelSeqs });
   });
-
   const seqTitle = {};
   threads.forEach((t) => {
     if (Number.isInteger(t.root.seq)) seqTitle[t.root.seq] = (t.displayTitle || "").slice(0, 10);
@@ -81,12 +69,10 @@ export function groupThreads(items) {
     t.relatedSeqs = set ? [...set].sort((a, b) => a - b) : [];
     delete t.forwardRelSeqs;
   });
-
   threads.sort((a, b) => b.root.createdAt.localeCompare(a.root.createdAt));
   threads.seqTitle = seqTitle;
   return threads;
 }
-
 export function entryTypeLabel(e) {
   if (e.type === "void") return `void = ${e.value ? "true" : "false"}`;
   if (e.type === "status") return `status → ${e.status || ""}`;

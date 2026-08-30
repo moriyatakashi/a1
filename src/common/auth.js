@@ -1,27 +1,20 @@
-
-
 const STORAGE_KEY = "aa_credential";
 const GOOGLE_TOKEN_SESSION_MS = 60 * 60 * 1000;
 const LOGIN_EVENT = window.AA_AUTH_EVENT || "aa-login-success";
-
 function getElement(id) {
   return typeof document !== "undefined" ? document.getElementById(id) : null;
 }
-
 function setDisplay(id, display) {
   const el = getElement(id);
   if (el) el.style.display = display;
 }
-
 function setText(id, text) {
   const el = getElement(id);
   if (el) el.textContent = text;
 }
-
 const CORNER_LINK_STYLE =
   "position:fixed; top:8px; right:8px; font-size:0.72rem; color:#888; " +
   "background:rgba(0,0,0,0.35); padding:3px 8px; border-radius:5px; z-index:1000; text-decoration:none;";
-
 function createCornerLink(id, text, onClick) {
   if (!document || !document.body) return null;
   if (document.getElementById(id)) return null;
@@ -35,7 +28,6 @@ function createCornerLink(id, text, onClick) {
   document.body.appendChild(a);
   return a;
 }
-
 function decodeJwtPayload(credential) {
   if (typeof credential !== "string") throw new Error("Invalid credential");
   const parts = credential.split(".");
@@ -49,7 +41,6 @@ function decodeJwtPayload(credential) {
     throw new Error("Invalid credential");
   }
 }
-
 function renderLoginLink() {
   createCornerLink("aa-login-link", "ログイン", (e) => {
     e.preventDefault();
@@ -59,21 +50,18 @@ function renderLoginLink() {
     if (link) link.remove();
   });
 }
-
 window.aaShowLoginGate = () => {
   const link = document.getElementById("aa-login-link");
   if (link) link.remove();
   const gate = getElement("login-gate");
   if (gate) gate.style.display = "block";
 };
-
 function renderLogoutLink() {
   createCornerLink("aa-logout-link", "ログアウト", (e) => {
     e.preventDefault();
     window.aaLogout();
   });
 }
-
 function activateSession(credential, name) {
   window.__loginState = { loggedIn: true, name: name || "" };
   window.__credential = credential;
@@ -82,7 +70,6 @@ function activateSession(credential, name) {
   renderLogoutLink();
   window.dispatchEvent(new CustomEvent(LOGIN_EVENT));
 }
-
 function suppressAutoPromptWhenGsiReady(retriesLeft = 100) {
   if (window.google && window.google.accounts && window.google.accounts.id) {
     window.google.accounts.id.disableAutoSelect();
@@ -91,11 +78,9 @@ function suppressAutoPromptWhenGsiReady(retriesLeft = 100) {
   if (retriesLeft <= 0) return;
   setTimeout(() => suppressAutoPromptWhenGsiReady(retriesLeft - 1), 50);
 }
-
 function persistSession(credential, name, kind) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ credential, name, kind, savedAt: Date.now() }));
 }
-
 async function exchangeForPersistentSession(googleCredential) {
   const base = window.AA_API_BASE;
   if (!base) return null;
@@ -112,7 +97,6 @@ async function exchangeForPersistentSession(googleCredential) {
     return null;
   }
 }
-
 window.handleCredentialResponse = async (response) => {
   try {
     const payload = decodeJwtPayload(response.credential);
@@ -130,7 +114,6 @@ window.handleCredentialResponse = async (response) => {
     setText("status", "ログインに失敗しました");
   }
 };
-
 window.aaLogout = async () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -149,7 +132,6 @@ window.aaLogout = async () => {
     location.reload();
   }
 };
-
 (function restoreSession() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -177,13 +159,11 @@ window.aaLogout = async () => {
     localStorage.removeItem(STORAGE_KEY);
   }
 })();
-
 if (window.AA_PUBLIC_VIEW && !(window.__loginState && window.__loginState.loggedIn)) {
   setDisplay("content", "block");
   setDisplay("login-gate", "none");
   renderLoginLink();
   suppressAutoPromptWhenGsiReady();
-
   if (document.readyState === "loading") {
     window.addEventListener("DOMContentLoaded", () => {
       window.dispatchEvent(new CustomEvent(LOGIN_EVENT));

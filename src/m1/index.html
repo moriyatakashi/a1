@@ -7,7 +7,6 @@
 <title>m1 / 記録一覧</title>
 <link rel="stylesheet" href="../common/base.css">
 <style>
-
   :root {
     --row-text: #dddddd;
   }
@@ -26,7 +25,6 @@
   .note-input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 10px; background: var(--input-bg); color: var(--ink); }
   .btn-save-score { width: 100%; padding: 10px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 0.95rem; }
   .score-saved { font-size: 0.78rem; color: var(--ink-soft); margin-top: 6px; text-align: center; min-height: 1.2em; }
-
   .chart-wrap { margin: 20px 0 4px; }
   #scoreSvg { width: 100%; height: auto; display: block; overflow: visible; }
   .gridline { stroke: var(--line); stroke-width: 1; }
@@ -58,7 +56,6 @@
 <body>
   <p><a href="../../">← 戻る</a></p>
   <h1>路歴（m1） / 記録一覧</h1>
-
   <div id="login-gate">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <div id="g_id_onload"
@@ -69,7 +66,6 @@
     <div class="g_id_signin"></div>
     <p id="status">未ログイン(ログインすると記録一覧が表示されます)</p>
   </div>
-
   <div id="content" style="display:none;">
     <div class="section">
       <div class="section-title">スコア入力(<span id="scoreDate"></span>)</div>
@@ -81,7 +77,6 @@
       <button class="btn-save-score" id="btnSaveScore">保存</button>
       <div class="score-saved" id="scoreSaved"></div>
     </div>
-
     <div id="scoreChartSection" style="display:none;">
       <div class="chart-wrap">
         <svg id="scoreSvg" viewBox="0 0 680 300"></svg>
@@ -93,10 +88,8 @@
         <div class="stat"><div class="stat-num" id="statMin">—</div><div class="stat-label">最低</div></div>
       </div>
     </div>
-
   </div>
   <div class="score-tooltip" id="scoreTooltip"></div>
-
   <script>window.AA_AUTH_EVENT = "m1-login-success"; window.AA_PUBLIC_VIEW = true;</script>
   <script src="../common/auth.js"></script>
   <script type="module" src="app.js"></script>
