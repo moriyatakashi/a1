@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../common/config.js?v=202607160712"></script>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>m2 / 訪問地図・予定</title>
+<link rel="stylesheet" href="../common/base.css?v=202607141905">
+<style>
+  .stats { display: flex; gap: 20px; margin-bottom: 14px; }
+  .stat-item { text-align: center; }
+  .stat-num { font-size: 1.4rem; font-weight: 800; }
+  .stat-label { font-size: 0.7rem; color: var(--ink-soft); }
+  .map-wrap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 14px; position: relative; }
+  .map-canvas-wrap { position: relative; }
+  /* 各カードを話題にしやすいよう、左上に名前ラベルを置く */
+  .card-label {
+    position: absolute; top: 8px; left: 8px; z-index: 5;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em;
+    padding: 3px 9px; border-radius: 999px;
+    background: rgba(20,23,26,0.72); color: #fff;
+  }
+  @media (prefers-color-scheme: light) {
+    .card-label { background: rgba(255,255,255,0.88); color: #22261c; border: 1px solid var(--line); }
+  }
+  #mapCanvas { display: block; width: 100%; touch-action: none; cursor: grab; }
+  /* 訪問マップの拡大縮小操作。右下に縦並びの小さな丸ボタン */
+  .zoom-ctrl { position: absolute; bottom: 10px; right: 10px; z-index: 5; display: flex; flex-direction: column; gap: 6px; }
+  .zoom-ctrl button {
+    width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line);
+    background: rgba(20,23,26,0.72); color: #fff; font-size: 1rem; line-height: 1;
+    cursor: pointer; padding: 0;
+  }
+  .zoom-ctrl button:active { background: rgba(20,23,26,0.9); }
+  .zoom-ctrl .zoom-reset { font-size: 0.72rem; }
+  @media (prefers-color-scheme: light) {
+    .zoom-ctrl button { background: rgba(255,255,255,0.88); color: #22261c; }
+    .zoom-ctrl button:active { background: rgba(240,240,240,0.95); }
+  }
+  .map-legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 8px 10px; border-top: 1px solid var(--line); font-size: 0.7rem; color: var(--ink-soft); }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .visit-row { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; cursor: pointer; }
+  .visit-row.active { border-color: var(--accent); }
+  .visit-row-place { font-weight: 600; font-size: 0.88rem; }
+  .visit-row-meta { font-size: 0.72rem; color: var(--ink-soft); margin-top: 2px; }
+  /* ポップアップは地図上の常設の吹き出しカードで、ページテーマに関わらず固定の白背景のまま(ba-8スコープ外) */
+  .popup { display: none; position: absolute; background: #fff; color: #222; border: 1px solid #ccc; border-radius: 8px; padding: 8px 12px; font-size: 0.8rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15); pointer-events: none; z-index: 10; max-width: 180px; }
+  .popup.show { display: block; }
+  .popup-place { font-weight: 700; margin-bottom: 2px; }
+  .popup-meta { color: #666; font-size: 0.7rem; }
+  .empty { text-align: center; color: var(--ink-soft); padding: 20px 0; }
+  .visit-form { display: flex; flex-direction: column; gap: 8px; }
+  .visit-form input { padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; box-sizing: border-box; background: var(--input-bg); color: var(--ink); }
+  .visit-row-inputs { display: flex; gap: 8px; }
+  .visit-row-inputs input { flex: 1; }
+  .btn-gps { padding: 8px 12px; border: 1px solid var(--accent); border-radius: 6px; background: #eef6ff; color: var(--accent); white-space: nowrap; }
+  .btn-add-visit { width: 100%; padding: 10px; border: 1px solid var(--accent); border-radius: 8px; background: #fff; color: var(--accent); font-size: 0.95rem; }
+  .visit-input-status { font-size: 0.78rem; color: var(--ink-soft); margin-top: 6px; text-align: center; min-height: 1.2em; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>路歴（m2） / 訪問地図・予定</h1>
+  <p id="lastUpdated" style="font-size:0.8rem;color:#aaa;">最終更新: 2026-07-16 07:48 JST</p>
+
+<!-- LOGIN_GATE:START -->
+  <div id="login-gate">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
+    <div class="g_id_signin"></div>
+    <p id="status">未ログイン(ログインすると訪問地図・予定が表示されます)</p>
+  </div>
+<!-- LOGIN_GATE:END -->
+
+  <div id="content" style="display:none;">
+    <div class="section">
+      <div class="section-title">訪問記録を追加</div>
+      <div class="visit-form">
+        <div class="visit-row-inputs">
+          <input type="text" id="placeInput" placeholder="場所">
+          <button class="btn-gps" id="btnGps" type="button">📍 現在地</button>
+        </div>
+        <div class="visit-row-inputs">
+          <input type="date" id="dateInput">
+          <input type="time" id="timeInput">
+        </div>
+        <button class="btn-add-visit" id="btnAddVisit" type="button">＋ 追加</button>
+      </div>
+      <div class="visit-input-status" id="visitInputStatus"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-item"><div class="stat-num" id="statTotal">—</div><div class="stat-label">訪問件数</div></div>
+      <div class="stat-item"><div class="stat-num" id="statPlaces">—</div><div class="stat-label">場所数</div></div>
+      <div class="stat-item"><div class="stat-num" id="statDays">—</div><div class="stat-label">訪問日数</div></div>
+    </div>
+
+    <div class="map-wrap">
+      <div class="map-canvas-wrap">
+        <span class="card-label">訪問マップ</span>
+        <canvas id="mapCanvas" height="520"></canvas>
+        <div class="zoom-ctrl">
+          <button type="button" id="btnZoomIn" aria-label="拡大">＋</button>
+          <button type="button" id="btnZoomOut" aria-label="縮小">－</button>
+          <button type="button" id="btnZoomReset" class="zoom-reset" aria-label="表示を戻す">⟲</button>
+        </div>
+        <div class="popup" id="popup">
+          <div class="popup-place" id="popupPlace"></div>
+          <div class="popup-meta" id="popupMeta"></div>
+        </div>
+      </div>
+      <div class="map-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#eef1f4;border:1px solid #8aa0b5;"></div>県境</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#5a5e66;"></div>隣接県(未訪問)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#cfe0f0;border:1px solid #6f97c0;"></div>訪問した市区町村</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#b5651d;"></div>訪問ポイント</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3b7dd8;"></div>よく訪れた場所</div>
+      </div>
+    </div>
+
+    <div class="map-wrap">
+      <span class="card-label">県マップ</span>
+      <img src="data/prefectures_map_east.svg?v=202608110549" alt="近畿〜関東 県マップ" style="display:block;width:100%;">
+      <div class="map-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#d9534f;"></div>訪問済み</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4a7ebb;"></div>未訪問</div>
+        <span style="margin-left:auto;">近畿〜関東 県マップ(ba-55)</span>
+      </div>
+    </div>
+
+    <div class="map-wrap">
+      <span class="card-label">全国マップ</span>
+      <img src="data/prefectures_map_japan.svg?v=202608160600" alt="全国 都道府県マップ" style="display:block;width:100%;">
+      <div class="map-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#d9534f;"></div>訪問済み</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4a7ebb;"></div>未訪問</div>
+        <span style="margin-left:auto;">全国 都道府県マップ(全47)</span>
+      </div>
+    </div>
+
+    <div class="section-title">今日の訪問</div>
+    <div id="visitList"></div>
+    <p class="empty" id="emptyMsg" style="display:none;">今日の訪問記録はまだありません</p>
+  </div>
+
+  <script>window.AA_AUTH_EVENT = "m2-login-success"; window.AA_PUBLIC_VIEW = true;</script>
+  <script src="../common/auth.js?v=202607201000"></script>
+  <script type="module" src="app.js?v=202607261316"></script>
+  <script type="module">
+    // ba-50で個別実装していたロジックをcommon/last-updated.jsへ共通化(ba-67/ba-68)。
+    import { applyLastUpdated } from "../common/last-updated.js";
+    applyLastUpdated("src/m2", "lastUpdated", "最終更新");
+  </script>
+</body>
+</html>
