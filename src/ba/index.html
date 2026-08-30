@@ -15,7 +15,6 @@
 <body>
   <p><a href="../../">← 戻る</a></p>
   <h1>ba</h1>
-
   <div id="login-gate">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <div id="g_id_onload" data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
@@ -23,27 +22,16 @@
     <div class="g_id_signin"></div>
     <p id="status">未ログイン(ログインするとログが表示されます)</p>
   </div>
-
   <div id="content" style="display:none;">
-    <div class="lane-legend">
-      <span><span class="lane-dot lane-dot--claude"></span>Claude Codeレーン — PC/スマホ別鍵、種別は自由(PCのみverified_on_device可)、追記のみ</span>
-      <span><span class="lane-dot lane-dot--human"></span>人間レーン — Googleログイン、種別は note/void/status のみ</span>
-    </div>
-
     <div class="summary-bar">
       <div class="stat"><div class="stat-num" id="statTotal">—</div><div class="stat-label">スレッド</div></div>
       <div class="stat"><div class="stat-num" id="statOpen">—</div><div class="stat-label">オープン</div></div>
       <div class="stat"><div class="stat-num" id="statClosed">—</div><div class="stat-label">クローズ</div></div>
       <div class="stat"><div class="stat-num" id="statLatestBy">—</div><div class="stat-label">直近の記入者</div></div>
     </div>
-
-    <p class="post-link"><a href="https://moriyatakashi.github.io/a1/src/m3/">→ 新規スレッドの投稿はm3へ(a1)</a></p>
-
     <div class="ba-search">
-      <input class="field-input" id="baSearch" type="search" placeholder="番号(例: 50)+Enterでジャンプ / それ以外はタグで抽出">
       <button type="button" class="btn-search-reset" id="btnSearchReset" style="display:none;">リセット</button>
     </div>
-
     <div class="cls-filter" id="clsFilter"></div>
     <div class="list-controls">
       <button type="button" class="btn-toggle-voided" id="btnToggleClosed">closedも表示</button>
@@ -51,7 +39,6 @@
     </div>
     <div class="thread-list" id="threadList"></div>
   </div>
-
   <script>window.AA_AUTH_EVENT = "ba-login-success";</script>
   <script src="../common/auth.js"></script>
   <script type="module" src="app.js"></script>
