@@ -1,41 +1,10 @@
-// [a2学習用] スコア保存はlocalStorageのみ。本番baにもネットにも一切送らない。
-
-
+// m1 — 記録一覧(スコア入力 + 推移グラフ)。データは ${AA_API_BASE}/scores。
+// GET も credential ヘッダで認証。ログインゲート通過後に取得・表示する。
 import "../common/config.js";
-import { todayStr } from "../common/utils.js";
+import { todayStr, withCredential } from "../common/utils.js";
 
-const LS_KEY = "a2_m1_scores";
+const SCORES_API = `${window.AA_API_BASE}/scores`;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-function lsGetAll() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
-  catch (e) { return {}; }
-}
-function lsSetAll(obj) {
-  localStorage.setItem(LS_KEY, JSON.stringify(obj));
-}
-function lsGetDay(date) {
-  const all = lsGetAll();
-  return all[date] || null;
-}
-function lsPutDay(date, entry) {
-  const all = lsGetAll();
-  all[date] = entry;
-  lsSetAll(all);
-}
-
-function seedIfEmpty() {
-  if (Object.keys(lsGetAll()).length > 0) return;
-  const seed = {
-    "2026-08-24": { score: 78, note: "サンプル" },
-    "2026-08-25": { score: 82, note: "サンプル" },
-    "2026-08-26": { score: 75, note: "サンプル" },
-    "2026-08-27": { score: 88, note: "サンプル" },
-    "2026-08-28": { score: 84, note: "サンプル" },
-    "2026-08-29": { score: 91, note: "サンプル" },
-  };
-  lsSetAll(seed);
-}
 
 const Y_MIN = 60;
 const Y_MAX = 100;
@@ -49,6 +18,7 @@ function svgEl(tag, attrs) {
   for (const k in attrs) el.setAttribute(k, attrs[k]);
   return el;
 }
+
 function xFor(i, n) {
   return MARGIN.left + (n === 1 ? PLOT_W / 2 : (i / (n - 1)) * PLOT_W);
 }
@@ -166,61 +136,87 @@ function initScoreInput() {
     elScoreNum.textContent = elSlider.value;
   });
 
-  function loadTodayScore() {
-    const data = lsGetDay(today);
-    if (data) {
-      setScore(data.score);
-      elNoteInput.value = data.note || "";
-      elBtnSaveScore.textContent = "更新";
-    } else {
+  async function loadTodayScore() {
+    try {
+      const res = await fetch(`${SCORES_API}/${today}`, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } });
+      const data = res.ok ? await res.json() : null;
+      if (data) {
+        setScore(data.score);
+        elNoteInput.value = data.note || "";
+        elBtnSaveScore.textContent = "更新";
+      } else {
+        setScore(80);
+        elBtnSaveScore.textContent = "保存";
+      }
+    } catch (e) {
       setScore(80);
-      elBtnSaveScore.textContent = "保存";
     }
   }
 
-  elBtnSaveScore.addEventListener("click", () => {
-
+  elBtnSaveScore.addEventListener("click", async () => {
+    // 公開閲覧モードでは未ログインでも見られるので、書き込み時に credential を確認し、
+    // 無ければ 401 通信ではなくログインへ誘導する。
+    if (!window.__credential) {
+      elScoreSaved.textContent = "保存にはログインが必要です";
+      if (window.aaShowLoginGate) window.aaShowLoginGate();
+      return;
+    }
     const score = Number(elSlider.value);
     const note = elNoteInput.value.trim();
-    lsPutDay(today, { score, note });
-    elBtnSaveScore.textContent = "更新";
-    elScoreSaved.textContent = "✓ 保存しました(このブラウザ内)";
-    setTimeout(() => elScoreSaved.textContent = "", 2000);
-    load();
+    try {
+      const res = await fetch(`${SCORES_API}/${today}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(withCredential({ score, note })),
+      });
+      if (!res.ok) { elScoreSaved.textContent = "エラー: 保存に失敗しました"; return; }
+      elBtnSaveScore.textContent = "更新";
+      elScoreSaved.textContent = "✓ 保存しました";
+      setTimeout(() => elScoreSaved.textContent = "", 2000);
+      load();
+    } catch (e) {
+      elScoreSaved.textContent = "エラー: " + e.message;
+    }
   });
 
   loadTodayScore();
 }
 
-function load() {
+async function load() {
   const chartSection = document.getElementById("scoreChartSection");
   chartSection.style.display = "none";
 
-  const scoreMap = lsGetAll();
-  const chartRows = Object.entries(scoreMap)
-    .filter(([date, v]) => DATE_RE.test(date) && v && typeof v.score === "number")
-    .map(([date, v]) => ({ date, score: v.score, note: v.note || "" }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  try {
+    const res = await fetch(SCORES_API, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } });
+    const scoreRows = res.ok ? await res.json() : [];
 
-  if (chartRows.length > 0) {
-    chartSection.style.display = "block";
-    drawChart(document.getElementById("scoreSvg"), chartRows);
-    renderStats(chartRows);
+    const scoreMap = {};
+    scoreRows.forEach(r => {
+      if (DATE_RE.test(r.date) && typeof r.score === "number") {
+        scoreMap[r.date] = { score: r.score, note: r.note || "" };
+      }
+    });
+
+    const chartRows = Object.entries(scoreMap)
+      .map(([date, v]) => ({ date, score: v.score, note: v.note }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (chartRows.length > 0) {
+      chartSection.style.display = "block";
+      drawChart(document.getElementById("scoreSvg"), chartRows);
+      renderStats(chartRows);
+    }
+  } catch (e) {
+    console.error(e);
   }
 }
 
-function bootSandbox() {
-  const gate = document.getElementById("login-gate");
-  const content = document.getElementById("content");
-  if (gate) gate.style.display = "none";
-  if (content) content.style.display = "block";
-  seedIfEmpty();
+function onLoginSuccess() {
   initScoreInput();
   load();
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", bootSandbox, { once: true });
+if (window.__loginState && window.__loginState.loggedIn) {
+  onLoginSuccess();
 } else {
-  bootSandbox();
+  window.addEventListener("m1-login-success", onLoginSuccess, { once: true });
 }
