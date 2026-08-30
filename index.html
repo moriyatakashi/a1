@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="src/common/config.js?v=20260830"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>a2 / 学習用サンドボックス</title>
+<link rel="stylesheet" href="src/common/base.css">
+<style>
+  .lead { color: var(--ink-soft); font-size: 0.9rem; margin: 4px 0 20px; }
+  .page-list { list-style: none; padding: 0; margin: 0; }
+  .page-list li { margin: 0 0 10px; }
+  .page-link {
+    display: block; border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; text-decoration: none; color: var(--ink);
+    background: var(--input-bg);
+  }
+  .page-link:hover { border-color: var(--accent); }
+  .page-link .pl-title { font-weight: 700; }
+  .page-link .pl-desc { font-size: 0.8rem; color: var(--ink-soft); margin-top: 3px; }
+  .note { font-size: 0.78rem; color: var(--ink-soft); margin-top: 24px; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <h1>a2 / 学習用サンドボックス</h1>
+  <p class="lead">a1から移したページを自由にいじるための砂場です。本番のba backendからは切り離してあります。</p>
+
+  <ul class="page-list">
+    <li>
+      <a class="page-link" href="src/m1/">
+        <div class="pl-title">路歴（m1） / 記録一覧</div>
+        <div class="pl-desc">スコア入力・推移グラフ・おみくじ。a1からコピー</div>
+      </a>
+    </li>
+  </ul>
+
+  <p class="note">
+    このトップは学習用に手書きしたものです（a1のような自動生成ではありません）。<br>
+    ページを増やしたら、この一覧にリンクを足していけます。
+  </p>
+</body>
+</html>
