@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<script src="../common/config.js?v=202607160712"></script>
+<script src="../common/config.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ba</title>
-<link rel="stylesheet" href="../common/ledger.css?v=a2plum">
+<link rel="stylesheet" href="../common/ledger.css">
 </head>
 <body>
   <p><a href="../../">← 戻る</a></p>
@@ -21,10 +21,6 @@
     <p id="status">未ログイン(ログインするとログが表示されます)</p>
   </div>
   <div id="content" style="display:none;">
-    <div class="lane-legend">
-      <span><span class="lane-dot lane-dot--claude"></span>Claude Codeレーン — PC/スマホ別鍵、種別は自由(PCのみverified_on_device可)、追記のみ</span>
-      <span><span class="lane-dot lane-dot--human"></span>人間レーン — Googleログイン、種別は note/void/status のみ</span>
-    </div>
     <div class="summary-bar">
       <div class="stat"><div class="stat-num" id="statTotal">—</div><div class="stat-label">スレッド</div></div>
       <div class="stat"><div class="stat-num" id="statOpen">—</div><div class="stat-label">オープン</div></div>
@@ -43,7 +39,7 @@
     <div class="thread-list" id="threadList"></div>
   </div>
   <script>window.AA_AUTH_EVENT = "ba-login-success";</script>
-  <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=20260831c-local"></script>
+  <script src="../common/auth.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
