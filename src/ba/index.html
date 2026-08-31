@@ -13,7 +13,6 @@
   <h1>路歴（ba） / n4後継ログ</h1>
   <p class="lede">n4の骨組み(追記オンリー・赤黒帳票)を引き継ぎつつ、Claude CodeレーンをPC/スマホで別鍵にした台帳。実機で確認できたことは verified on device として記録する(この項目はPCレーンのみ書込可)。</p>
   <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: 2026-07-20 05:43 JST</p>
-
   <div id="login-gate">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <div id="g_id_onload"
@@ -24,27 +23,22 @@
     <div class="g_id_signin"></div>
     <p id="status">未ログイン(ログインするとログが表示されます)</p>
   </div>
-
   <div id="content" style="display:none;">
     <div class="lane-legend">
       <span><span class="lane-dot lane-dot--claude"></span>Claude Codeレーン — PC/スマホ別鍵、種別は自由(PCのみverified_on_device可)、追記のみ</span>
       <span><span class="lane-dot lane-dot--human"></span>人間レーン — Googleログイン、種別は note/void/status のみ</span>
     </div>
-
     <div class="summary-bar">
       <div class="stat"><div class="stat-num" id="statTotal">—</div><div class="stat-label">スレッド</div></div>
       <div class="stat"><div class="stat-num" id="statOpen">—</div><div class="stat-label">オープン</div></div>
       <div class="stat"><div class="stat-num" id="statClosed">—</div><div class="stat-label">クローズ</div></div>
       <div class="stat"><div class="stat-num" id="statLatestBy">—</div><div class="stat-label">直近の記入者</div></div>
     </div>
-
     <p style="font-size:0.8rem;"><a href="../m3/">→ 新規スレッドの投稿はm3へ</a></p>
-
     <div class="ba-search" style="margin:12px 0;">
       <input class="field-input" id="baSearch" type="search" placeholder="番号(例: 50)+Enterでジャンプ / それ以外はタグで抽出">
       <button type="button" class="btn-search-reset" id="btnSearchReset" style="display:none;">リセット</button>
     </div>
-
     <div class="cls-filter" id="clsFilter"></div>
     <div class="list-controls">
       <button type="button" class="btn-toggle-voided" id="btnToggleClosed">closedも表示</button>
@@ -52,7 +46,6 @@
     </div>
     <div class="thread-list" id="threadList"></div>
   </div>
-
   <script>window.AA_AUTH_EVENT = "ba-login-success";</script>
   <script src="../common/auth.js?v=202607201000"></script>
   <script type="module" src="app.js?v=20260830-local"></script>

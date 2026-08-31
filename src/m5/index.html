@@ -23,8 +23,6 @@
   <div id="map-root"><svg id="map" viewBox="0 0 760 760"></svg></div>
   <div id="zoom-row"><span style="font-size:0.8rem;color:var(--ink-soft);">ズーム</span><input type="range" id="z" min="1" max="8" step="0.1" value="1"><span id="zv" style="font-size:0.8rem;min-width:34px;text-align:right;">1.0×</span></div>
   <script>
-    // 現在地マップ(a2から移設)。実緯度経度geojsonをメルカトル投影してSVG化し、
-    // GPS座標を外部APIなしでRay casting判定して該当県をハイライトする。完全ローカル。
     const RAD = Math.PI / 180;
     const mercY = lat => Math.log(Math.tan(Math.PI / 4 + lat * RAD / 2));
     function project(win, box) {
