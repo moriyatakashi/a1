@@ -1,7 +1,8 @@
 import "../common/config.js";
-import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags } from "../common/utils.js";
+import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../common/utils.js";
 import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
-import { lsGetAll, postEntry, seedIfEmpty } from "../common/ba-local.js";
+const API_BASE = window.AA_API_BASE;
+const BA_API = `${API_BASE}/ba`;
 function renderSummary(threads) {
   const openCount = threads.filter((t) => t.status === "open").length;
   const closedCount = threads.length - openCount;
@@ -119,6 +120,15 @@ function threadCardHtml(thread, seqTitle, autoExpand) {
         </div>
       </div>
     </details>`;
+}
+async function postEntry(body) {
+  const res = await fetch(BA_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(withCredential(body)),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
 }
 function attachThreadHandlers(container, thread) {
   const card = container.querySelector(`[data-thread-id="${thread.threadId}"]`);
@@ -258,7 +268,9 @@ function renderClsFilter() {
 async function load() {
   const listEl = document.getElementById("threadList");
   try {
-    const items = lsGetAll();
+    const res = await fetch(BA_API, { cache: "no-store" });
+    if (!res.ok) throw new Error(`status=${res.status}`);
+    const items = await res.json();
     cachedThreads = groupThreads(items);
     render();
   } catch (e) {
@@ -315,11 +327,8 @@ function onLoginSuccess() {
   });
   load();
 }
-(function bootSandbox() {
-  const gate = document.getElementById("login-gate");
-  const content = document.getElementById("content");
-  if (gate) gate.style.display = "none";
-  if (content) content.style.display = "block";
-  seedIfEmpty();
+if (window.__loginState && window.__loginState.loggedIn) {
   onLoginSuccess();
-})();
+} else {
+  window.addEventListener("ba-login-success", onLoginSuccess, { once: true });
+}

@@ -1,6 +1,16 @@
 import "../common/config.js";
-import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
-import { postEntry } from "../common/ba-local.js";
+import { CLASSIFICATIONS, parseTags, withCredential } from "../common/utils.js";
+const API_BASE = window.AA_API_BASE;
+const BA_API = `${API_BASE}/ba`;
+async function postEntry(body) {
+  const res = await fetch(BA_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(withCredential(body)),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
 function initNewEntryForm() {
   const elTitle = document.getElementById("newTitle");
   const elTags = document.getElementById("newTags");
@@ -15,7 +25,7 @@ function initNewEntryForm() {
         const clsEl = document.querySelector('input[name="newCls"]:checked');
         if (clsEl) payload.tags = [clsEl.value, ...payload.tags];
       }
-      const result = postEntry(payload);
+      const result = await postEntry(payload);
       elTitle.value = "";
       elTags.value = "";
       elBody.value = "";
@@ -26,10 +36,8 @@ function initNewEntryForm() {
     }
   });
 }
-(function bootSandbox() {
-  const gate = document.getElementById("login-gate");
-  const content = document.getElementById("content");
-  if (gate) gate.style.display = "none";
-  if (content) content.style.display = "block";
+if (window.__loginState && window.__loginState.loggedIn) {
   initNewEntryForm();
-})();
+} else {
+  window.addEventListener("m3-login-success", initNewEntryForm, { once: true });
+}
