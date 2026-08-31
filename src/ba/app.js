@@ -1,7 +1,7 @@
 import "../common/config.js";
 import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags } from "../common/utils.js";
 import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
-import { lsGetAll, postEntry } from "../common/ba-local.js";
+import { lsGetAll, postEntry, seedIfEmpty } from "../common/ba-local.js";
 function renderSummary(threads) {
   const openCount = threads.filter((t) => t.status === "open").length;
   const closedCount = threads.length - openCount;
@@ -320,5 +320,6 @@ function onLoginSuccess() {
   const content = document.getElementById("content");
   if (gate) gate.style.display = "none";
   if (content) content.style.display = "block";
+  seedIfEmpty();
   onLoginSuccess();
 })();
