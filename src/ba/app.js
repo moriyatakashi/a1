@@ -4,13 +4,9 @@ import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
 const BA_API = `${window.AA_API_BASE}/ba`;
 function renderSummary(threads) {
   const openCount = threads.filter((t) => t.status === "open").length;
-  const closedCount = threads.length - openCount;
-  const allEntries = threads.flatMap((t) => t.entries);
-  const latest = allEntries.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   document.getElementById("statTotal").textContent = threads.length;
   document.getElementById("statOpen").textContent = openCount;
-  document.getElementById("statClosed").textContent = closedCount;
-  document.getElementById("statLatestBy").textContent = latest ? latest.by : "—";
+  document.getElementById("statClosed").textContent = threads.length - openCount;
 }
 function entryRowHtml(e) {
   const voidClass = e.type === "void" ? (e.value ? " entry--void-true" : " entry--void-false") : "";
