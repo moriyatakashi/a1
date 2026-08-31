@@ -1,5 +1,6 @@
 import "../common/config.js";
-import { CLASSIFICATIONS, parseTags, postBa } from "../common/utils.js";
+import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
+import { postEntry } from "../common/ba-local.js";
 function initNewEntryForm() {
   const elTitle = document.getElementById("newTitle");
   const elTags = document.getElementById("newTags");
@@ -14,7 +15,7 @@ function initNewEntryForm() {
         const clsEl = document.querySelector('input[name="newCls"]:checked');
         if (clsEl) payload.tags = [clsEl.value, ...payload.tags];
       }
-      const result = await postBa(payload);
+      const result = postEntry(payload);
       elTitle.value = "";
       elTags.value = "";
       elBody.value = "";

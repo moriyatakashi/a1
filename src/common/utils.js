@@ -32,15 +32,6 @@ export function todayStr() {
 export function withCredential(body = {}) {
   return { ...body, credential: window.__credential };
 }
-export async function postBa(body) {
-  const res = await fetch(`${window.AA_API_BASE}/ba`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(withCredential(body)),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
 export function filterFreeTags(tags) {
   const tagArray = Array.isArray(tags) ? tags : [];
   return tagArray.filter((t) => !CLASSIFICATIONS.includes(t));

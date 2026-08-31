@@ -1,12 +1,7 @@
 import "../common/config.js";
 import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags } from "../common/utils.js";
 import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
-const LS_KEY = "a2_ba_entries";
-function lsGetAll() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
-  catch (e) { return []; }
-}
-function lsSetAll(arr) { localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
+import { lsGetAll, postEntry } from "../common/ba-local.js";
 function renderSummary(threads) {
   const openCount = threads.filter((t) => t.status === "open").length;
   const closedCount = threads.length - openCount;
@@ -124,20 +119,6 @@ function threadCardHtml(thread, seqTitle, autoExpand) {
         </div>
       </div>
     </details>`;
-}
-async function postEntry(body) {
-  const all = lsGetAll();
-  const id = "e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const entry = Object.assign({}, body, {
-    id,
-    threadId: body.ref || id,
-    seq: Math.max(0, ...all.map((e) => e.seq || 0)) + 1,
-    by: "takashi",
-    createdAt: new Date().toISOString(),
-  });
-  all.push(entry);
-  lsSetAll(all);
-  return entry;
 }
 function attachThreadHandlers(container, thread) {
   const card = container.querySelector(`[data-thread-id="${thread.threadId}"]`);
