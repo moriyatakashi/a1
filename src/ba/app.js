@@ -1,22 +1,12 @@
 import "../common/config.js";
 import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags } from "../common/utils.js";
 import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
-const API_BASE = window.AA_API_BASE;
-const BA_API = `${API_BASE}/ba`;
 const LS_KEY = "a2_ba_entries";
 function lsGetAll() {
   try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
   catch (e) { return []; }
 }
 function lsSetAll(arr) { localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
-const SEED = [
-  { id: "t1", threadId: "t1", seq: 1, type: "new", title: "サンプル：はじめてのスレッド", body: "学習用のサンプルです。返信・リアクション・クローズを試せます。", by: "takashi", tags: ["記録"], createdAt: "2026-08-20T01:00:00.000Z" },
-  { id: "t1n1", threadId: "t1", seq: 2, type: "note", body: "これは返信（note）のサンプルです。", by: "takashi", createdAt: "2026-08-20T02:30:00.000Z" },
-  { id: "t2", threadId: "t2", seq: 3, type: "new", title: "サンプル：案件スレッド", body: "分類タグが「案件」。クローズやタグ変更を試せます。", by: "takashi", tags: ["案件"], createdAt: "2026-08-21T04:00:00.000Z" },
-  { id: "t3", threadId: "t3", seq: 4, type: "new", title: "サンプル：気づきスレッド", body: "タイトル訂正やタグ付け替えを試せます。", by: "takashi", tags: ["気づき"], createdAt: "2026-08-22T06:00:00.000Z" },
-];
-function seedIfEmpty() { if (lsGetAll().length === 0) lsSetAll(SEED); }
-const HUMAN_TYPES = ["note", "void", "status"];
 function renderSummary(threads) {
   const openCount = threads.filter((t) => t.status === "open").length;
   const closedCount = threads.length - openCount;
@@ -349,6 +339,5 @@ function onLoginSuccess() {
   const content = document.getElementById("content");
   if (gate) gate.style.display = "none";
   if (content) content.style.display = "block";
-  seedIfEmpty();
   onLoginSuccess();
 })();
