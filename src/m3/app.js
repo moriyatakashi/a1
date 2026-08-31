@@ -26,8 +26,10 @@ function initNewEntryForm() {
     }
   });
 }
-if (window.__loginState && window.__loginState.loggedIn) {
+(function bootSandbox() {
+  const gate = document.getElementById("login-gate");
+  const content = document.getElementById("content");
+  if (gate) gate.style.display = "none";
+  if (content) content.style.display = "block";
   initNewEntryForm();
-} else {
-  window.addEventListener("m3-login-success", initNewEntryForm, { once: true });
-}
+})();
