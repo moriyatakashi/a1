@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>m5 / 現在地マップ(実座標版)</title>
+<link rel="icon" href="favicon.ico">
+<link rel="stylesheet" href="../common/base.css?v=1">
+<style>
+  body { max-width: none; }
+  #map-root { max-width: 640px; margin: 0 auto; }
+  #map-root svg { display: block; width: 100%; height: auto; background: transparent; }
+  .pref { fill: var(--input-bg); stroke: var(--line); stroke-width: 0.5; }
+  .here { fill: #8fc7ec; }
+  #zoom-row { max-width: 640px; margin: 12px auto 0; display: flex; align-items: center; gap: 10px; }
+  #zoom-row input { flex: 1; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>路歴（m5） / 現在地マップ</h1>
+  <p style="font-size:0.8rem;color:var(--ink-soft);">実座標のgeojsonをメルカトル投影で描画し、GPSで取得した現在地の都道府県をRay castingで判定・ハイライトする(a2から移設)。外部API・CDNは使わず完全ローカル。ズームスライダーで拡大できる。沖縄県は別枠(inset)で描画。</p>
+  <div id="map-root"><svg id="map" viewBox="0 0 760 760"></svg></div>
+  <div id="zoom-row"><span style="font-size:0.8rem;color:var(--ink-soft);">ズーム</span><input type="range" id="z" min="1" max="8" step="0.1" value="1"><span id="zv" style="font-size:0.8rem;min-width:34px;text-align:right;">1.0×</span></div>
+  <script>
+    // 現在地マップ(a2から移設)。実緯度経度geojsonをメルカトル投影してSVG化し、
+    // GPS座標を外部APIなしでRay casting判定して該当県をハイライトする。完全ローカル。
+    const RAD = Math.PI / 180;
+    const mercY = lat => Math.log(Math.tan(Math.PI / 4 + lat * RAD / 2));
+    function project(win, box) {
+      const [W, S, E, N] = win, [px, py, pw, ph] = box;
+      const x0 = W * RAD, y0 = mercY(N);
+      const bw = (E - W) * RAD, bh = y0 - mercY(S);
+      const s = Math.min(pw / bw, ph / bh);
+      const ox = px + (pw - bw * s) / 2, oy = py + (ph - bh * s) / 2;
+      return ([lon, lat]) => [ox + (lon * RAD - x0) * s, oy + (y0 - mercY(lat)) * s];
+    }
+    function toPath(geom, p) {
+      const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
+      return polys.flat().map(ring =>
+        ring.map((pt, i) => (i ? "L" : "M") + p(pt).map(v => v.toFixed(1)).join(" ")).join("") + "Z"
+      ).join("");
+    }
+    function layer(gj, keep, win, box) {
+      const p = project(win, box);
+      return gj.features
+        .filter(f => keep(f.properties.N03_001))
+        .map(f => `<path class="pref" data-p="${f.properties.N03_001}" d="${toPath(f.geometry, p)}"/>`)
+        .join("");
+    }
+    function inRing(lon, lat, ring) {
+      let c = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i], [xj, yj] = ring[j];
+        if ((yi > lat) !== (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) c = !c;
+      }
+      return c;
+    }
+    function inFeature(lon, lat, geom) {
+      const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
+      return polys.some(poly => inRing(lon, lat, poly[0]));
+    }
+    const svg = document.getElementById("map"), z = document.getElementById("z"), zv = document.getElementById("zv");
+    let cx = 380, cy = 380;
+    const apply = () => {
+      const w = 760 / +z.value;
+      const x = Math.max(0, Math.min(760 - w, cx - w / 2));
+      const y = Math.max(0, Math.min(760 - w, cy - w / 2));
+      svg.setAttribute("viewBox", `${x} ${y} ${w} ${w}`);
+      zv.textContent = (+z.value).toFixed(1) + "×";
+    };
+    z.oninput = apply;
+    fetch("prefectures.geojson").then(r => r.json()).then(gj => {
+      svg.innerHTML =
+        layer(gj, n => n !== "沖縄県", [129.5, 30, 148.5, 46], [24, 20, 712, 716])
+        + layer(gj, n => n === "沖縄県", [127, 26, 128, 27], [42, 64, 156, 120]);
+      navigator.geolocation && navigator.geolocation.getCurrentPosition(pos => {
+        const { longitude: lon, latitude: lat } = pos.coords;
+        const f = gj.features.find(f => inFeature(lon, lat, f.geometry));
+        if (!f) return;
+        const els = [...svg.querySelectorAll(`[data-p="${f.properties.N03_001}"]`)];
+        els.forEach(el => el.classList.add("here"));
+        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+        els.forEach(el => {
+          const b = el.getBBox();
+          x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y);
+          x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height);
+        });
+        cx = (x0 + x1) / 2; cy = (y0 + y1) / 2;
+        z.value = 3; apply();
+      }, () => {});
+    }).catch(() => { svg.innerHTML = '<text x="380" y="380" fill="#aaa" text-anchor="middle" font-size="16">地図の読み込みに失敗しました</text>'; });
+  </script>
+</body>
+</html>
