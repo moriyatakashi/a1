@@ -62,7 +62,6 @@
 <body>
   <p><a href="../../">← 戻る</a></p>
   <h1>m2</h1>
-  <p id="lastUpdated" style="font-size:0.8rem;color:#aaa;">最終更新: 2026-07-16 07:48 JST</p>
   <div id="login-gate">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <div id="g_id_onload"
@@ -141,9 +140,5 @@
   <script>window.AA_AUTH_EVENT = "m2-login-success"; window.AA_PUBLIC_VIEW = true;</script>
   <script src="../common/auth.js?v=202607201000"></script>
   <script type="module" src="app.js?v=202607261316"></script>
-  <script type="module">
-    import { applyLastUpdated } from "../common/last-updated.js";
-    applyLastUpdated("src/m2", "lastUpdated", "最終更新");
-  </script>
 </body>
 </html>
