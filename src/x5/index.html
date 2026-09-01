@@ -42,7 +42,6 @@
   .legend-item { display: flex; align-items: center; gap: 5px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .visit-row { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; cursor: pointer; }
-  .visit-row.active { border-color: var(--accent); }
   .visit-row-place { font-weight: 600; font-size: 0.88rem; }
   .visit-row-meta { font-size: 0.72rem; color: var(--ink-soft); margin-top: 2px; }
   .popup { display: none; position: absolute; background: #fff; color: #222; border: 1px solid #ccc; border-radius: 8px; padding: 8px 12px; font-size: 0.8rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15); pointer-events: none; z-index: 10; max-width: 180px; }
@@ -57,7 +56,8 @@
   .btn-gps { padding: 8px 12px; border: 1px solid var(--accent); border-radius: 6px; background: #eef6ff; color: var(--accent); white-space: nowrap; }
   .btn-add-visit { width: 100%; padding: 10px; border: 1px solid var(--accent); border-radius: 8px; background: #fff; color: var(--accent); font-size: 0.95rem; }
   .visit-input-status { font-size: 0.78rem; color: var(--ink-soft); margin-top: 6px; text-align: center; min-height: 1.2em; }
-  #hereMapRoot svg { display: block; width: 100%; height: auto; background: transparent; }
+  .map-wrap img { display: block; width: 100%; }
+  #hereMapRoot svg { display: block; width: 100%; height: auto; }
   #hereMapRoot .pref { fill: var(--input-bg); stroke: var(--line); stroke-width: 0.5; }
   #hereMapRoot .here { fill: #8fc7ec; }
   #hereZoomRow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--ink-soft); }
@@ -128,7 +128,7 @@
     </div>
     <div class="map-wrap">
       <span class="card-label">県マップ</span>
-      <img src="data/prefectures_map_east.svg?v=202608110549" alt="近畿〜関東 県マップ" style="display:block;width:100%;">
+      <img src="data/prefectures_map_east.svg?v=202608110549" alt="近畿〜関東 県マップ">
       <div class="map-legend">
         <div class="legend-item"><div class="legend-dot" style="background:#d9534f;"></div>訪問済み</div>
         <div class="legend-item"><div class="legend-dot" style="background:#4a7ebb;"></div>未訪問</div>
@@ -137,7 +137,7 @@
     </div>
     <div class="map-wrap">
       <span class="card-label">全国マップ</span>
-      <img src="data/prefectures_map_japan.svg?v=202608160600" alt="全国 都道府県マップ" style="display:block;width:100%;">
+      <img src="data/prefectures_map_japan.svg?v=202608160600" alt="全国 都道府県マップ">
       <div class="map-legend">
         <div class="legend-item"><div class="legend-dot" style="background:#d9534f;"></div>訪問済み</div>
         <div class="legend-item"><div class="legend-dot" style="background:#4a7ebb;"></div>未訪問</div>
