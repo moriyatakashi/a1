@@ -186,5 +186,5 @@ function onLoginSuccess() {
 if (window.__loginState && window.__loginState.loggedIn) {
   onLoginSuccess();
 } else {
-  window.addEventListener("m1-login-success", onLoginSuccess, { once: true });
+  window.addEventListener("x4-login-success", onLoginSuccess, { once: true });
 }

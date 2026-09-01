@@ -39,5 +39,5 @@ function initNewEntryForm() {
 if (window.__loginState && window.__loginState.loggedIn) {
   initNewEntryForm();
 } else {
-  window.addEventListener("m3-login-success", initNewEntryForm, { once: true });
+  window.addEventListener("x6-login-success", initNewEntryForm, { once: true });
 }

@@ -1,4 +1,4 @@
-// app.js — k2(baレーダーチャート)。baの生ログを読み、
+// app.js — x3(x2レーダーチャート)。x2の生ログを読み、
 // (1)投稿者別: 投稿者3人を軸にした参加スレッド数、
 // (2)分類別: ba-32規約の4分類(案件/確定仕様/気づき/保留論点)ごとのスレッド数
 // をタブ切り替えでレーダーチャート表示する。読み取り専用。
@@ -10,7 +10,7 @@ const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
 const BA_API = `${API_BASE}/ba`;
 const WEEKLY_API = `${API_BASE}/weekly-scores`;
 
-// ba/app.jsのgroupThreadsを踏襲(status判定・PartitionKeyグルーピングのロジックを合わせるため)。
+// x2/app.jsのgroupThreadsを踏襲(status判定・PartitionKeyグルーピングのロジックを合わせるため)。
 function groupThreads(items) {
   const byThread = new Map();
   items.forEach((it) => {
@@ -232,8 +232,8 @@ function renderWeeklyTable(theadRow, tbody, weeks) {
   }).join("");
 }
 
-// --- 月次集計(ba生ログを月別×分類別に集計)------------------------------------
-// monthly-scores API(ba-165③)が未稼働のため、baの生ログを月別に集計して積み上げ棒で描く。
+// --- 月次集計(x2生ログを月別×分類別に集計)------------------------------------
+// monthly-scores API(ba-165③)が未稼働のため、x2の生ログを月別に集計して積み上げ棒で描く。
 // 各スレッドを root の作成月に計上し、分類(ba-32/ba-181の6分類)ごとに積み上げる。
 // 分類はcomputeClassificationCountsと同じく「最新のnoteに付いた分類」を採用する。
 const MONTH_COUNT = 6;
@@ -445,5 +445,5 @@ function onLoginSuccess() {
 if (window.__loginState && window.__loginState.loggedIn) {
   onLoginSuccess();
 } else {
-  window.addEventListener("bc-login-success", onLoginSuccess, { once: true });
+  window.addEventListener("x3-login-success", onLoginSuccess, { once: true });
 }

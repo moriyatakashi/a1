@@ -1,6 +1,6 @@
 const STORAGE_KEY = "aa_credential";
 const GOOGLE_TOKEN_SESSION_MS = 60 * 60 * 1000;
-const LOGIN_EVENT = window.AA_AUTH_EVENT || "aa-login-success";
+const LOGIN_EVENT = window.AA_AUTH_EVENT || "x1-login-success";
 function getElement(id) {
   return typeof document !== "undefined" ? document.getElementById(id) : null;
 }

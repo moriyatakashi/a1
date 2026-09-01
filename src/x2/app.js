@@ -293,5 +293,5 @@ function onLoginSuccess() {
 if (window.__loginState && window.__loginState.loggedIn) {
   onLoginSuccess();
 } else {
-  window.addEventListener("ba-login-success", onLoginSuccess, { once: true });
+  window.addEventListener("x2-login-success", onLoginSuccess, { once: true });
 }
