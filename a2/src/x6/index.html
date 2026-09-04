@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../common/config.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>x6</title>
+<link rel="stylesheet" href="../common/base.css">
+<style>
+  .new-entry-card {
+    border: 1px solid var(--line); border-top: 3px solid var(--accent);
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; background: var(--paper);
+  }
+  .lane-form-label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .65rem;
+    color: var(--ink-soft); display: block; margin: 8px 0 4px;
+  }
+  .field-input, .field-textarea {
+    width: 100%; font-size: .85rem; padding: 7px 9px; border: 1px solid var(--line);
+    border-radius: 5px; background: var(--input-bg); color: var(--ink); font-family: inherit; box-sizing: border-box;
+  }
+  .field-textarea { resize: vertical; min-height: 46px; }
+  .new-entry-submit {
+    margin-top: 10px; font-size: .8rem; padding: 8px 16px; border: 1px solid var(--accent);
+    border-radius: 6px; background: transparent; color: var(--accent); font-weight: 600; cursor: pointer;
+  }
+  .cls-radio { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+  .cls-radio label {
+    font-size: .75rem; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
+    color: var(--ink-soft); cursor: pointer;
+  }
+  .cls-radio input { display: none; }
+  .cls-radio label:has(input:checked) { color: var(--ink); border-color: var(--ink-soft); background: var(--input-bg); }
+  .post-result { font-size: .78rem; color: var(--ink-soft); margin-top: 8px; min-height: 1.2em; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>x6</h1>
+  <div id="login-gate">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload" data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
+    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
+    <div class="g_id_signin"></div>
+    <p id="status">未ログイン(ログインすると記入フォームが表示されます)</p>
+  </div>
+  <div id="content" style="display:none;">
+    <div class="new-entry-card">
+      <div class="cls-radio">
+        <label><input type="radio" name="newCls" value="案件"><span>案件</span></label>
+        <label><input type="radio" name="newCls" value="確定仕様"><span>確定仕様</span></label>
+        <label><input type="radio" name="newCls" value="気づき" checked><span>気づき</span></label>
+        <label><input type="radio" name="newCls" value="保留論点"><span>保留論点</span></label>
+        <label><input type="radio" name="newCls" value="記録"><span>記録</span></label>
+      </div>
+      <label class="lane-form-label">タイトル</label>
+      <input class="field-input" id="newTitle" type="text" placeholder="例: x2ページのレイアウト崩れ">
+      <label class="lane-form-label">タグ(自由・複数可)</label>
+      <input class="field-input" id="newTags" type="text" placeholder="#設計 #x2 #スマホ">
+      <label class="lane-form-label">本文(任意)</label>
+      <textarea class="field-textarea" id="newBody" placeholder="経緯やメモ、気づいた状況など"></textarea>
+      <button class="new-entry-submit" type="button" id="btnAddThread">追加する</button>
+      <div class="post-result" id="postResult"></div>
+    </div>
+  </div>
+  <script>window.AA_AUTH_EVENT = "x6-login-success";</script>
+  <script src="../common/auth.js"></script>
+  <script type="module" src="app.js?v=20260831c-local"></script>
+</body>
+</html>

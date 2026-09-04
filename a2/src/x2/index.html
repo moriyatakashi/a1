@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../common/config.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>x2</title>
+<link rel="stylesheet" href="../common/ledger.css">
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>x2</h1>
+  <div id="login-gate">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
+    <div class="g_id_signin"></div>
+    <p id="status">未ログイン(ログインするとログが表示されます)</p>
+  </div>
+  <div id="content" style="display:none;">
+    <div class="summary-bar" style="grid-template-columns:repeat(3,1fr);">
+      <div class="stat"><div class="stat-num" id="statTotal">—</div><div class="stat-label">スレッド</div></div>
+      <div class="stat"><div class="stat-num" id="statOpen">—</div><div class="stat-label">オープン</div></div>
+      <div class="stat"><div class="stat-num" id="statClosed">—</div><div class="stat-label">クローズ</div></div>
+    </div>
+    <div class="ba-search" style="margin:12px 0;">
+      <input class="field-input" id="baSearch" type="search" placeholder="番号(例: 50)+Enterでジャンプ / それ以外はタグで抽出">
+      <button type="button" class="btn-search-reset" id="btnSearchReset" style="display:none;">リセット</button>
+    </div>
+    <div class="cls-filter" id="clsFilter"></div>
+    <div class="list-controls">
+      <button type="button" class="btn-toggle-voided" id="btnToggleClosed">closedも表示</button>
+      <button type="button" class="btn-toggle-voided" id="btnToggleVoid" style="display:none;">無効スレッドも表示</button>
+    </div>
+    <div class="thread-list" id="threadList"></div>
+  </div>
+  <script>window.AA_AUTH_EVENT = "x2-login-success";</script>
+  <script src="../common/auth.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
