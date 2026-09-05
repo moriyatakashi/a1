@@ -76,6 +76,9 @@ categories:
       - code: g8
         desc: 複数AIの同時書き込みログ
         href: src/g/g8/
+      - code: g9
+        desc: マウス/micro:bitボタン表示(要ローカルデーモン)
+        href: src/g/g9/
   - label: まとめ・文書・設計
     items:
       - code: bd

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mb1 button monitor - g9</title>
+  <style>
+    :root { --bg: #14170f; --fg: #eeeeee; --dim: #888; --accent: #6cf28a; }
+    @media (prefers-color-scheme: light) {
+      :root { --bg: #f7f6f0; --fg: #22261c; --dim: #777; --accent: #2a8f4d; }
+    }
+    body {
+      font-family: sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      text-align: center;
+    }
+    #status { color: var(--dim); font-size: 0.9rem; }
+    #status.connected { color: var(--accent); }
+    #big {
+      font-size: 8rem;
+      font-weight: bold;
+      line-height: 1;
+      min-height: 8rem;
+      transition: opacity 0.15s ease-out;
+    }
+    #big.flash { opacity: 1; }
+    #big.idle { opacity: 0.15; }
+    #log {
+      max-width: 90vw;
+      word-break: break-all;
+      color: var(--dim);
+      font-family: monospace;
+      font-size: 1.1rem;
+      min-height: 1.5rem;
+    }
+    .note { color: var(--dim); font-size: 0.8rem; max-width: 30rem; }
+  </style>
+</head>
+<body>
+  <div id="status">つないでいます...</div>
+  <div id="big" class="idle">-</div>
+  <div id="log"></div>
+  <p class="note">
+    <a href="https://github.com/moriyatakashi/mb1" style="color:inherit">mb1/mouse_daemon.py</a>
+    をローカルPCで起動していないと繋がりません(このPCだけの遊びページです)。
+  </p>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const bigEl = document.getElementById("big");
+    const logEl = document.getElementById("log");
+
+    const LOG_MAX = 200;
+    let log = "";
+    let flashTimer = null;
+
+    function onEvent(ch) {
+      bigEl.textContent = ch;
+      bigEl.classList.remove("idle");
+      bigEl.classList.add("flash");
+      clearTimeout(flashTimer);
+      flashTimer = setTimeout(() => {
+        bigEl.classList.remove("flash");
+        bigEl.classList.add("idle");
+      }, 300);
+
+      log += ch;
+      if (log.length > LOG_MAX) log = log.slice(log.length - LOG_MAX);
+      logEl.textContent = log;
+    }
+
+    function connect() {
+      // mb1/mouse_daemon.py (ローカルPC、ポート5556) からのSSE配信を受ける。
+      // マウスの左右クリック、またはmicro:bit本体のA/Bボタンが飛んでくる。
+      const es = new EventSource("http://127.0.0.1:5556/events");
+      es.onopen = () => {
+        statusEl.textContent = "接続中(mb1 mouse_daemon)";
+        statusEl.classList.add("connected");
+      };
+      es.onmessage = (e) => onEvent(e.data);
+      es.onerror = () => {
+        statusEl.textContent = "未接続(mb1/mouse_daemon.pyをこのPCで起動してください)";
+        statusEl.classList.remove("connected");
+      };
+    }
+
+    connect();
+  </script>
+</body>
+</html>
