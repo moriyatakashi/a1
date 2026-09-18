@@ -16,7 +16,7 @@ import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, getCount
 import { esc, fmtTs, BY_LABEL, parseTags } from "../common/utils.js";
 
 // 新c1(旧c2、a2リポジトリ)のBaLog Index。ba番号タグのリンク先。
-const BA_INDEX_URL = "https://moriyatakashi.github.io/a2/c1.html";
+const BA_INDEX_URL = "../ba/"; // a2廃止(2026-09-19)に伴いa1内のbaページへ。ページ内アンカーは無い
 
 // プロジェクトはab01-9f35a(src/g/g8/aa-app.jsと同じ)。apiKeyは公開前提の値
 // (クライアントに同梱される) — 認可はFirestore Security Rules(firestore.rules)が担うため、
@@ -93,7 +93,7 @@ function threadCardHtml(t) {
   const tagsHtml = parseTags(t.tags || "")
     .map((x) => `<span class="aa-tag" onclick="event.stopPropagation()">#${esc(x)}</span>`)
     .join("");
-  // ba番号は新c1(a2)の該当行への外部リンク。gh-chip(既存の「外部参照」チップ)を流用し、
+  // ba番号はa1のbaページへのリンク。gh-chip(既存の「外部参照」チップ)を流用し、
   // タグ・aa番号と見た目で区別する。カード自体の開閉トグルとは独立させる
   const baHtml = t.baSeq != null
     ? `<a class="gh-chip" href="${BA_INDEX_URL}#ba-${esc(String(t.baSeq))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">→ ba-${esc(String(t.baSeq))}</a>`
