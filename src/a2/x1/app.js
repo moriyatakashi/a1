@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, getCountFromServer } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
-import { esc, fmtTs, BY_LABEL, parseTags } from "../common/utils.js";
-const BA_INDEX_URL = "https://moriyatakashi.github.io/a2/c1.html";
+import { esc, fmtTs, BY_LABEL, parseTags } from "../../common/utils.js";
+const BA_INDEX_URL = "../../ba/"; // 旧a2サイト(a2/c1.html)は廃止済み。a1のbaビューへ(2026-09-22、a2をsrc/a2へ移設)
 const firebaseConfig = {
   apiKey: "AIzaSyDuPw8nMuFWx8ghV5ZeBGETeiNII3uk4l8",
   authDomain: "ab01-9f35a.firebaseapp.com",

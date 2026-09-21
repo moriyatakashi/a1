@@ -1,5 +1,5 @@
-import "../common/config.js";
-import { CLASSIFICATIONS, parseTags, withCredential } from "../common/utils.js";
+import "../../common/config.js";
+import { CLASSIFICATIONS, parseTags, withCredential } from "../../common/utils.js";
 const API_BASE = window.AA_API_BASE;
 const BA_API = `${API_BASE}/ba`;
 async function postEntry(body) {

@@ -1,6 +1,6 @@
-import "../common/config.js";
-import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../common/utils.js";
-import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
+import "../../common/config.js";
+import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../../common/utils.js";
+import { groupThreads, entryTypeLabel } from "../../common/thread-logic.js";
 const BA_API = `${window.AA_API_BASE}/ba`;
 function renderSummary(threads) {
   const openCount = threads.filter((t) => t.status === "open").length;

@@ -93,3 +93,26 @@ categories:
       - code: wip
         desc: WIP作業台(別系統)
         href: src/bd/wip/
+  - label: 旧a2(アーカイブ・a2独立リポジトリ時代のアプリ)
+    items:
+      - code: a2
+        desc: 旧a2の目次
+        href: src/a2/
+      - code: a2-x1
+        desc: openledger
+        href: src/a2/x1/
+      - code: a2-x2
+        desc: note
+        href: src/a2/x2/
+      - code: a2-x3
+        desc: radar
+        href: src/a2/x3/
+      - code: a2-x4
+        desc: daily
+        href: src/a2/x4/
+      - code: a2-x5
+        desc: visits
+        href: src/a2/x5/
+      - code: a2-x6
+        desc: post
+        href: src/a2/x6/

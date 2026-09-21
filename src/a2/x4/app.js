@@ -1,5 +1,5 @@
-import "../common/config.js";
-import { todayStr, withCredential } from "../common/utils.js";
+import "../../common/config.js";
+import { todayStr, withCredential } from "../../common/utils.js";
 const SCORES_API = `${window.AA_API_BASE}/scores`;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const Y_MIN = 60;

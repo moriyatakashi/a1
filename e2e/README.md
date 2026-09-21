@@ -16,6 +16,7 @@
 | `2-14-ba-approval-queue.test.js` | `ba`(承認キュー) |
 | `2-15-ba-react.test.js` | `ba`(反応チップ) |
 | `2-16-ba-reclassify.test.js` | `ba`(分類変更) |
+| `2-18-a2-paths.test.js` | `a2`(旧a2アプリのパス・深さ) |
 
 ## 実行
 初回のみ依存パッケージをインストール。

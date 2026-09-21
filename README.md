@@ -10,6 +10,7 @@ Takashi の個人プロジェクト（roreki）の公開メインアプリ。Git
   - `m1` `m2` `m3` … 記録系（日々記録・訪問地図ほか）
   - `ba` `bb` `bc` `bd` … 内部メモ系（ba ログのビュー／レーダーチャート／card ほか）
   - `g/` … 実験・エミュレータ系
+  - `a2/` … 旧a2(独立リポジトリ時代)のアプリ x1〜x6(2026-09-22に`a2-archive/`から移設。共通部品は`src/common/`を使う。robots.txtで検索除外)
   - `common/` … 共有モジュール（auth・config・ledger スタイル ほか）
 - `e2e/` … Playwright テスト
 - `scripts/` … ビルド・BaLog バックアップ・エントロピースキャン

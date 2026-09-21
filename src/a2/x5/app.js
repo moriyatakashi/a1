@@ -1,5 +1,5 @@
-import "../common/config.js";
-import { todayStr, withCredential } from "../common/utils.js";
+import "../../common/config.js";
+import { todayStr, withCredential } from "../../common/utils.js";
 const API_BASE = window.AA_API_BASE;
 const VISITS_API = `${API_BASE}/visits`;
 const canvas = document.getElementById("mapCanvas");

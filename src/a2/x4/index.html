@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<script src="../common/config.js"></script>
+<script src="../../common/config.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>x4</title>
-<link rel="stylesheet" href="../common/base.css">
+<link rel="stylesheet" href="../../common/base.css">
 <style>
   .score-display { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
   .score-num { font-size: 2.2rem; font-weight: 800; min-width: 50px; text-align: center; }
@@ -33,7 +33,7 @@
 </style>
 </head>
 <body>
-  <p><a href="../../">← 戻る</a></p>
+  <p><a href="../">← 戻る</a></p>
   <h1>x4</h1>
   <div id="login-gate">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -70,7 +70,7 @@
   </div>
   <div class="score-tooltip" id="scoreTooltip"></div>
   <script>window.AA_AUTH_EVENT = "x4-login-success"; window.AA_PUBLIC_VIEW = true;</script>
-  <script src="../common/auth.js"></script>
+  <script src="../../common/auth.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
