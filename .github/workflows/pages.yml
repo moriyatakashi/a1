@@ -4,6 +4,11 @@ on:
   push:
     branches: ["main"]
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: "緊急時のみ: テストを飛ばして公開する(既定はテスト成功後にだけ公開)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,7 +20,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # 2026-09-26(ba-325): テストが落ちたままの状態を公開しない。test.yml と同じ内容をここでも走らせ、
+  # 成功したときだけ deploy へ進む(workflow_runで連結せず、1ファイルで完結させる)。
+  test:
+    if: ${{ !inputs.skip_tests }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Run tests
+        run: node --test
+
   deploy:
+    needs: test
+    # testがskipped(skip_tests=true)のときも進めるため、failure/cancelledだけ弾く
+    if: ${{ !failure() && !cancelled() }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
