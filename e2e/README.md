@@ -18,6 +18,7 @@
 | `2-16-ba-reclassify.test.js` | `ba`(分類変更) |
 | `2-18-a2-paths.test.js` | `a2`(旧a2アプリのパス・深さ) |
 | `2-19-nav-smoke.test.js` | nav.ymlの全ページ(開くだけ: ローカル404・スクリプトエラー無し) |
+| `2-20-g1-gamepad.test.js` | `g1`(GamePad、getGamepadsモック) |
 
 ## 実行
 初回のみ依存パッケージをインストール。
