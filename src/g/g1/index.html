@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>g1 — NES Emulator</title>
-<link rel="stylesheet" href="style.css?v=202607201200">
+<link rel="stylesheet" href="style.css?v=202609281400">
 </head>
 <body>
 <a class="back" href="../../../">← 戻る</a>
@@ -58,6 +58,13 @@
   矢印キー = 十字キー &nbsp;/&nbsp; スマホは上のボタンをタップ
 </div>
 
+<details class="gp-config" id="gamepadConfig">
+  <summary>🎮 コントローラーのボタン割当</summary>
+  <p class="gp-info"></p>
+  <div class="gp-list"></div>
+  <button id="gpReset">このコントローラーの割当を初期に戻す</button>
+</details>
+
 <div class="error-box" id="errorBox">
   <div class="error-header">
     <span class="error-title">⚠ エラー内容（コピーしてClaudeに貼り付け可）</span>
@@ -66,7 +73,7 @@
   <pre class="error-text"><code id="errorText"></code></pre>
 </div>
 
-<script type="module" src="app.js?v=202607231030"></script>
+<script type="module" src="app.js?v=202609281400"></script>
 <script type="module">
   import { applyLastUpdated } from "../../common/last-updated.js";
   applyLastUpdated("src/g/g1");

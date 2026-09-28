@@ -49,35 +49,133 @@ function flushAudio(){
   audioSamples=[];
 }
 
+// ─── 入力(ba-52 手順4): keyboard / touch / gamepad を別々に持ち、ORで joy1 に合わせる ───
+// joy1の並び: 0=A 1=B 2=Select 3=Start 4=Up 5=Down 6=Left 7=Right
+// 以前は各ソースが joy1 に直接書いていたため、例えばキーを押したままパッドを離すと
+// キー側の押下まで消えていた。ソースごとに持つことで互いに独立させる。
+const NES_BTN_NAMES=['A','B','SELECT','START','↑','↓','←','→'];
+const input={ key:new Uint8Array(8), touch:new Uint8Array(8), pad:new Uint8Array(8) };
+function syncJoy(){
+  if(!cpu) return;
+  for(let i=0;i<8;i++) cpu.joy1[i]=input.key[i]|input.touch[i]|input.pad[i];
+}
+
 const KEYS={'z':0,'Z':0,'x':1,'X':1,'Shift':2,'Enter':3,
             'ArrowUp':4,'ArrowDown':5,'ArrowLeft':6,'ArrowRight':7};
-document.addEventListener('keydown',e=>{if(cpu&&e.key in KEYS){cpu.joy1[KEYS[e.key]]=1;e.preventDefault();}});
-document.addEventListener('keyup',  e=>{if(cpu&&e.key in KEYS) cpu.joy1[KEYS[e.key]]=0;});
+document.addEventListener('keydown',e=>{if(e.key in KEYS){input.key[KEYS[e.key]]=1;syncJoy();if(cpu)e.preventDefault();}});
+document.addEventListener('keyup',  e=>{if(e.key in KEYS){input.key[KEYS[e.key]]=0;syncJoy();}});
 
-// ─── GamePad対応 Phase1: 最小構成(ba-52) ──────────────────────────────
-// Standard Gamepadレイアウト前提。複数コントローラー接続時は先頭のみ使用。
-// button0(下段, Xbox A/PS×)→NES B、button1(右段, Xbox B/PS○)→NES A という
-// 一般的なWebエミュレータのマッピング慣習を採用(必要ならPhase3で変更可能)。
-// 既知の制約: keyboard/touchと同じjoy1配列に直接書き込むため、複数入力ソースを
-// 同時に使った場合の押しっぱなし判定はソース間で厳密には独立していない。
-const GAMEPAD_MAP={0:1,1:0,8:2,9:3,12:4,13:5,14:6,15:7};
-let gamepadPrev={};
-function pollGamepad(){
-  if(!cpu || !navigator.getGamepads) return;
-  const pads=navigator.getGamepads();
-  for(const btnIdx in GAMEPAD_MAP){
-    let pressed=false;
-    for(const pad of pads){
-      if(!pad) continue;
-      const b=pad.buttons[btnIdx];
-      if(b && b.pressed){ pressed=true; break; }
-    }
-    if(pressed!==gamepadPrev[btnIdx]){
-      cpu.joy1[GAMEPAD_MAP[btnIdx]]=pressed?1:0;
-      gamepadPrev[btnIdx]=pressed;
-    }
-  }
+// ─── GamePad(ba-52 手順2): コントローラーid → 割当 のプロファイル表 ─────────
+// 割当は { ボタン番号: joy1の添字 }。どのプロファイルにも当たらないものは Standard。
+// Standard: button0(下段, Xbox A/PS×)→NES B、button1(右段, Xbox B/PS○)→NES A
+// (一般的なWebエミュレータの慣習。e2e 2-20-g1-gamepad がこの既定を前提にしている)。
+const GAMEPAD_PROFILES=[
+  // 手順3: Joy-Con(L) は Takashi の手順1(ボタン番号の控え)が来てからここに足す。例:
+  // { name:'Joy-Con (L)', match:/joy-con \(l\)/i, map:{ ... } },
+  { name:'Standard', match:/./, map:{0:1,1:0,8:2,9:3,12:4,13:5,14:6,15:7} },
+];
+
+// 手順5: 利用者が設定した割当を、コントローラーidごとに localStorage に保存する。
+// 保存がある id は、プロファイル表より保存を優先する。
+const GP_STORE_KEY='g1.gamepadMap.v1';
+function loadSavedMaps(){
+  try{ return JSON.parse(localStorage.getItem(GP_STORE_KEY)||'{}')||{}; }catch(e){ return {}; }
 }
+function saveSavedMaps(maps){
+  try{ localStorage.setItem(GP_STORE_KEY, JSON.stringify(maps)); }catch(e){}
+}
+let savedMaps=loadSavedMaps();
+
+function profileFor(id){
+  return GAMEPAD_PROFILES.find(p=>p.match.test(id||'')) || GAMEPAD_PROFILES[GAMEPAD_PROFILES.length-1];
+}
+function mapFor(id){
+  const saved=savedMaps[id];
+  return saved ? {map:saved, source:'保存した割当'} : {map:profileFor(id).map, source:profileFor(id).name};
+}
+
+// 割当設定: 「割当」を押すと、次に押されたパッドのボタンをその NES ボタンに割り当てる
+let assignTarget=null;           // 待っている NES ボタン(joy1の添字)。null なら待っていない
+let prevPressed=new Map();       // pad.index → そのパッドで直前に押されていたボタン番号の集合
+
+function pollGamepad(){
+  input.pad.fill(0);
+  const pads=navigator.getGamepads?navigator.getGamepads():[];
+  for(const pad of pads){
+    if(!pad) continue;
+    const before=prevPressed.get(pad.index)||new Set();
+    const now=new Set();
+    pad.buttons.forEach((b,i)=>{ if(b && b.pressed) now.add(i); });
+    prevPressed.set(pad.index, now);
+
+    if(assignTarget!==null){
+      // 新しく押されたボタンがあれば割り当てる(押しっぱなしのものは拾わない)
+      const fresh=[...now].find(i=>!before.has(i));
+      if(fresh!==undefined){ assignButton(pad.id, fresh, assignTarget); }
+      continue; // 割当待ちの間はゲームへ入力を送らない
+    }
+    const map=mapFor(pad.id).map;
+    for(const i of now){ const n=map[i]; if(n!==undefined) input.pad[n]=1; }
+  }
+  syncJoy();
+}
+
+function assignButton(id, btnIdx, nesIdx){
+  // 今効いている割当を土台に、その NES ボタンの古い割当と、そのボタン番号の古い割当を外して付け直す
+  const map={...mapFor(id).map};
+  for(const k of Object.keys(map)){ if(map[k]===nesIdx || Number(k)===btnIdx) delete map[k]; }
+  map[btnIdx]=nesIdx;
+  savedMaps[id]=map;
+  saveSavedMaps(savedMaps);
+  assignTarget=null;
+  renderGamepadConfig();
+}
+
+// エミュレーター停止中でも割当設定できるよう、パッドの読み取りはゲームのループとは別に毎フレーム回す
+function padLoop(){ pollGamepad(); requestAnimationFrame(padLoop); }
+requestAnimationFrame(padLoop);
+
+// 割当設定UI(#gamepadConfig)。先頭の接続中パッドについて表示する
+function firstPad(){
+  const pads=navigator.getGamepads?navigator.getGamepads():[];
+  for(const p of pads){ if(p) return p; }
+  return null;
+}
+function renderGamepadConfig(){
+  const box=document.getElementById('gamepadConfig');
+  if(!box) return;
+  const pad=firstPad();
+  const info=box.querySelector('.gp-info');
+  const list=box.querySelector('.gp-list');
+  list.textContent='';
+  if(!pad){ info.textContent='コントローラーをつないでボタンを押すと設定できます'; return; }
+  const {map,source}=mapFor(pad.id);
+  info.textContent=assignTarget!==null
+    ? `「${NES_BTN_NAMES[assignTarget]}」にするボタンを押してください…`
+    : `${pad.id}(${source})`;
+  NES_BTN_NAMES.forEach((name,n)=>{
+    const btns=Object.keys(map).filter(k=>map[k]===n);
+    const row=document.createElement('div');
+    row.className='gp-row';
+    const label=document.createElement('span');
+    label.textContent=`${name}: ${btns.length?btns.map(b=>'button'+b).join(', '):'(なし)'}`;
+    const set=document.createElement('button');
+    set.className='gp-assign';
+    set.dataset.nes=String(n);
+    set.textContent=assignTarget===n?'待機中…':'割当';
+    set.addEventListener('click',()=>{ assignTarget=(assignTarget===n?null:n); renderGamepadConfig(); });
+    row.append(label,set);
+    list.append(row);
+  });
+}
+document.getElementById('gpReset')?.addEventListener('click',()=>{
+  const pad=firstPad(); if(!pad) return;
+  delete savedMaps[pad.id]; saveSavedMaps(savedMaps);
+  assignTarget=null; renderGamepadConfig();
+});
+window.addEventListener('gamepadconnected',renderGamepadConfig);
+window.addEventListener('gamepaddisconnected',renderGamepadConfig);
+renderGamepadConfig();
 
 // ─── GamePad対応 Phase2: 接続状態表示(ba-52) ──────────────────────────
 // キーボード/タッチは常時併存のため、未接続でも操作不能にはならない(fallback済み)。
@@ -104,7 +202,6 @@ function blit(){
 
 function loop(){
   if(!running) return;
-  pollGamepad();
   const target=Math.floor(ppu.totalDots/(341*262))+1;
   try{
     while(Math.floor(ppu.totalDots/(341*262))<target){
@@ -236,8 +333,8 @@ document.getElementById('btnTestSound').addEventListener('click', () => {
 // ──────────────────────────────────────────────────────────
 document.querySelectorAll('.pad-btn').forEach(btn=>{
   const idx = parseInt(btn.dataset.idx, 10);
-  const press = (e) => { e.preventDefault(); if(cpu) cpu.joy1[idx]=1; btn.classList.add('pressed'); };
-  const release = (e) => { e.preventDefault(); if(cpu) cpu.joy1[idx]=0; btn.classList.remove('pressed'); };
+  const press = (e) => { e.preventDefault(); input.touch[idx]=1; syncJoy(); btn.classList.add('pressed'); };
+  const release = (e) => { e.preventDefault(); input.touch[idx]=0; syncJoy(); btn.classList.remove('pressed'); };
   btn.addEventListener('pointerdown', press);
   btn.addEventListener('pointerup', release);
   btn.addEventListener('pointerleave', release);
