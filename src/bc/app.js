@@ -2,6 +2,8 @@
 // (1)投稿者別: 投稿者3人を軸にした参加スレッド数、
 // (2)分類別: ba-32規約の4分類(案件/確定仕様/気づき/保留論点)ごとのスレッド数
 // をタブ切り替えでレーダーチャート表示する。読み取り専用。
+// 2026-09-30(Takashi依頼): ba だけでなく ab(家人たちの連絡用、Firestore abThreads)も集計に入れる。
+// 投稿者別は ba と ab のスレッドを合わせて数え、分類別・月別には ab に分類が無いので「ab(連絡)」を1つ足す。
 // config.jsを自分でimportする(ba-9追補)。HTML側の<script>読込に依存しないため、
 // 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
 import "../common/config.js";
@@ -9,6 +11,38 @@ import { CLASSIFICATIONS, findClassification } from "../common/utils.js";
 const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
 const BA_API = `${API_BASE}/ba`;
 const WEEKLY_API = `${API_BASE}/weekly-scores`;
+// ab は Firestore(ab01-9f35a)の abThreads とサブコレクション notes。Rules で誰でも読めるので匿名の REST GET。
+const AB_FS = "https://firestore.googleapis.com/v1/projects/ab01-9f35a/databases/(default)/documents/abThreads";
+const AB_LABEL = "ab(連絡)";
+const CATEGORIES = [...CLASSIFICATIONS, AB_LABEL]; // 分類別・月別の軸(ba の分類 + ab)
+
+async function fsListDocs(url) {
+  const docs = [];
+  let token = "";
+  do {
+    const res = await fetch(`${url}?pageSize=300${token ? `&pageToken=${token}` : ""}`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Firestore ${res.status}`);
+    const page = await res.json();
+    docs.push(...(page.documents || []));
+    token = page.nextPageToken || "";
+  } while (token);
+  return docs;
+}
+
+const fsStr = (doc, key) => doc.fields?.[key]?.stringValue || "";
+
+// ab のスレッドを groupThreads と同じ形({threadId, root, entries})にそろえる。source:"ab" で見分ける。
+async function fetchAbThreads() {
+  const docs = await fsListDocs(AB_FS);
+  return Promise.all(docs.map(async (d) => {
+    const threadId = d.name.split("/").pop();
+    const root = { id: threadId, by: fsStr(d, "by"), createdAt: fsStr(d, "createdAt") };
+    const notes = (await fsListDocs(`${AB_FS}/${threadId}/notes`))
+      .map((n) => ({ by: fsStr(n, "by"), createdAt: fsStr(n, "createdAt") }));
+    const entries = [root, ...notes].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return { threadId, root, entries, status: "open", source: "ab" };
+  }));
+}
 
 // ba/app.jsのgroupThreadsを踏襲(status判定・PartitionKeyグルーピングのロジックを合わせるため)。
 function groupThreads(items) {
@@ -51,14 +85,10 @@ function computePosterCounts(threads) {
 // 最も新しいcreatedAtのものを「そのスレッドの現在の分類」とする
 // (ba-32運用: 分類の訂正・バックフィルは新しいnoteの追記で上書きする方式のため)。
 function computeClassificationCounts(threads) {
-  const counts = new Map(CLASSIFICATIONS.map((c) => [c, 0]));
+  const counts = new Map(CATEGORIES.map((c) => [c, 0]));
 
   threads.forEach((thread) => {
-    let latest = null; // entriesはcreatedAt昇順ソート済みなので、最後に見つかったものが最新
-    thread.entries.forEach((e) => {
-      const found = findClassification(e.tags);
-      if (found) latest = found;
-    });
+    const latest = threadClassification(thread);
     if (latest) counts.set(latest, counts.get(latest) + 1);
   });
 
@@ -237,7 +267,7 @@ function renderWeeklyTable(theadRow, tbody, weeks) {
 // 各スレッドを root の作成月に計上し、分類(ba-32/ba-181の6分類)ごとに積み上げる。
 // 分類はcomputeClassificationCountsと同じく「最新のnoteに付いた分類」を採用する。
 const MONTH_COUNT = 6;
-const MONTH_CLASS_COLORS = ["#6cf", "#5aa06a", "#c98a3a", "#a678d0", "#d06a6a", "#7a9ab0"];
+const MONTH_CLASS_COLORS = ["#6cf", "#5aa06a", "#c98a3a", "#a678d0", "#d06a6a", "#7a9ab0", "#c8c060"]; // 最後が ab
 
 function monthsBack(n) {
   const now = new Date();
@@ -251,8 +281,10 @@ function monthsBack(n) {
 }
 
 // スレッドの現在分類(computeClassificationCountsと同じ判定: 最新のnoteに付いた分類)
+// ab のスレッドは分類を持たないので AB_LABEL。
 function threadClassification(thread) {
-  let latest = null;
+  if (thread.source === "ab") return AB_LABEL;
+  let latest = null; // entriesはcreatedAt昇順ソート済みなので、最後に見つかったものが最新
   thread.entries.forEach((e) => {
     const found = findClassification(e.tags);
     if (found) latest = found;
@@ -262,7 +294,7 @@ function threadClassification(thread) {
 
 // monthKeys(YYYY-MM配列) × 分類 の集計。範囲外の月・分類無しスレッドは無視する。
 function computeMonthlyClassification(threads, monthKeys) {
-  const data = new Map(monthKeys.map((k) => [k, new Map(CLASSIFICATIONS.map((c) => [c, 0]))]));
+  const data = new Map(monthKeys.map((k) => [k, new Map(CATEGORIES.map((c) => [c, 0]))]));
   threads.forEach((thread) => {
     const mk = (thread.root.createdAt || "").slice(0, 7);
     if (!data.has(mk)) return;
@@ -283,7 +315,7 @@ function monthTotal(data, key) {
 // 週次の積み上げ棒と同じ流儀。分類ごとに下から積み上げ、下部に2列の凡例を置く。
 function drawMonthlyBars(svg, monthKeys, data) {
   const W = 320, H = 320;
-  const rows = Math.ceil(CLASSIFICATIONS.length / 2);
+  const rows = Math.ceil(CATEGORIES.length / 2);
   const left = 30, right = 10, top = 16;
   const bottom = 30 + rows * 15;
   const plotW = W - left - right, plotH = H - top - bottom;
@@ -305,7 +337,7 @@ function drawMonthlyBars(svg, monthKeys, data) {
     const x = cx - barW / 2;
     const m = data.get(k);
     let yCursor = top + plotH;
-    CLASSIFICATIONS.forEach((cls, ci) => {
+    CATEGORIES.forEach((cls, ci) => {
       const val = m.get(cls) || 0;
       if (val <= 0) return;
       const h = (val / maxVal) * plotH;
@@ -318,7 +350,7 @@ function drawMonthlyBars(svg, monthKeys, data) {
     parts.push(`<text x="${cx}" y="${top + plotH + 14}" font-size="9" fill="currentColor" opacity="0.75" text-anchor="middle">${Number(k.slice(5, 7))}月</text>`);
   });
 
-  CLASSIFICATIONS.forEach((label, ci) => {
+  CATEGORIES.forEach((label, ci) => {
     const col = ci % 2, row = Math.floor(ci / 2);
     const lx = left + col * 82;
     const ly = top + plotH + 26 + row * 15;
@@ -330,11 +362,11 @@ function drawMonthlyBars(svg, monthKeys, data) {
 }
 
 function renderMonthlyTable(theadRow, tbody, monthKeys, data) {
-  theadRow.innerHTML = `<th>月</th>${CLASSIFICATIONS.map((c) => `<th>${c}</th>`).join("")}<th>合計</th>`;
+  theadRow.innerHTML = `<th>月</th>${CATEGORIES.map((c) => `<th>${c}</th>`).join("")}<th>合計</th>`;
   tbody.innerHTML = monthKeys.slice().reverse().map((k) => {
     const m = data.get(k);
     let total = 0;
-    const cells = CLASSIFICATIONS.map((c) => {
+    const cells = CATEGORIES.map((c) => {
       const v = m.get(c) || 0;
       total += v;
       return `<td>${v}</td>`;
@@ -425,9 +457,12 @@ async function load() {
   const emptyEl = document.getElementById("radarEmpty");
 
   try {
-    const res = await fetch(BA_API, { cache: "no-store" });
-    const items = res.ok ? await res.json() : [];
-    currentThreads = groupThreads(items);
+    // ba と ab を並べて取ってから1回だけ描く。ab が読めなくても ba だけで描く。
+    const [items, abThreads] = await Promise.all([
+      fetch(BA_API, { cache: "no-store" }).then((res) => (res.ok ? res.json() : [])),
+      fetchAbThreads().catch((e) => { console.warn("ab を読めませんでした", e); return []; }),
+    ]);
+    currentThreads = [...groupThreads(items), ...abThreads];
     render();
     weeklyScores = await fetchWeeklyScores();
     if (currentView === "weekly") render();

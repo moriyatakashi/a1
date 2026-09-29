@@ -38,6 +38,8 @@ const BA_FIXTURE = [
 const PAGES = {
   bc: {
     routes: { [`${API_BASE}/ba`]: () => ({ status: 200, body: BA_FIXTURE }) },
+    // 2026-09-30: bc は ab(Firestore abThreads)も読む。ここでは空で返す(ネットワークに出さない)
+    routeRegex: [[/firestore\.googleapis\.com\//, () => ({ status: 200, body: {} })]],
     async assertLoaded(page) {
       await page.waitForFunction(() => document.querySelectorAll("#radarSvg polygon").length > 0, null, { timeout: 5000 });
     },

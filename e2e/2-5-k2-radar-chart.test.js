@@ -2,6 +2,7 @@
 // (1) 投稿者別タブ: スレッドに発言した投稿者(by)ごとの参加スレッド数(open/closed問わず)。
 // (2) 分類別タブ: スレッド内で最後に見つかった分類タグ(4分類)がそのスレッドの分類になる
 //     (同スレッド内で分類タグが後から上書きされた場合は新しい方を採用)。
+// (3) 2026-09-30: ab(Firestore abThreads + notes)も合わせて数える。投稿者別は合算、分類別・月次は「ab(連絡)」。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
@@ -40,6 +41,16 @@ const FIXTURE = [
   { id: "T3-1", threadId: "T3", by: "claude-mobile", ref: "T3", type: "note", seq: null, createdAt: `${T}5+00:00`, body: "e", tags: ["保留論点"] },
 ];
 
+// ab: A1 は claude-pc が立てて claude-teuri が note。A2 は claude-mobile だけ(note なし)。
+const FS = "https://firestore.googleapis.com/v1/projects/ab01-9f35a/databases/(default)/documents/abThreads";
+const fsDoc = (name, by, createdAt) => ({ name, fields: { by: { stringValue: by }, createdAt: { stringValue: createdAt } } });
+const now = new Date().toISOString(); // 月次は直近6ヶ月だけ数えるので、ab は今月に置く
+const AB_ROUTES = {
+  [FS]: { documents: [fsDoc(`x/abThreads/A1`, "claude-pc", now), fsDoc(`x/abThreads/A2`, "claude-mobile", now)] },
+  [`${FS}/A1/notes`]: { documents: [fsDoc(`x/abThreads/A1/notes/N1`, "claude-teuri", now)] },
+  [`${FS}/A2/notes`]: {},
+};
+
 test("bc: 投稿者別/分類別のスレッド集計が期待通りに出る", async () => {
   const server = await serveStatic();
   const port = server.address().port;
@@ -52,6 +63,10 @@ test("bc: 投稿者別/分類別のスレッド集計が期待通りに出る", 
     await page.route("https://ab-board-api.azurewebsites.net/api/ba", (route) =>
       route.fulfill({ contentType: "application/json", body: JSON.stringify(FIXTURE) })
     );
+    await page.route(/firestore\.googleapis\.com\//, (route) => {
+      const url = route.request().url().split("?")[0];
+      route.fulfill({ contentType: "application/json", body: JSON.stringify(AB_ROUTES[url] || {}) });
+    });
 
     await page.goto(`http://localhost:${port}/src/bc/`);
     // ログインゲートは通さず、auth.jsが発火するのと同じイベントで直接開ける
@@ -65,8 +80,8 @@ test("bc: 投稿者別/分類別のスレッド集計が期待通りに出る", 
     const posterRows = await page.locator("#radarTableBody tr").allTextContents();
     assert.deepEqual(
       posterRows.map((r) => r.replace(/\s+/g, "")),
-      ["claude-pc2", "takashi1", "claude-mobile2"],
-      "投稿者別: claude-pc=T1,T3(2) / takashi=T1(1) / claude-mobile=T2,T3(2)"
+      ["claude-pc3", "takashi1", "claude-mobile3", "claude-teuri1"],
+      "投稿者別: claude-pc=T1,T3,A1(3) / takashi=T1(1) / claude-mobile=T2,T3,A2(3) / claude-teuri=A1(1)"
     );
 
     await page.click('.view-tab[data-view="classification"]');
@@ -74,9 +89,16 @@ test("bc: 投稿者別/分類別のスレッド集計が期待通りに出る", 
     const clsRows = await page.locator("#radarTableBody tr").allTextContents();
     assert.deepEqual(
       clsRows.map((r) => r.replace(/\s+/g, "")),
-      ["案件1", "確定仕様0", "気づき1", "保留論点1", "旧仕様0", "記録0"],
-      "分類別: T1は気づき(後から上書き)、T2は案件、T3は保留論点(旧仕様・記録はba-32/ba-181の語彙追加分、この fixture では0件)"
+      ["案件1", "確定仕様0", "気づき1", "保留論点1", "旧仕様0", "記録0", "ab(連絡)2"],
+      "分類別: T1は気づき(後から上書き)、T2は案件、T3は保留論点、ab は A1・A2 の2件"
     );
+
+    await page.click('.view-tab[data-view="monthly"]');
+    await page.waitForFunction(() => document.getElementById("radarTableHead").textContent.includes("ab(連絡)"));
+    const thisMonth = now.slice(0, 7);
+    const monthRow = (await page.locator("#radarTableBody tr").allTextContents()).find((r) => r.startsWith(thisMonth));
+    assert.ok(monthRow, "今月の行がある");
+    assert.match(monthRow.replace(/\s+/g, ""), /22$/, "今月: ab(連絡)2・合計2(ba の fixture は7月なので今月の行には入らない)");
   } finally {
     await browser.close();
     server.close();
