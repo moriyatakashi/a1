@@ -1,11 +1,51 @@
 // app.js — ab/src/main/m1(記録一覧)のロジックをaa向けに移植したもの。
-// 画面側ログインゲートを通過した後にのみデータを取得・表示する。GETもcredentialヘッダで認証する(ba-16)。
+// 画面側ログインゲートを通過した後にのみデータを取得・表示する。スコアは ab-24 から Firestore(下記)。
 // config.jsを自分でimportする(ba-9追補)。HTML側の<script>読込に依存しないため、
 // 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
 import "../common/config.js";
-import { todayStr, withCredential } from "../common/utils.js";
-const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
-const SCORES_API = `${API_BASE}/scores`;
+import { todayStr } from "../common/utils.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithCredential, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+
+// ab-24(2026-09-29、方式B): 毎日スコアの正本は Firestore ab01-9f35a の scores/{日付}(Azure の /api/scores から移した)。
+// 読みは誰でも(Rules)。書きは Takashi 本人のみ(Rules の isTakashi)で、Firebase Auth のログインが要る。
+// ログインは GSI のIDトークンがあればそれを渡し(Firebase 側で m1 のクライアントIDを許可済み)、無ければポップアップ。
+// Firebase 側がログインを覚えるので、ポップアップは初回だけ。apiKey は公開前提の値(aa/app.js と同じ)。
+const firebaseConfig = {
+  apiKey: "AIzaSyDuPw8nMuFWx8ghV5ZeBGETeiNII3uk4l8",
+  authDomain: "ab01-9f35a.firebaseapp.com",
+  projectId: "ab01-9f35a",
+  storageBucket: "ab01-9f35a.firebasestorage.app",
+  messagingSenderId: "502154862201",
+  appId: "1:502154862201:web:4ca0c72225af6bd0147ea8",
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const fbAuth = getAuth(fbApp);
+
+async function ensureFirebaseLogin() {
+  await fbAuth.authStateReady();
+  if (fbAuth.currentUser) return fbAuth.currentUser;
+  if (window.__googleIdToken) {
+    try {
+      return (await signInWithCredential(fbAuth, GoogleAuthProvider.credential(window.__googleIdToken))).user;
+    } catch (e) {
+      console.warn("GSIトークンでのFirebaseログインに失敗、ポップアップへ", e);
+    }
+  }
+  return (await signInWithPopup(fbAuth, new GoogleAuthProvider())).user;
+}
+
+async function fetchScore(date) {
+  const snap = await getDoc(doc(db, "scores", date));
+  return snap.exists() ? snap.data() : null;
+}
+
+async function fetchAllScores() {
+  const snap = await getDocs(collection(db, "scores"));
+  return snap.docs.map((d) => ({ date: d.id, ...d.data() }));
+}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -144,8 +184,7 @@ function initScoreInput() {
 
   async function loadTodayScore() {
     try {
-      const res = await fetch(`${SCORES_API}/${today}`, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } });
-      const data = res.ok ? await res.json() : null;
+      const data = await fetchScore(today);
       if (data) {
         setScore(data.score);
         elNoteInput.value = data.note || "";
@@ -170,12 +209,8 @@ function initScoreInput() {
     const score = Number(elSlider.value);
     const note = elNoteInput.value.trim();
     try {
-      const res = await fetch(`${SCORES_API}/${today}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(withCredential({ score, note })),
-      });
-      if (!res.ok) { elScoreSaved.textContent = "エラー: 保存に失敗しました"; return; }
+      await ensureFirebaseLogin();
+      await setDoc(doc(db, "scores", today), { score, note, createdAt: new Date().toISOString(), by: "takashi" });
       elBtnSaveScore.textContent = "更新";
       elScoreSaved.textContent = "✓ 保存しました";
       setTimeout(() => elScoreSaved.textContent = "", 2000);
@@ -193,8 +228,7 @@ async function load() {
   chartSection.style.display = "none";
 
   try {
-    const res = await fetch(SCORES_API, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } });
-    const scoreRows = res.ok ? await res.json() : [];
+    const scoreRows = await fetchAllScores();
 
     const scoreMap = {};
     scoreRows.forEach(r => {

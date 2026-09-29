@@ -143,6 +143,8 @@ window.handleCredentialResponse = async (response) => {
   try {
     const payload = decodeJwtPayload(response.credential);
     const name = payload.name || "";
+    // ab-24: m1 が Firebase にもログインするときに渡す生のIDトークン。メモリだけに置き、保存はしない(寿命1時間)。
+    window.__googleIdToken = response.credential;
     const sessionToken = await exchangeForPersistentSession(response.credential);
     if (sessionToken) {
       persistSession(sessionToken, name, "session");

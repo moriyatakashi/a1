@@ -6,6 +6,7 @@
 // Stage2はbc(旧k2)のみが対象(パイロット)、Stage4でbe、Stage5でn1/n2を追加(のちにn1はm1に統合)。
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { routeFirebaseStub } from "./firebase-stub.js";
 import { chromium } from "playwright";
 import http from "node:http";
 import fs from "node:fs";
@@ -45,10 +46,8 @@ const PAGES = {
     },
   },
   m1: {
-    routes: {
-      [`${API_BASE}/scores`]: () => ({ status: 200, body: [{ date: "2026-07-18", score: 80, note: "" }] }),
-    },
-    routeRegex: [[/\/api\/scores\/\d{4}-\d{2}-\d{2}$/, () => ({ status: 404, body: "" })]],
+    routes: {},
+    firebase: { "2026-07-18": { score: 80, note: "" } }, // ab-24: スコアは Firestore(スタブ)
     async assertLoaded(page) {
       await page.waitForSelector("#scoreChartSection", { state: "visible", timeout: 5000 });
       await page.waitForFunction(() => document.getElementById("statLatest")?.textContent === "80", null, { timeout: 5000 });
@@ -75,6 +74,7 @@ for (const [pageName, spec] of Object.entries(PAGES)) {
       await page.route("https://accounts.google.com/gsi/client", (route) =>
         route.fulfill({ contentType: "text/javascript", body: "" })
       );
+      if (spec.firebase) await routeFirebaseStub(page, spec.firebase);
       for (const [url, handler] of Object.entries(spec.routes)) {
         await page.route(url, (route) => {
           const { status, body } = handler();

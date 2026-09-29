@@ -6,6 +6,7 @@
 // そのパターンのリクエストが発生していないことも合わせて検証する。
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { routeFirebaseStub } from "./firebase-stub.js";
 import { chromium } from "playwright";
 import http from "node:http";
 import fs from "node:fs";
@@ -40,10 +41,8 @@ const BA_FIXTURE = [
 
 const PAGES = {
   m1: {
-    routes: {
-      [`${API_BASE}/scores`]: () => ({ status: 200, body: [{ date: "2026-07-18", score: 80, note: "test" }] }),
-    },
-    routeRegex: [[/\/api\/scores\/\d{4}-\d{2}-\d{2}$/, () => ({ status: 404, body: "" })]],
+    routes: {},
+    firebase: { "2026-07-18": { score: 80, note: "test" } }, // ab-24: スコアは Firestore(スタブ)
     async assertLoaded(page) {
       await page.waitForSelector("#scoreChartSection", { state: "visible", timeout: 5000 });
       assert.equal(await page.textContent("#statLatest"), "80");
@@ -94,6 +93,7 @@ for (const [pageName, spec] of Object.entries(PAGES)) {
       await page.route(`${API_BASE}/session`, (route) =>
         route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) })
       );
+      if (spec.firebase) await routeFirebaseStub(page, spec.firebase);
       for (const [url, handler] of Object.entries(spec.routes)) {
         await page.route(url, (route) => {
           const { status, body } = handler();
