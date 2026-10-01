@@ -4,48 +4,9 @@
 // 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
 import "../common/config.js";
 import { todayStr } from "../common/utils.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, signInWithCredential, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
-
-// ab-24(2026-09-29、方式B): 毎日スコアの正本は Firestore ab01-9f35a の scores/{日付}(Azure の /api/scores から移した)。
-// 読みは誰でも(Rules)。書きは Takashi 本人のみ(Rules の isTakashi)で、Firebase Auth のログインが要る。
-// ログインは GSI のIDトークンがあればそれを渡し(Firebase 側で m1 のクライアントIDを許可済み)、無ければポップアップ。
-// Firebase 側がログインを覚えるので、ポップアップは初回だけ。apiKey は公開前提の値(認可は Firestore の rules 側)。
-const firebaseConfig = {
-  apiKey: "AIzaSyDuPw8nMuFWx8ghV5ZeBGETeiNII3uk4l8",
-  authDomain: "ab01-9f35a.firebaseapp.com",
-  projectId: "ab01-9f35a",
-  storageBucket: "ab01-9f35a.firebasestorage.app",
-  messagingSenderId: "502154862201",
-  appId: "1:502154862201:web:4ca0c72225af6bd0147ea8",
-};
-const fbApp = initializeApp(firebaseConfig);
-const db = getFirestore(fbApp);
-const fbAuth = getAuth(fbApp);
-
-async function ensureFirebaseLogin() {
-  await fbAuth.authStateReady();
-  if (fbAuth.currentUser) return fbAuth.currentUser;
-  if (window.__googleIdToken) {
-    try {
-      return (await signInWithCredential(fbAuth, GoogleAuthProvider.credential(window.__googleIdToken))).user;
-    } catch (e) {
-      console.warn("GSIトークンでのFirebaseログインに失敗、ポップアップへ", e);
-    }
-  }
-  return (await signInWithPopup(fbAuth, new GoogleAuthProvider())).user;
-}
-
-async function fetchScore(date) {
-  const snap = await getDoc(doc(db, "scores", date));
-  return snap.exists() ? snap.data() : null;
-}
-
-async function fetchAllScores() {
-  const snap = await getDocs(collection(db, "scores"));
-  return snap.docs.map((d) => ({ date: d.id, ...d.data() }));
-}
+// ab-24(2026-09-29、方式B): 毎日スコアの正本は Firestore ab01-9f35a の scores/{日付}。
+// 読み書きとログインは common/score-store.js(a2/x4 と共用、2026-10-02 に切り出し)。
+import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX } from "../common/score-store.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -173,7 +134,7 @@ function initScoreInput() {
   elScoreDate.textContent = today;
 
   function setScore(val) {
-    const v = Math.min(120, Math.max(0, Number(val)));
+    const v = Math.min(SCORE_MAX, Math.max(SCORE_MIN, Number(val)));
     elSlider.value = v;
     elScoreNum.textContent = v;
   }
@@ -209,14 +170,13 @@ function initScoreInput() {
     const score = Number(elSlider.value);
     const note = elNoteInput.value.trim();
     try {
-      await ensureFirebaseLogin();
-      await setDoc(doc(db, "scores", today), { score, note, createdAt: new Date().toISOString(), by: "takashi" });
+      await saveScore(today, score, note);
       elBtnSaveScore.textContent = "更新";
       elScoreSaved.textContent = "✓ 保存しました";
       setTimeout(() => elScoreSaved.textContent = "", 2000);
       load();
     } catch (e) {
-      elScoreSaved.textContent = "エラー: " + e.message;
+      elScoreSaved.textContent = saveErrorText(e);
     }
   });
 

@@ -1,9 +1,11 @@
 import "../../common/config.js";
-import { todayStr, withCredential } from "../../common/utils.js";
-const SCORES_API = `${window.AA_API_BASE}/scores`;
+import { todayStr } from "../../common/utils.js";
+// 2026-10-02: 毎日スコアの正本は ab-24 から Firestore。ここは Azure の /api/scores に PUT していて
+// 410 で「保存に失敗しました」になっていたので、m1 と同じ common/score-store.js 経由に切り替えた。
+import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX } from "../../common/score-store.js";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const Y_MIN = 60;
-const Y_MAX = 100;
+const Y_MAX = 120; // ab-43: 0〜120
 const VB_W = 680, VB_H = 300;
 const MARGIN = { top: 16, right: 16, bottom: 32, left: 34 };
 const PLOT_W = VB_W - MARGIN.left - MARGIN.right;
@@ -107,7 +109,7 @@ function initScoreInput() {
   const elScoreSaved = document.getElementById("scoreSaved");
   elScoreDate.textContent = today;
   function setScore(val) {
-    const v = Math.min(100, Math.max(0, Number(val)));
+    const v = Math.min(SCORE_MAX, Math.max(SCORE_MIN, Number(val)));
     elSlider.value = v;
     elScoreNum.textContent = v;
   }
@@ -116,8 +118,7 @@ function initScoreInput() {
   });
   async function loadTodayScore() {
     try {
-      const res = await fetch(`${SCORES_API}/${today}`, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } });
-      const data = res.ok ? await res.json() : null;
+      const data = await fetchScore(today);
       if (data) {
         setScore(data.score);
         elNoteInput.value = data.note || "";
@@ -139,18 +140,13 @@ function initScoreInput() {
     const score = Number(elSlider.value);
     const note = elNoteInput.value.trim();
     try {
-      const res = await fetch(`${SCORES_API}/${today}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(withCredential({ score, note })),
-      });
-      if (!res.ok) { elScoreSaved.textContent = "エラー: 保存に失敗しました"; return; }
+      await saveScore(today, score, note);
       elBtnSaveScore.textContent = "更新";
       elScoreSaved.textContent = "✓ 保存しました";
       setTimeout(() => elScoreSaved.textContent = "", 2000);
       load();
     } catch (e) {
-      elScoreSaved.textContent = "エラー: " + e.message;
+      elScoreSaved.textContent = saveErrorText(e);
     }
   });
   loadTodayScore();
@@ -159,8 +155,7 @@ async function load() {
   const chartSection = document.getElementById("scoreChartSection");
   chartSection.style.display = "none";
   try {
-    const res = await fetch(SCORES_API, { cache: "no-store", headers: { "X-Scores-Credential": window.__credential || "" } });
-    const scoreRows = res.ok ? await res.json() : [];
+    const scoreRows = await fetchAllScores();
     const scoreMap = {};
     scoreRows.forEach(r => {
       if (DATE_RE.test(r.date) && typeof r.score === "number") {
