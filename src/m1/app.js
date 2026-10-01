@@ -52,7 +52,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 // be(スコア推移グラフ)統合分(2026-07-29): n1が既に持つscoreMapを描画するだけで、
 // 独自fetchは持たない。k2のページ構造・ログイン待ちパターンを踏襲していた元コードのまま移植。
 const Y_MIN = 60;
-const Y_MAX = 100;
+const Y_MAX = 120; // ab-43: 0〜120(100=感覚の満点)
 const VB_W = 680, VB_H = 300;
 const MARGIN = { top: 16, right: 16, bottom: 32, left: 34 };
 const PLOT_W = VB_W - MARGIN.left - MARGIN.right;
@@ -173,7 +173,7 @@ function initScoreInput() {
   elScoreDate.textContent = today;
 
   function setScore(val) {
-    const v = Math.min(100, Math.max(0, Number(val)));
+    const v = Math.min(120, Math.max(0, Number(val)));
     elSlider.value = v;
     elScoreNum.textContent = v;
   }
