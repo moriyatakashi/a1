@@ -55,16 +55,45 @@
     .stage-badge { margin-left: auto; font-size: 0.6rem; letter-spacing: 0.04em; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
     .stage-beta .stage-badge { background: rgba(80,150,255,0.16); color: #6ba7ff; }
     .stage-joke .stage-badge { background: rgba(230,80,80,0.16); color: #f08a8a; }
+    /* ab-42: 押したときだけ動く「今日の運勢と得点」。開いただけでは何も取りに行かない */
+    #todayBtn {
+      font: inherit; font-size: 0.85rem; color: var(--link); background: none; cursor: pointer;
+      border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px;
+    }
+    #todayBtn:hover { border-color: var(--link); }
+    #todayDialog {
+      color: var(--ink); background: var(--paper); border: 1px solid var(--line);
+      border-radius: 10px; padding: 16px 18px; width: min(360px, calc(100vw - 32px));
+    }
+    #todayDialog::backdrop { background: rgba(0,0,0,0.4); }
+    .today-row { display: flex; gap: 12px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--cat-line); }
+    .today-label { color: var(--nav-desc); font-size: 0.85rem; min-width: 6em; }
+    .today-value { font-weight: bold; }
+    #todayClose { margin-top: 12px; font: inherit; font-size: 0.85rem; }
   </style>
 </head>
 <body>
   <h1>路歴（a1）</h1>
   <p>日々の記録や気づきを、少しずつ積み重ねています。</p>
+  <p><button type="button" id="todayBtn">今日の運勢と得点</button></p>
+  <dialog id="todayDialog">
+    <div id="todayBody"></div>
+    <button type="button" id="todayClose">閉じる</button>
+  </dialog>
 <!--NAV_SECTIONS-->
   <p id="lastUpdated">更新: (取得中...)</p>
   <script type="module">
     import { applyLastUpdated } from "./src/common/last-updated.js";
     applyLastUpdated("nav.yml");
+
+    // ab-42: 部品(today-panel.js)は押したときに初めて読み込む
+    const dialog = document.getElementById("todayDialog");
+    document.getElementById("todayBtn").addEventListener("click", async () => {
+      dialog.showModal();
+      const { showTodayPanel } = await import("./src/common/today-panel.js");
+      await showTodayPanel(document.getElementById("todayBody"));
+    });
+    document.getElementById("todayClose").addEventListener("click", () => dialog.close());
   </script>
 </body>
 </html>
