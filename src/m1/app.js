@@ -11,7 +11,7 @@ import { getAuth, GoogleAuthProvider, signInWithCredential, signInWithPopup } fr
 // ab-24(2026-09-29、方式B): 毎日スコアの正本は Firestore ab01-9f35a の scores/{日付}(Azure の /api/scores から移した)。
 // 読みは誰でも(Rules)。書きは Takashi 本人のみ(Rules の isTakashi)で、Firebase Auth のログインが要る。
 // ログインは GSI のIDトークンがあればそれを渡し(Firebase 側で m1 のクライアントIDを許可済み)、無ければポップアップ。
-// Firebase 側がログインを覚えるので、ポップアップは初回だけ。apiKey は公開前提の値(aa/app.js と同じ)。
+// Firebase 側がログインを覚えるので、ポップアップは初回だけ。apiKey は公開前提の値(認可は Firestore の rules 側)。
 const firebaseConfig = {
   apiKey: "AIzaSyDuPw8nMuFWx8ghV5ZeBGETeiNII3uk4l8",
   authDomain: "ab01-9f35a.firebaseapp.com",

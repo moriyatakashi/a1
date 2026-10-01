@@ -106,28 +106,13 @@
         crossorigin="anonymous"></script>
 
 <script type="module">
-// x1/index.html — a2/x1/a1.sqlに書かれたSQLを、a1のba API + Firestore(aa)から
+// x1/index.html — 同じフォルダの a1.sql に書かれたSQLを、a1のba APIから
 // その場で取得したデータに対して、ブラウザ内(sql.js)で実際に実行して表示する。
 // 仕組みはb1のtool dosql(b1/src/run_tool.py)と同じ発想(取得JSONのキー和集合で
 // TEXT列のテーブルを作る)だが、Pythonではなくこのページの中でその都度組み立てる。
 // 2026-08-15、takashi依頼。SQLを直接書き換えれば次に開いた時から反映される。
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
-
 const BA_API_URL = "https://ab-board-api.azurewebsites.net/api/ba";
-
-// aa(Firestore、ab01-9f35a)。apiKeyは公開前提の値(a1/src/aa/app.jsと同じ設定) ——
-// 認可はFirestore Security Rules側が担うため、ここに秘密情報は含まれない。
-const firebaseConfig = {
-  apiKey: "AIzaSyDuPw8nMuFWx8ghV5ZeBGETeiNII3uk4l8",
-  authDomain: "ab01-9f35a.firebaseapp.com",
-  projectId: "ab01-9f35a",
-  storageBucket: "ab01-9f35a.firebasestorage.app",
-  messagingSenderId: "502154862201",
-  appId: "1:502154862201:web:4ca0c72225af6bd0147ea8",
-  measurementId: "G-4L8FF69B1B",
-};
 
 const sqlBox = document.getElementById("sql-box");
 const statusEl = document.getElementById("status");
@@ -176,13 +161,6 @@ async function fetchBaRows() {
   return res.json();
 }
 
-async function fetchAaRows() {
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const snap = await getDocs(collection(db, "aaThreads"));
-  return snap.docs.map((d) => ({ _id: d.id, ...d.data() }));
-}
-
 function renderResults(results) {
   resultEl.innerHTML = "";
   if (!results.length) {
@@ -220,10 +198,10 @@ async function main() {
   }
   sqlBox.textContent = sqlText;
 
-  setStatus("ba/aaを取得中…");
-  let baRows = [], aaRows = [];
+  setStatus("baを取得中…");
+  let baRows = [];
   try {
-    [baRows, aaRows] = await Promise.all([fetchBaRows(), fetchAaRows()]);
+    baRows = await fetchBaRows();
   } catch (e) {
     setStatus(`データ取得に失敗しました: ${e.message}`, true);
     return;
@@ -237,7 +215,6 @@ async function main() {
     });
     db = new SQL.Database();
     buildTable(db, "ba", baRows);
-    buildTable(db, "aa", aaRows);
   } catch (e) {
     setStatus(`SQLエンジンの初期化に失敗しました: ${e.message}`, true);
     return;
@@ -247,7 +224,7 @@ async function main() {
     const results = db.exec(sqlText);
     renderResults(results);
     const now = new Date().toISOString();
-    setStatus(`表示完了(ba ${baRows.length}件 / aa ${aaRows.length}件を取得)`);
+    setStatus(`表示完了(ba ${baRows.length}件を取得)`);
     metaEl.textContent = `最終取得: ${now}(毎回ライブ取得。SQLは a1.sql を編集すれば次回表示に反映される)`;
   } catch (e) {
     setStatus(`SQL実行エラー: ${e.message}`, true);

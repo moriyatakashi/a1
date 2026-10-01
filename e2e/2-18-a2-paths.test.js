@@ -35,7 +35,7 @@ function serveStatic() {
   });
 }
 
-const PAGES = ["", "x1/", "x2/", "x3/", "x4/", "x5/", "x6/"];
+const PAGES = ["", "x2/", "x3/", "x4/", "x5/", "x6/"]; // x1(openledger、aa を読んでいた)は 2026-10-01 に外した(ab-26)
 
 test("a2: 目次と全アプリがローカルの404・スクリプトエラーなしで開く", async () => {
   const server = await serveStatic();
@@ -94,7 +94,7 @@ test("a2: 戻るリンクの行き先(各アプリ→a2目次、目次→トッ�
 test("a2: nav.ymlのa2リンク先が実在し、robots.txtで検索除外されている", () => {
   const nav = yaml.load(fs.readFileSync(path.join(ROOT, "nav.yml"), "utf8"));
   const hrefs = nav.categories.flatMap((c) => c.items.map((i) => i.href)).filter((h) => h.startsWith("src/a2/"));
-  assert.ok(hrefs.length >= 7, `nav.ymlのa2リンクが足りない: ${hrefs.length}`);
+  assert.ok(hrefs.length >= 6, `nav.ymlのa2リンクが足りない: ${hrefs.length}`);
   for (const h of hrefs) {
     assert.ok(fs.existsSync(path.join(ROOT, h, "index.html")), `${h} が存在しない`);
   }

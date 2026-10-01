@@ -47,11 +47,8 @@ categories:
       - code: bg
         desc: BaLog Index
         href: src/bd/bg/
-      - code: aa
-        desc: オープン台帳(Firestore)
-        href: src/aa/
       - code: g8
-        desc: 複数AIの同時書き込みログ(aa)
+        desc: aa(オープン台帳)の設計記録(aa は 2026-10-01 に廃止)
         href: src/g/g8/
   - label: まとめ・文書・設計
     items:
@@ -61,20 +58,11 @@ categories:
       - code: cd
         desc: カタログ(別系統)
         href: src/bd/cd/
-      - code: ce
-        desc: WIP作業台
-        href: src/bd/ce/
-      - code: wip
-        desc: WIP作業台(別系統)
-        href: src/bd/wip/
   - label: 旧a2(アーカイブ・a2独立リポジトリ時代のアプリ)
     items:
       - code: a2
         desc: 旧a2の目次
         href: src/a2/
-      - code: a2-x1
-        desc: openledger
-        href: src/a2/x1/
       - code: a2-x2
         desc: note
         href: src/a2/x2/
