@@ -7,6 +7,14 @@ tables:
   - name: BaLog
     note: ba台帳本体(追記オンリー・赤黒帳票)。日次バックアップの発端(2026-07-25実装)。
   - name: Scores
-    note: 日々のスコア記録(m1、旧n1)。2026-07-31追加。
+    note: 日々のスコア記録(m1、旧n1)。2026-07-31追加。ab-24(2026-09-29)で正本はFirestoreへ移り、Azure側は書き込み停止(410)。ab-53で消すまでは凍結した旧データとして取り続ける。
   - name: Visits
     note: 訪問記録(n2)。2026-07-31追加。
+
+# Firestore(ab01-9f35a)のコレクション。読みが無認証(Rules の allow read: if true)のものだけ置ける。
+# 1コレクション=1ファイル(firestore_<name>_full_<日時>.json)。2026-10-02 ab-51 で追加
+# (Scores の正本が Firestore に移ったのに、日次バックアップは Azure の凍結分しか取っていなかったため)。
+firestore_project: ab01-9f35a
+firestore_collections:
+  - name: scores
+    note: 毎日スコアの正本(ab-24 以降、m1 が直接書く)。

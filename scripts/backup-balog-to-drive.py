@@ -28,6 +28,7 @@ files.update/files.deleteは一切呼ばない。週フォルダの作成もfile
 """
 import json
 import os
+import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -40,11 +41,68 @@ TOKEN_URI = "https://oauth2.googleapis.com/token"
 FILES_URL = "https://www.googleapis.com/drive/v3/files"
 UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
 
+# ab-51(2026-10-02): 10/1 朝、Visits のアップロードが Google の一時的な 502 で落ち、
+# リトライが無いため1回のエラーで全体が終了コード1になった。Google 側の一時エラー
+# (429・5xx)と通信エラーだけを、間隔を倍々にして数回やり直す。4xx(認証・権限・
+# リクエスト不正)はやり直しても直らないので即座に失敗させる。
+RETRY_STATUSES = {429, 500, 502, 503, 504}
+MAX_ATTEMPTS = 5
+BACKOFF_BASE_SEC = 2
+
+
+def _request_with_retry(method, url, *, sleep=time.sleep, **kwargs):
+    """requests.request に一時エラーのリトライを足したもの。最後は raise_for_status。"""
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            resp = requests.request(method, url, timeout=120, **kwargs)
+        except (requests.ConnectionError, requests.Timeout) as e:
+            if attempt == MAX_ATTEMPTS:
+                raise
+            print(f"通信エラー、やり直し {attempt}/{MAX_ATTEMPTS - 1}: {type(e).__name__}")
+        else:
+            if resp.status_code not in RETRY_STATUSES or attempt == MAX_ATTEMPTS:
+                resp.raise_for_status()
+                return resp
+            print(f"HTTP {resp.status_code}、やり直し {attempt}/{MAX_ATTEMPTS - 1}")
+        sleep(BACKOFF_BASE_SEC * (2 ** (attempt - 1)))
+
+
+def _load_backup_config():
+    with open(BACKUP_TABLES_YML, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
 
 def _load_backup_tables():
-    with open(BACKUP_TABLES_YML, encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    return [t["name"] for t in data["tables"]]
+    return [t["name"] for t in _load_backup_config()["tables"]]
+
+
+def _load_firestore_collections():
+    data = _load_backup_config()
+    return data.get("firestore_project"), [c["name"] for c in data.get("firestore_collections") or []]
+
+
+def _fetch_firestore_collection(project, collection):
+    """Firestore REST で読みが無認証のコレクションを全件取る(ページ送りあり)。
+
+    返り値はドキュメントごとに {"id": ドキュメントID, "fields": REST の生の fields} と
+    updateTime。型付きの生値をそのまま残す(戻すときに型が分かるように)。
+    """
+    url = f"https://firestore.googleapis.com/v1/projects/{project}/databases/(default)/documents/{collection}"
+    docs, page_token = [], None
+    while True:
+        params = {"pageSize": 300}
+        if page_token:
+            params["pageToken"] = page_token
+        data = _request_with_retry("GET", url, params=params).json()
+        for d in data.get("documents", []):
+            docs.append({
+                "id": d["name"].rsplit("/", 1)[1],
+                "fields": d.get("fields", {}),
+                "updateTime": d.get("updateTime"),
+            })
+        page_token = data.get("nextPageToken")
+        if not page_token:
+            return docs
 
 
 def _fetch_table_entities(table_name):
@@ -55,13 +113,12 @@ def _fetch_table_entities(table_name):
 
 
 def _get_access_token():
-    resp = requests.post(TOKEN_URI, data={
+    resp = _request_with_retry("POST", TOKEN_URI, data={
         "client_id": os.environ["GDRIVE_OAUTH_CLIENT_ID"],
         "client_secret": os.environ["GDRIVE_OAUTH_CLIENT_SECRET"],
         "refresh_token": os.environ["GDRIVE_OAUTH_REFRESH_TOKEN"],
         "grant_type": "refresh_token",
     })
-    resp.raise_for_status()
     return resp.json()["access_token"]
 
 
@@ -85,12 +142,12 @@ def _find_or_create_week_folder(access_token, parent_id, name):
         f"name = '{escaped}' and '{parent_id}' in parents "
         "and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
     )
-    resp = requests.get(
+    resp = _request_with_retry(
+        "GET",
         FILES_URL,
         headers=headers,
         params={"q": query, "fields": "files(id,name)", "spaces": "drive"},
     )
-    resp.raise_for_status()
     files = resp.json().get("files", [])
     if files:
         return files[0]["id"]
@@ -100,12 +157,12 @@ def _find_or_create_week_folder(access_token, parent_id, name):
         "mimeType": "application/vnd.google-apps.folder",
         "parents": [parent_id],
     }
-    resp = requests.post(
+    resp = _request_with_retry(
+        "POST",
         FILES_URL,
         headers={**headers, "Content-Type": "application/json"},
         data=json.dumps(metadata),
     )
-    resp.raise_for_status()
     return resp.json()["id"]
 
 
@@ -120,7 +177,8 @@ def _upload_to_drive(access_token, filename, content_bytes, parent_id):
         "Content-Type: application/json\r\n\r\n"
     ).encode("utf-8") + content_bytes + f"\r\n--{boundary}--".encode("utf-8")
 
-    resp = requests.post(
+    resp = _request_with_retry(
+        "POST",
         UPLOAD_URL,
         headers={
             "Authorization": f"Bearer {access_token}",
@@ -128,7 +186,6 @@ def _upload_to_drive(access_token, filename, content_bytes, parent_id):
         },
         data=body,
     )
-    resp.raise_for_status()
     return resp.json()
 
 
@@ -148,6 +205,14 @@ def main():
         filename = f"{table_name.lower()}_full_{timestamp}.json"
         result = _upload_to_drive(access_token, filename, content, week_folder_id)
         print(f"バックアップ完了: {table_name} {len(entities)}件 -> {week_name}/{filename} (fileId={result['id']})")
+
+    project, collections = _load_firestore_collections()
+    for collection in collections:
+        docs = _fetch_firestore_collection(project, collection)
+        content = json.dumps(docs, ensure_ascii=False).encode("utf-8")
+        filename = f"firestore_{collection.lower()}_full_{timestamp}.json"
+        result = _upload_to_drive(access_token, filename, content, week_folder_id)
+        print(f"バックアップ完了: Firestore {collection} {len(docs)}件 -> {week_name}/{filename} (fileId={result['id']})")
 
 
 if __name__ == "__main__":
