@@ -18,3 +18,5 @@ firestore_project: ab01-9f35a
 firestore_collections:
   - name: scores
     note: 毎日スコアの正本(ab-24 以降、m1 が直接書く)。
+  - name: scoringRules
+    note: ba の難易度別配点の版(ab-53、2026-10-03 Azure ScoringRules から移した。足すだけで直さない・消さない)。
