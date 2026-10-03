@@ -26,6 +26,14 @@
   .note-input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 10px; background: var(--input-bg); color: var(--ink); }
   .btn-save-score { width: 100%; padding: 10px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 0.95rem; }
   .score-saved { font-size: 0.78rem; color: var(--ink-soft); margin-top: 6px; text-align: center; min-height: 1.2em; }
+  .check-box { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; }
+  .check-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 0.9rem; }
+  .check-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 0.95rem; }
+  .check-item input { width: 20px; height: 20px; }
+  .check-edit-btn { background: none; border: 1px solid var(--line); color: inherit; border-radius: 6px; padding: 3px 10px; font-size: 0.78rem; cursor: pointer; }
+  .check-empty { color: var(--ink-soft); font-size: 0.85rem; padding: 4px 0; }
+  .check-line { fill: none; stroke: #e0a040; stroke-width: 2; stroke-dasharray: 5 4; }
+  .check-dot { fill: var(--paper); stroke: #e0a040; stroke-width: 2; }
 
   /* be(スコア推移グラフ)統合分。summary-bar/statはsrc/common/ledger.cssから移植、
      --paper-bandはbase.cssに無いためn1既存の--input-bgで代用する。 */
@@ -104,6 +112,20 @@
         <input type="range" id="slider" min="0" max="120" value="80">
       </div>
       <input class="note-input" id="noteInput" type="text" placeholder="一言メモ(任意)">
+      <!-- ab-43(2026-10-03): 2つ目の点=チェック項目を数えた点。項目は Firestore の scoreConfig/current(週に数回入れ替わる) -->
+      <div class="check-box" id="checkBox" style="display:none;">
+        <div class="check-head">
+          <span>チェック <b id="checkScoreNum">—</b> 点</span>
+          <button type="button" class="check-edit-btn" id="btnEditItems">項目を変える</button>
+        </div>
+        <div id="checkList"></div>
+        <div id="checkEdit" style="display:none;">
+          <div id="itemInputs"></div>
+          <datalist id="itemShelf"></datalist>
+          <button type="button" class="check-edit-btn" id="btnSaveItems">項目を保存</button>
+          <span class="score-saved" id="itemsSaved"></span>
+        </div>
+      </div>
       <button class="btn-save-score" id="btnSaveScore">保存</button>
       <div class="score-saved" id="scoreSaved"></div>
     </div>
@@ -125,7 +147,7 @@
 
   <script>window.AA_AUTH_EVENT = "m1-login-success"; window.AA_PUBLIC_VIEW = true;</script>
   <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202607261305"></script>
+  <script type="module" src="app.js?v=202610031200"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/m1", "lastUpdated", "最終更新");

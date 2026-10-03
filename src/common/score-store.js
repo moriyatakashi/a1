@@ -5,7 +5,7 @@
 // ログインは GSI のIDトークンがあればそれを渡し(Firebase 側で m1 のクライアントIDを許可済み)、無ければポップアップ。
 // Firebase 側がログインを覚えるので、ポップアップは初回だけ。apiKey は公開前提の値(認可は Firestore の rules 側)。
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithCredential, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
 
 export const SCORE_MIN = 0;
@@ -52,9 +52,46 @@ export async function fetchAllScores() {
   return snap.docs.map((d) => ({ date: d.id, ...d.data() }));
 }
 
-export async function saveScore(date, score, note) {
+// check(任意、ab-43)= { items: [{id, text, done}], score(0〜100), at }。merge で書くので、
+// check を渡さない保存(x4 など)でも同じ日の check は消えない。
+export async function saveScore(date, score, note, check) {
   await ensureFirebaseLogin();
-  await setDoc(doc(db, "scores", date), { score, note, createdAt: new Date().toISOString(), by: "takashi" });
+  const data = { score, note, createdAt: new Date().toISOString(), by: "takashi" };
+  if (check) data.check = check;
+  await setDoc(doc(db, "scores", date), data, { merge: true });
+}
+
+// --- チェック項目(2026-10-03、ab-43) ---
+// 棚 scoreItems/{id} = {text, createdAt, by}(消さずに貯めて使い回す)、今の項目 scoreConfig/current = {items: [{id, text}], at, by}。
+// 家人(利尻など)は b1/run score items set で、Takashi は m1 の画面から入れ替える。
+export async function fetchCheckItems() {
+  const snap = await getDoc(doc(db, "scoreConfig", "current"));
+  return snap.exists() ? (snap.data().items || []) : [];
+}
+
+export async function fetchItemShelf() {
+  const snap = await getDocs(collection(db, "scoreItems"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// 今の項目を入れ替える。棚に同じ文面があれば使い回し、無ければ棚に足す。
+export async function saveCheckItems(texts) {
+  await ensureFirebaseLogin();
+  const shelf = await fetchItemShelf();
+  const now = new Date().toISOString();
+  const items = [];
+  for (const text of texts) {
+    const hit = shelf.find((s) => s.text === text);
+    const id = hit ? hit.id : (await addDoc(collection(db, "scoreItems"), { text, createdAt: now, by: "takashi" })).id;
+    items.push({ id, text });
+  }
+  await setDoc(doc(db, "scoreConfig", "current"), { items, at: now, by: "takashi" });
+  return items;
+}
+
+// 押した数から点を出す(全部押せば100)。
+export function checkScore(items) {
+  return items.length ? Math.round((items.filter((i) => i.done).length / items.length) * 100) : 0;
 }
 
 // 失敗したときに画面に出す文。Firebase のエラーコードを人が読める形にする。

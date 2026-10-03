@@ -6,13 +6,16 @@ import "../common/config.js";
 import { todayStr } from "../common/utils.js";
 // ab-24(2026-09-29、方式B): 毎日スコアの正本は Firestore ab01-9f35a の scores/{日付}。
 // 読み書きとログインは common/score-store.js(a2/x4 と共用、2026-10-02 に切り出し)。
-import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX } from "../common/score-store.js";
+import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX,
+  fetchCheckItems, fetchItemShelf, saveCheckItems, checkScore } from "../common/score-store.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // be(スコア推移グラフ)統合分(2026-07-29): n1が既に持つscoreMapを描画するだけで、
 // 独自fetchは持たない。k2のページ構造・ログイン待ちパターンを踏襲していた元コードのまま移植。
-const Y_MIN = 60;
+// 下端は60。チェックの点(ab-43、0〜100)がそれより下にあるときだけ下げる(drawChart で決める)。
+const Y_MIN_DEFAULT = 60;
+let Y_MIN = Y_MIN_DEFAULT;
 const Y_MAX = 120; // ab-43: 0〜120(100=感覚の満点)
 const VB_W = 680, VB_H = 300;
 const MARGIN = { top: 16, right: 16, bottom: 32, left: 34 };
@@ -35,9 +38,12 @@ function yFor(v) {
 function drawChart(svg, rows) {
   svg.innerHTML = "";
   const n = rows.length;
+  const checkMin = Math.min(...rows.filter((r) => typeof r.check === "number").map((r) => r.check));
+  Y_MIN = Math.min(Y_MIN_DEFAULT, Math.floor(checkMin / 20) * 20);
+  const tickStep = Y_MAX - Y_MIN > 80 ? 20 : 10;
 
   const yTicks = [];
-  for (let t = Y_MIN; t <= Y_MAX; t += 10) yTicks.push(t);
+  for (let t = Y_MIN; t <= Y_MAX; t += tickStep) yTicks.push(t);
   yTicks.forEach((t) => {
     svg.appendChild(svgEl("line", {
       class: t === Y_MIN ? "baseline" : "gridline",
@@ -66,6 +72,15 @@ function drawChart(svg, rows) {
   rows.forEach((r, i) => { lineD += (i === 0 ? "M" : "L") + ` ${xFor(i, n)} ${yFor(r.score)} `; });
   svg.appendChild(svgEl("path", { class: "score-line", d: lineD }));
 
+  // ab-43: チェックの点(2本目、破線)。付いている日だけをつなぐ。
+  let checkD = "";
+  rows.forEach((r, i) => {
+    if (typeof r.check !== "number") return;
+    checkD += (checkD ? "L" : "M") + ` ${xFor(i, n)} ${yFor(r.check)} `;
+    svg.appendChild(svgEl("circle", { class: "check-dot", cx: xFor(i, n), cy: yFor(r.check), r: 3 }));
+  });
+  if (checkD) svg.appendChild(svgEl("path", { class: "check-line", d: checkD }));
+
   const dots = rows.map((r, i) => {
     const dot = svgEl("circle", { class: "score-dot", cx: xFor(i, n), cy: yFor(r.score), r: 4 });
     svg.appendChild(dot);
@@ -85,7 +100,7 @@ function drawChart(svg, rows) {
     crosshair.setAttribute("x1", xFor(i, n));
     crosshair.setAttribute("x2", xFor(i, n));
     crosshair.style.opacity = 1;
-    tooltip.innerHTML = `<div class="t-date">${r.date}</div><div class="t-score">${r.score} 点${r.note ? " — " + r.note : ""}</div>`;
+    tooltip.innerHTML = `<div class="t-date">${r.date}</div><div class="t-score">${r.score} 点${typeof r.check === "number" ? ` / チェック ${r.check} 点` : ""}${r.note ? " — " + r.note : ""}</div>`;
     tooltip.style.opacity = 1;
     const rect = svg.getBoundingClientRect();
     const scaleX = rect.width / VB_W;
@@ -143,9 +158,88 @@ function initScoreInput() {
     elScoreNum.textContent = elSlider.value;
   });
 
-  async function loadTodayScore() {
+  // ab-43: チェック項目。checkItems = [{id, text, done}](今日の分)。読めなければ(Rules未デプロイなど)欄ごと出さない。
+  const elCheckBox = document.getElementById("checkBox");
+  const elCheckList = document.getElementById("checkList");
+  const elCheckScoreNum = document.getElementById("checkScoreNum");
+  const elCheckEdit = document.getElementById("checkEdit");
+  const elItemInputs = document.getElementById("itemInputs");
+  const elItemShelf = document.getElementById("itemShelf");
+  const elItemsSaved = document.getElementById("itemsSaved");
+  let checkItems = [];
+
+  function renderChecks() {
+    elCheckList.innerHTML = "";
+    if (!checkItems.length) {
+      elCheckList.innerHTML = '<div class="check-empty">項目がありません(「項目を変える」から入れる)</div>';
+    }
+    checkItems.forEach((it) => {
+      const label = document.createElement("label");
+      label.className = "check-item";
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = !!it.done;
+      box.addEventListener("change", () => { it.done = box.checked; elCheckScoreNum.textContent = checkScore(checkItems); });
+      label.append(box, document.createTextNode(it.text));
+      elCheckList.appendChild(label);
+    });
+    elCheckScoreNum.textContent = checkItems.length ? checkScore(checkItems) : "—";
+  }
+
+  // 今の項目に、今日すでに押した分(同じ id)を重ねる。
+  function mergeDone(items, saved) {
+    const done = new Set(((saved && saved.items) || []).filter((i) => i.done).map((i) => i.id));
+    return items.map((i) => ({ id: i.id, text: i.text, done: done.has(i.id) }));
+  }
+
+  async function openItemEdit() {
+    elItemInputs.innerHTML = "";
+    for (let i = 0; i < 3; i++) {
+      const input = document.createElement("input");
+      input.className = "note-input item-input";
+      input.setAttribute("list", "itemShelf");
+      input.placeholder = `項目${i + 1}(棚から選ぶか新しく書く)`;
+      input.value = (checkItems[i] && checkItems[i].text) || "";
+      elItemInputs.appendChild(input);
+    }
+    elCheckEdit.style.display = "block";
     try {
-      const data = await fetchScore(today);
+      const shelf = await fetchItemShelf();
+      elItemShelf.innerHTML = "";
+      shelf.forEach((s) => { const o = document.createElement("option"); o.value = s.text; elItemShelf.appendChild(o); });
+    } catch (e) {
+      console.warn("棚の読み込みに失敗", e);
+    }
+  }
+
+  document.getElementById("btnEditItems").addEventListener("click", () => {
+    if (elCheckEdit.style.display === "block") elCheckEdit.style.display = "none";
+    else openItemEdit();
+  });
+
+  document.getElementById("btnSaveItems").addEventListener("click", async () => {
+    const texts = [...new Set([...elItemInputs.querySelectorAll("input")].map((x) => x.value.trim()).filter(Boolean))];
+    if (!texts.length) { elItemsSaved.textContent = "項目を1つ以上書いてください"; return; }
+    if (!window.__credential) {
+      elItemsSaved.textContent = "保存にはログインが必要です";
+      if (window.aaShowLoginGate) window.aaShowLoginGate();
+      return;
+    }
+    try {
+      const items = await saveCheckItems(texts);
+      checkItems = mergeDone(items, { items: checkItems });
+      renderChecks();
+      elCheckEdit.style.display = "none";
+      elItemsSaved.textContent = "";
+    } catch (e) {
+      elItemsSaved.textContent = saveErrorText(e);
+    }
+  });
+
+  async function loadTodayScore() {
+    let data = null;
+    try {
+      data = await fetchScore(today);
       if (data) {
         setScore(data.score);
         elNoteInput.value = data.note || "";
@@ -156,6 +250,13 @@ function initScoreInput() {
       }
     } catch (e) {
       setScore(80);
+    }
+    try {
+      checkItems = mergeDone(await fetchCheckItems(), data && data.check);
+      renderChecks();
+      elCheckBox.style.display = "block";
+    } catch (e) {
+      console.warn("チェック項目を読めませんでした", e);
     }
   }
 
@@ -170,7 +271,10 @@ function initScoreInput() {
     const score = Number(elSlider.value);
     const note = elNoteInput.value.trim();
     try {
-      await saveScore(today, score, note);
+      const check = checkItems.length
+        ? { items: checkItems.map((i) => ({ id: i.id, text: i.text, done: !!i.done })), score: checkScore(checkItems), at: new Date().toISOString() }
+        : null;
+      await saveScore(today, score, note, check);
       elBtnSaveScore.textContent = "更新";
       elScoreSaved.textContent = "✓ 保存しました";
       setTimeout(() => elScoreSaved.textContent = "", 2000);
@@ -193,12 +297,12 @@ async function load() {
     const scoreMap = {};
     scoreRows.forEach(r => {
       if (DATE_RE.test(r.date) && typeof r.score === "number") {
-        scoreMap[r.date] = { score: r.score, note: r.note || "" };
+        scoreMap[r.date] = { score: r.score, note: r.note || "", check: r.check ? r.check.score : null };
       }
     });
 
     const chartRows = Object.entries(scoreMap)
-      .map(([date, v]) => ({ date, score: v.score, note: v.note }))
+      .map(([date, v]) => ({ date, score: v.score, note: v.note, check: v.check }))
       .sort((a, b) => a.date.localeCompare(b.date));
     if (chartRows.length > 0) {
       chartSection.style.display = "block";
