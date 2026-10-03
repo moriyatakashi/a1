@@ -41,6 +41,10 @@
   .now-soft { color: var(--ink-soft); font-size: 0.75rem; margin-left: 6px; }
   .now-stale { margin: 4px 0 0; padding-left: 1.4em; }
   .now-stale li { margin: 3px 0; overflow-wrap: anywhere; }
+  .now-came { font-weight: 700; }
+  .now-list { margin: 4px 0 0; padding-left: 0; list-style: none; }
+  .now-list li { margin: 3px 0; overflow-wrap: anywhere; }
+  .now-when { margin: 0 8px 0 0; font-family: ui-monospace, Consolas, monospace; }
   .now-seq { font-family: ui-monospace, Consolas, monospace; font-size: 0.75rem; margin-right: 6px; color: var(--accent); }
 </style>
 </head>
@@ -48,7 +52,7 @@
   <p><a href="../../">← 戻る</a></p>
   <div class="eyebrow">ロレキ内部メモ</div>
   <h1>路歴（bc） / ba・abレーダーチャート</h1>
-  <p class="lede">ba(n4後継の追記ログ)と ab(家人たちの連絡用)を軸にしたレーダーチャート。投稿者別(参加スレッド数、ba・ab合算)、分類別(ba-32規約の分類ごとのスレッド数、abは「ab(連絡)」として1軸)、週次得点(ba-53、直近8週の推移)、月次集計(分類別スレッド数の月次推移、abを含む、直近6ヶ月)を切り替えて見られる。上の「今の状態」は、開いている件数・返事待ち・最後の動きが古い ab(ab-45)。</p>
+  <p class="lede">ba(n4後継の追記ログ)と ab(家人たちの連絡用)を軸にしたレーダーチャート。投稿者別(参加スレッド数、ba・ab合算)、分類別(ba-32規約の分類ごとのスレッド数、abは「ab(連絡)」として1軸)、週次得点(ba-53、直近8週の推移)、月次集計(分類別スレッド数の月次推移、abを含む、直近6ヶ月)、流れ(日ごとに開いた件数と片付いた件数、直近14日)を切り替えて見られる。上の「今の状態」は、開いている件数・返事待ち・待ち・最後の動きが古い ab・最近の動き(ab-45)。</p>
   <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: 2026-07-16 07:48 JST</p>
 
 <!-- LOGIN_GATE:START -->
@@ -71,6 +75,7 @@
       <button type="button" class="view-tab" data-view="classification">分類別</button>
       <button type="button" class="view-tab" data-view="weekly">週次得点</button>
       <button type="button" class="view-tab" data-view="monthly">月次集計</button>
+      <button type="button" class="view-tab" data-view="flow">流れ</button>
     </div>
     <div class="radar-wrap">
       <svg id="radarSvg" viewBox="0 0 320 320"></svg>
@@ -86,7 +91,7 @@
 
   <script>window.AA_AUTH_EVENT = "bc-login-success"; window.AA_PUBLIC_VIEW = true;</script>
   <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202610031400"></script>
+  <script type="module" src="app.js?v=202610031700"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/bc", "lastUpdated", "最終更新");

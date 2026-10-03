@@ -80,8 +80,8 @@ test("bc: 投稿者別/分類別のスレッド集計が期待通りに出る", 
     const posterRows = await page.locator("#radarTableBody tr").allTextContents();
     assert.deepEqual(
       posterRows.map((r) => r.replace(/\s+/g, "")),
-      ["claude-pc3", "takashi1", "claude-mobile3", "claude-teuri1"],
-      "投稿者別: claude-pc=T1,T3,A1(3) / takashi=T1(1) / claude-mobile=T2,T3,A2(3) / claude-teuri=A1(1)"
+      ["利尻3", "Takashi1", "すま3", "天売1"],
+      "投稿者別(軸名は家人の名前、ab-45): claude-pc=T1,T3,A1(3) / takashi=T1(1) / claude-mobile=T2,T3,A2(3) / claude-teuri=A1(1)"
     );
 
     await page.click('.view-tab[data-view="classification"]');

@@ -44,8 +44,10 @@ async function fetchAbThreads() {
       .map((n) => ({ by: fsStr(n, "by"), createdAt: fsStr(n, "createdAt"), retitle: fsStr(n, "body").startsWith("タイトルを変えた(") }));
     const entries = [root, ...notes].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     // ab-45: 「今の状態」用に 済み・返事が要るか・宛先も持つ(レーダー・月次は従来どおり済みも含めて数える)
+    // 流れ・最近の動き・待ち用に 済みにした日時と人、待ちの日付と中身も持つ
     return { threadId, root, entries, status: fsBool(d, "done") ? "closed" : "open", source: "ab",
-      needsReply: fsBool(d, "needsReply"), to: fsStrList(d, "to") };
+      needsReply: fsBool(d, "needsReply"), to: fsStrList(d, "to"),
+      doneAt: fsStr(d, "doneAt"), doneBy: fsStr(d, "doneBy"), waitUntil: fsStr(d, "waitUntil"), waitFor: fsStr(d, "waitFor") };
   }));
 }
 
@@ -77,7 +79,7 @@ function computePosterCounts(threads) {
   const counts = new Map(); // by -> count
 
   threads.forEach((thread) => {
-    const posters = new Set(thread.entries.map((e) => e.by).filter(Boolean));
+    const posters = new Set(thread.entries.map((e) => e.by).filter(Boolean).map(byName));
     posters.forEach((by) => {
       counts.set(by, (counts.get(by) || 0) + 1);
     });
@@ -397,7 +399,11 @@ const VIEWS = {
 // ab: 開いている件数、返事待ち(返事が要る・済んでいない)の宛先ごとの数、最後の動きが古い順の5件。
 // ba: 開いている件数(Takashi が無効にしたものは除く)。ba の古い open は ab へ移していく途中(ab-45 の時点で約55件)。
 const AB_TO_NAMES = { all: "みんな", rishiri: "利尻", suma: "すま", reifon: "礼文", teuri: "天売" };
+// 投稿者名(by)→家人の名前。b1 の ai_family.json の ba_lane / aa_lane と同じ対応(変えたらここも直す)
+const BY_NAMES = { "claude-pc": "利尻", "claude-mobile": "すま", "claude-pi": "礼文", "claude-teuri": "天売", takashi: "Takashi" };
+const byName = (by) => BY_NAMES[by] || by;
 const STALE_COUNT = 5;
+const RECENT_COUNT = 8;
 
 // タイトルを直しただけの自動 note(ab-edit が残す「タイトルを変えた(旧: …)」)は動きに数えない
 function lastActivity(thread) {
@@ -439,13 +445,161 @@ function renderNow(threads) {
   const staleHtml = stale.map(({ t, last }) =>
     `<li><span class="now-seq">ab-${t.root.seq}</span>${escapeHtml(t.root.title)}<span class="now-soft">${daysSince(last)}日前</span></li>`).join("");
 
+  // ab wait の印(dopdf と同じ見せ方: 日が来るまでは「10/10まで」、来たら「10/10 来た」を上に)
+  const today = jstDate(new Date().toISOString());
+  const waits = abOpen.filter((t) => t.waitUntil).sort((a, b) => a.waitUntil.localeCompare(b.waitUntil));
+  const waitHtml = waits.length
+    ? waits.map((t) => {
+      const came = t.waitUntil <= today;
+      return `<li${came ? ' class="now-came"' : ""}><span class="now-seq">ab-${t.root.seq}</span>${escapeHtml(t.root.title)}` +
+        `<span class="now-soft">${mdLabel(t.waitUntil)}${came ? " 来た" : "まで"}${t.waitFor ? `(${escapeHtml(t.waitFor)})` : ""}</span></li>`;
+    }).join("")
+    : "";
+
+  const recentHtml = recentActivities(threads).map((a) =>
+    `<li><span class="now-soft now-when">${escapeHtml(whenLabel(a.at))}</span>${escapeHtml(byName(a.by))} ` +
+    `<span class="now-seq">${a.ref}</span>${escapeHtml(a.what)}<span class="now-soft">${escapeHtml(a.title)}</span></li>`).join("");
+
   el.innerHTML = `
     <div class="now-row"><span class="now-label">ab 開いている</span><b>${abOpen.length}</b> 件
       <span class="now-label now-gap">ba 開いている</span><b>${baOpen.length}</b> 件</div>
     <div class="now-row"><span class="now-label">返事待ち(ab)</span>${waitingHtml}</div>
+    ${waitHtml ? `<div class="now-label">待ち(ab)</div><ul class="now-list now-wait">${waitHtml}</ul>` : ""}
     <div class="now-label">最後の動きが古い ab</div>
-    <ol class="now-stale">${staleHtml}</ol>`;
+    <ol class="now-stale">${staleHtml}</ol>
+    <div class="now-label">最近の動き(ba・ab)</div>
+    <ul class="now-list now-recent">${recentHtml}</ul>`;
   el.style.display = "";
+}
+
+// --- 日付まわり(JST) ---
+const jstDate = (iso) => new Date(new Date(iso).getTime() + 9 * 3600000).toISOString().slice(0, 10);
+const mdLabel = (ymd) => `${Number(ymd.slice(5, 7))}/${Number(ymd.slice(8, 10))}`;
+function whenLabel(iso) {
+  const j = new Date(new Date(iso).getTime() + 9 * 3600000).toISOString();
+  return `${mdLabel(j.slice(0, 10))} ${j.slice(11, 16)}`;
+}
+
+// --- 最近の動き: ba・ab の書き込みを新しい順に。タイトルを直しただけの自動 note は出さない ---
+const BA_KIND = { new: "立てた", note: "note", correction: "訂正", link: "リンク", gist: "gist", retitle: "タイトル変更", react: "反応" };
+function activities(threads) {
+  const out = [];
+  threads.forEach((t) => {
+    const ab = t.source === "ab";
+    const ref = `${ab ? "ab" : "ba"}-${t.root.seq}`;
+    const title = t.root.title || "";
+    t.entries.forEach((e) => {
+      if (!e.createdAt || e.retitle) return;
+      let what;
+      if (ab) what = e === t.root ? "立てた" : "note";
+      else if (e.type === "status") what = e.status === "closed" ? "閉じた" : "開け直した";
+      else if (e.type === "void") what = e.value ? "無効にした" : "無効を戻した";
+      else what = BA_KIND[e.type] || e.type || "note";
+      out.push({ at: e.createdAt, by: e.by, ref, what, title });
+    });
+    if (ab && t.status === "closed" && t.doneAt) out.push({ at: t.doneAt, by: t.doneBy, ref, what: "済み", title });
+  });
+  return out;
+}
+// 同じ人が同じ件に同じことを続けてしたもの(note を続けて足した等)は1行にまとめて「×2」
+function recentActivities(threads) {
+  const out = [];
+  for (const a of activities(threads).sort((x, y) => y.at.localeCompare(x.at))) {
+    const prev = out[out.length - 1];
+    if (prev && prev.by === a.by && prev.ref === a.ref && prev.baseWhat === a.what) {
+      prev.n++;
+      prev.what = `${a.what} ×${prev.n}`;
+      continue;
+    }
+    if (out.length === RECENT_COUNT) break;
+    out.push({ ...a, baseWhat: a.what, n: 1 });
+  }
+  return out;
+}
+
+// --- 流れ: 日ごとに開いた件数と片付いた件数(直近14日) ---
+// 開いた = ab・ba のスレッドを立てた日。片付いた = ab は済みにした日、ba は最後に閉じた日(今も閉じているものだけ)。
+// ba で無効にしたもの(打ち間違い等)はどちらにも数えない。
+const FLOW_DAYS = 14;
+const C_OPEN = "#6cf";
+const C_DONE = "#5aa06a";
+
+function daysBack(n) {
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) out.push(jstDate(new Date(Date.now() - i * 86400000).toISOString()));
+  return out;
+}
+
+function closedAt(t) {
+  if (t.status !== "closed") return "";
+  if (t.source === "ab") return t.doneAt;
+  const st = t.entries.filter((e) => e.type === "status");
+  return st.length ? st[st.length - 1].createdAt : "";
+}
+
+function computeFlow(threads, dayKeys) {
+  const data = new Map(dayKeys.map((k) => [k, { opened: 0, closed: 0 }]));
+  threads.forEach((t) => {
+    if (t.source !== "ab" && isBaVoided(t)) return;
+    const o = t.root.createdAt;
+    if (o && data.has(jstDate(o))) data.get(jstDate(o)).opened++;
+    const c = closedAt(t);
+    if (c && data.has(jstDate(c))) data.get(jstDate(c)).closed++;
+  });
+  return data;
+}
+
+// 0 の線から上に「開いた」、下に「片付いた」を伸ばす
+function drawFlowBars(svg, dayKeys, data) {
+  const W = 320, H = 320;
+  const left = 30, right = 10, top = 16, bottom = 40;
+  const plotW = W - left - right, plotH = H - top - bottom;
+  const maxVal = Math.max(1, ...dayKeys.map((k) => Math.max(data.get(k).opened, data.get(k).closed)));
+  const zeroY = top + plotH / 2;
+  const half = plotH / 2;
+  const step = plotW / dayKeys.length;
+  const barW = Math.min(14, step * 0.7);
+  const parts = [];
+
+  [-1, -0.5, 0, 0.5, 1].forEach((f) => {
+    const y = zeroY - f * half;
+    parts.push(`<line x1="${left}" y1="${y}" x2="${W - right}" y2="${y}" stroke="#888" stroke-opacity="${f === 0 ? 0.6 : 0.25}"/>`);
+    parts.push(`<text x="${left - 5}" y="${y + 3}" font-size="8" fill="currentColor" opacity="0.65" text-anchor="end">${Math.round(Math.abs(f) * maxVal)}</text>`);
+  });
+
+  dayKeys.forEach((k, i) => {
+    const { opened, closed } = data.get(k);
+    const cx = left + step * i + step / 2;
+    const x = cx - barW / 2;
+    const hO = (opened / maxVal) * half, hC = (closed / maxVal) * half;
+    if (opened) {
+      parts.push(`<rect x="${x}" y="${zeroY - hO}" width="${barW}" height="${hO}" fill="${C_OPEN}"/>`);
+      parts.push(`<text x="${cx}" y="${zeroY - hO - 3}" font-size="7" fill="currentColor" text-anchor="middle">${opened}</text>`);
+    }
+    if (closed) {
+      parts.push(`<rect x="${x}" y="${zeroY}" width="${barW}" height="${hC}" fill="${C_DONE}"/>`);
+      parts.push(`<text x="${cx}" y="${zeroY + hC + 9}" font-size="7" fill="currentColor" text-anchor="middle">${closed}</text>`);
+    }
+    if (i % 2 === (dayKeys.length - 1) % 2) {
+      parts.push(`<text x="${cx}" y="${H - bottom + 14}" font-size="8" fill="currentColor" opacity="0.75" text-anchor="middle">${mdLabel(k)}</text>`);
+    }
+  });
+
+  parts.push(`<rect x="${left}" y="${H - 16}" width="9" height="9" fill="${C_OPEN}"/>`);
+  parts.push(`<text x="${left + 13}" y="${H - 8}" font-size="9" fill="currentColor">開いた(上)</text>`);
+  parts.push(`<rect x="${left + 90}" y="${H - 16}" width="9" height="9" fill="${C_DONE}"/>`);
+  parts.push(`<text x="${left + 103}" y="${H - 8}" font-size="9" fill="currentColor">片付いた(下)</text>`);
+
+  svg.innerHTML = parts.join("\n");
+}
+
+function renderFlowTable(theadRow, tbody, dayKeys, data) {
+  theadRow.innerHTML = "<th>日</th><th>開いた</th><th>片付いた</th><th>差</th>";
+  tbody.innerHTML = dayKeys.slice().reverse().map((k) => {
+    const { opened, closed } = data.get(k);
+    const diff = opened - closed;
+    return `<tr><td>${mdLabel(k)}</td><td>${opened}</td><td>${closed}</td><td>${diff > 0 ? "+" : ""}${diff}</td></tr>`;
+  }).join("");
 }
 
 let currentThreads = [];
@@ -476,6 +630,14 @@ function render() {
     }
     drawWeeklyBars(svg, weeklyScores);
     renderWeeklyTable(theadRow, tbody, weeklyScores);
+    return;
+  }
+
+  if (currentView === "flow") {
+    const dayKeys = daysBack(FLOW_DAYS);
+    const data = computeFlow(currentThreads, dayKeys);
+    drawFlowBars(svg, dayKeys, data);
+    renderFlowTable(theadRow, tbody, dayKeys, data);
     return;
   }
 
