@@ -30,17 +30,22 @@ async function fsListDocs(url) {
 }
 
 const fsStr = (doc, key) => doc.fields?.[key]?.stringValue || "";
+const fsBool = (doc, key) => doc.fields?.[key]?.booleanValue === true;
+const fsInt = (doc, key) => Number(doc.fields?.[key]?.integerValue || 0);
+const fsStrList = (doc, key) => (doc.fields?.[key]?.arrayValue?.values || []).map((v) => v.stringValue || "");
 
 // ab のスレッドを groupThreads と同じ形({threadId, root, entries})にそろえる。source:"ab" で見分ける。
 async function fetchAbThreads() {
   const docs = await fsListDocs(AB_FS);
   return Promise.all(docs.map(async (d) => {
     const threadId = d.name.split("/").pop();
-    const root = { id: threadId, by: fsStr(d, "by"), createdAt: fsStr(d, "createdAt") };
+    const root = { id: threadId, by: fsStr(d, "by"), createdAt: fsStr(d, "createdAt"), seq: fsInt(d, "seq"), title: fsStr(d, "title") };
     const notes = (await fsListDocs(`${AB_FS}/${threadId}/notes`))
-      .map((n) => ({ by: fsStr(n, "by"), createdAt: fsStr(n, "createdAt") }));
+      .map((n) => ({ by: fsStr(n, "by"), createdAt: fsStr(n, "createdAt"), retitle: fsStr(n, "body").startsWith("タイトルを変えた(") }));
     const entries = [root, ...notes].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    return { threadId, root, entries, status: "open", source: "ab" };
+    // ab-45: 「今の状態」用に 済み・返事が要るか・宛先も持つ(レーダー・月次は従来どおり済みも含めて数える)
+    return { threadId, root, entries, status: fsBool(d, "done") ? "closed" : "open", source: "ab",
+      needsReply: fsBool(d, "needsReply"), to: fsStrList(d, "to") };
   }));
 }
 
@@ -388,6 +393,61 @@ const VIEWS = {
   },
 };
 
+// --- 今の状態(2026-10-03、ab-45): 累計のチャートだけだと「今どうなっているか」が見えないので、上に置く ---
+// ab: 開いている件数、返事待ち(返事が要る・済んでいない)の宛先ごとの数、最後の動きが古い順の5件。
+// ba: 開いている件数(Takashi が無効にしたものは除く)。ba の古い open は ab へ移していく途中(ab-45 の時点で約55件)。
+const AB_TO_NAMES = { all: "みんな", rishiri: "利尻", suma: "すま", reifon: "礼文", teuri: "天売" };
+const STALE_COUNT = 5;
+
+// タイトルを直しただけの自動 note(ab-edit が残す「タイトルを変えた(旧: …)」)は動きに数えない
+function lastActivity(thread) {
+  return thread.entries.reduce((m, e) => (!e.retitle && e.createdAt > m ? e.createdAt : m), "");
+}
+
+function daysSince(iso) {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+
+function isBaVoided(thread) {
+  // ba の void は最後に付いたものが効く(value=true で無効)
+  const voids = thread.entries.filter((e) => e.type === "void");
+  return voids.length > 0 && voids[voids.length - 1].value === true;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function renderNow(threads) {
+  const el = document.getElementById("nowPanel");
+  const abOpen = threads.filter((t) => t.source === "ab" && t.status !== "closed");
+  const baOpen = threads.filter((t) => t.source !== "ab" && t.status !== "closed" && !isBaVoided(t));
+  if (!abOpen.length && !baOpen.length) { el.style.display = "none"; return; }
+
+  const waiting = new Map();
+  abOpen.filter((t) => t.needsReply).forEach((t) => {
+    (t.to.length ? t.to : ["all"]).forEach((id) => waiting.set(id, (waiting.get(id) || 0) + 1));
+  });
+  const waitingHtml = waiting.size
+    ? [...waiting].map(([id, n]) => `<span class="now-chip">${escapeHtml(AB_TO_NAMES[id] || id)} ${n}</span>`).join("")
+    : '<span class="now-soft">なし</span>';
+
+  const stale = abOpen
+    .map((t) => ({ t, last: lastActivity(t) }))
+    .sort((a, b) => a.last.localeCompare(b.last))
+    .slice(0, STALE_COUNT);
+  const staleHtml = stale.map(({ t, last }) =>
+    `<li><span class="now-seq">ab-${t.root.seq}</span>${escapeHtml(t.root.title)}<span class="now-soft">${daysSince(last)}日前</span></li>`).join("");
+
+  el.innerHTML = `
+    <div class="now-row"><span class="now-label">ab 開いている</span><b>${abOpen.length}</b> 件
+      <span class="now-label now-gap">ba 開いている</span><b>${baOpen.length}</b> 件</div>
+    <div class="now-row"><span class="now-label">返事待ち(ab)</span>${waitingHtml}</div>
+    <div class="now-label">最後の動きが古い ab</div>
+    <ol class="now-stale">${staleHtml}</ol>`;
+  el.style.display = "";
+}
+
 let currentThreads = [];
 let weeklyScores = [];
 let currentView = "poster";
@@ -463,6 +523,7 @@ async function load() {
       fetchAbThreads().catch((e) => { console.warn("ab を読めませんでした", e); return []; }),
     ]);
     currentThreads = [...groupThreads(items), ...abThreads];
+    renderNow(currentThreads);
     render();
     weeklyScores = await fetchWeeklyScores();
     if (currentView === "weekly") render();
