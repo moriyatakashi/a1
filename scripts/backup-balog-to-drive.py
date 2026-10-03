@@ -77,17 +77,34 @@ def _load_backup_tables():
 
 
 def _load_firestore_collections():
+    """[(コレクション名, サブコレクション名のリスト)]。subcollections は省略可。"""
     data = _load_backup_config()
-    return data.get("firestore_project"), [c["name"] for c in data.get("firestore_collections") or []]
+    return data.get("firestore_project"), [
+        (c["name"], c.get("subcollections") or []) for c in data.get("firestore_collections") or []]
 
 
-def _fetch_firestore_collection(project, collection):
+def _fetch_firestore_collection(project, collection, subcollections=()):
     """Firestore REST で読みが無認証のコレクションを全件取る(ページ送りあり)。
 
     返り値はドキュメントごとに {"id": ドキュメントID, "fields": REST の生の fields} と
     updateTime。型付きの生値をそのまま残す(戻すときに型が分かるように)。
+
+    2026-10-03 ab-111: abThreads・acThreads の note は各ドキュメントの下のサブコレクション
+    (notes)にあり、親だけ取ると本文しか残らない。subcollections に名前があれば、
+    ドキュメントごとにそのサブコレクションも全件取って "subcollections" に入れる。
+    読み取りは「親の件数ぶんの一覧呼び出し+子の件数」だけ増える(ab-95)。
     """
-    url = f"https://firestore.googleapis.com/v1/projects/{project}/databases/(default)/documents/{collection}"
+    base = f"https://firestore.googleapis.com/v1/projects/{project}/databases/(default)/documents"
+    docs = _list_firestore_documents(f"{base}/{collection}")
+    for doc in docs:
+        if subcollections:
+            doc["subcollections"] = {
+                sub: _list_firestore_documents(f"{base}/{collection}/{doc['id']}/{sub}")
+                for sub in subcollections}
+    return docs
+
+
+def _list_firestore_documents(url):
     docs, page_token = [], None
     while True:
         params = {"pageSize": 300}
@@ -207,12 +224,14 @@ def main():
         print(f"バックアップ完了: {table_name} {len(entities)}件 -> {week_name}/{filename} (fileId={result['id']})")
 
     project, collections = _load_firestore_collections()
-    for collection in collections:
-        docs = _fetch_firestore_collection(project, collection)
+    for collection, subcollections in collections:
+        docs = _fetch_firestore_collection(project, collection, subcollections)
         content = json.dumps(docs, ensure_ascii=False).encode("utf-8")
         filename = f"firestore_{collection.lower()}_full_{timestamp}.json"
         result = _upload_to_drive(access_token, filename, content, week_folder_id)
-        print(f"バックアップ完了: Firestore {collection} {len(docs)}件 -> {week_name}/{filename} (fileId={result['id']})")
+        sub_counts = "".join(
+            f" +{sub} {sum(len(d['subcollections'][sub]) for d in docs)}件" for sub in subcollections)
+        print(f"バックアップ完了: Firestore {collection} {len(docs)}件{sub_counts} -> {week_name}/{filename} (fileId={result['id']})")
 
 
 if __name__ == "__main__":

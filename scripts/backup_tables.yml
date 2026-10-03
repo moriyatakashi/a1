@@ -36,3 +36,12 @@ firestore_collections:
     note: 訪問の正本(ab-53 以降、m2・x5 が直接書く)。
   - name: pointEvents
     note: 加点イベントの正本(ab-53 以降、訪問の初訪問加点を m2・x5 が同じ batch で書く)。
+  # 2026-10-03 ab-111: 台帳も Firestore にしか無く、丸ごと取り出す仕組みが無かった(切り替えをスムーズに、の第一歩)。
+  # note は各スレッドの下の notes にあるので subcollections で一緒に取る。adThreads は読みが鍵必須(Rules で拒否)で、
+  # 中身をよそに置かない約束(ad)なので取らない。
+  - name: abThreads
+    note: ab(依頼・連絡)の台帳。書き込みは aa-lane 経由。
+    subcollections: [notes]
+  - name: acThreads
+    note: ac(決定事項)の台帳。書き込みは aa-lane 経由。
+    subcollections: [notes]
