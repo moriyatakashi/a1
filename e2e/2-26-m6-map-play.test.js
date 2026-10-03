@@ -65,7 +65,7 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.equal(await page.locator("#choices button").count(), 4);
     await page.locator("#choices button").first().click();
     assert.equal(await page.locator("#choices button.ok").count(), 1);
-    assert.match(await page.textContent("#quizScore"), /^[01] \/ 1/);
+    assert.match(await page.textContent("#quizScore"), /^この回 [01] \/ 1/);
 
     // 10/03 2回目: 地方ごとの制覇・次の一県・次に晴らせる県・県の詳細
     assert.match(await page.textContent("#regions"), /近畿2\/7/);
@@ -79,15 +79,20 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.match(await page.textContent("#info"), /まだ行っていない/);
     assert.match(await page.textContent("#stamps"), /近畿 2\/7/);
 
-    // クイズの種類: どれでも正解が1つ緑になり、答えのあとに一言が出る
-    for (const [kind, n] of [["neighbor", 4], ["area", 2], ["capital", 4], ["mix", null], ["review", null]]) {
+    // クイズの種類: どれでも正解が1つ緑になり、答えのあとに一言が出る。1回は5問(形あての1問目と合わせて5問)
+    for (const [kind, n] of [["neighbor", 4], ["area", 2], ["capital", 4], ["review", null]]) {
       await page.selectOption("#quizKind", kind);
       if (n) assert.equal(await page.locator("#choices button").count(), n, kind);
       await page.locator("#choices button").first().click();
       assert.equal(await page.locator("#choices button.ok").count(), 1, kind);
       assert.ok((await page.textContent("#quizAfter")).length > 3, kind);
     }
-    assert.match(await page.textContent("#quizScore"), /^\d \/ 6/);
+    assert.match(await page.textContent("#quizScore"), /^この回 \d \/ 5/);
+    assert.match(await page.textContent("#quizAfter"), /5問中 \d問 正解/);
+    assert.equal(await page.textContent("#btnNext"), "もう1回(5問)");
+    assert.match(await page.textContent("#quizBank"), /^たまった正解 \d \/ 50\(あと\d+で1点\)/);
+    await page.click("#btnNext");
+    assert.equal(await page.textContent("#quizRound"), "1 / 5問目");
 
     // 歩く・霧を晴らすでエラーが出ない
     await page.click("#btnWalk");
@@ -96,7 +101,24 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
 
     assert.deepEqual(errors, []);
     const writes = await page.evaluate(() => [...(window.__fsWrites || []), ...(window.__fsOtherWrites || [])]);
-    assert.deepEqual(writes, [], "m6 は何も書かない");
+    assert.deepEqual(writes, [], "正解が50たまるまでは何も書かない");
+
+    // 正解が50たまっている状態で1回(5問)終えると、pointEvents に1点を1件書き、ためた分から50引く
+    await page.evaluate(() => localStorage.setItem("m6.quizBank", "50"));
+    await page.selectOption("#quizKind", "shape");
+    for (let i = 0; i < 5; i++) {
+      if (i) await page.click("#btnNext");
+      await page.locator("#choices button").first().click();
+    }
+    await page.waitForFunction(() => (window.__fsOtherWrites || []).length === 1);
+    const [pe] = await page.evaluate(() => window.__fsOtherWrites);
+    assert.equal(pe.col, "pointEvents");
+    assert.equal(pe.axis, "地図クイズ");
+    assert.equal(pe.points, 1);
+    assert.equal(pe.period, "week");
+    assert.equal(pe.by, "takashi");
+    await page.waitForFunction(() => /1点 加点した/.test(document.getElementById("quizAfter").textContent));
+    assert.ok(Number(await page.evaluate(() => localStorage.getItem("m6.quizBank"))) <= 5);
   } finally {
     await browser.close();
     server.close();

@@ -6,8 +6,10 @@
 // ストアは動的 import にしている。
 // 10/03 の2回目(Takashi「減らすのは最小限で、いろいろ改良」): 次に晴らせる県(となりの未踏県)の層、地方ごとの制覇、
 // 県の詳細(地方・県庁所在地・面積・となり)、クイズの種類(となり・広さ・県庁所在地・まちがい直し)を足した。
-// 表と計算は geo.js。まちがえた県はこの端末にだけ覚える(localStorage、何も書かない約束は Firestore について)。
+// 表と計算は geo.js。まちがえた県はこの端末にだけ覚える(localStorage)。
+// 同日の3回目: クイズは1回5問、正解50で1点を pointEvents に書く(このページで Firestore に書くのはこれだけ、quiz-point.js)。
 
+import { PER_POINT, loadBank, saveBank, writeQuizPoint } from "./quiz-point.js?v=202610031600";
 import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz } from "./geo.js?v=202610031500";
 
 const RAD = Math.PI / 180;
@@ -284,7 +286,9 @@ function stampHtml(n) {
 const MISSED_KEY = "m6.quizMissed";
 const loadMissed = () => { try { return JSON.parse(localStorage.getItem(MISSED_KEY) || "[]"); } catch { return []; } };
 const saveMissed = (a) => { try { localStorage.setItem(MISSED_KEY, JSON.stringify(a)); } catch { /* 覚えられなくても遊べる */ } };
-const quiz = { ok: 0, total: 0, streak: 0, best: 0, answered: false, q: null };
+// 1回=5問(Takashi「クイズ長すぎる、4回か5回くらい」)。回の終わりに、たまった正解が50を超えていたら1点(quiz-point.js)。
+const ROUND = 5;
+const quiz = { ok: 0, total: 0, streak: 0, best: 0, answered: false, q: null, n: 0, roundOk: 0 };
 
 function quizBox(qs, sel, pad) {
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
@@ -297,6 +301,9 @@ function quizBox(qs, sel, pad) {
 }
 
 function nextQuiz() {
+  if (quiz.n >= ROUND) { quiz.n = 0; quiz.roundOk = 0; }
+  $("btnNext").textContent = "次へ";
+  $("quizRound").textContent = `${quiz.n + 1} / ${ROUND}問目`;
   const mode = $("quizKind").value;
   const missed = loadMissed();
   const kinds = QUIZ_KINDS.map(([k]) => k);
@@ -326,9 +333,10 @@ function answer(n) {
   const q = quiz.q;
   quiz.answered = true;
   quiz.total++;
+  quiz.n++;
   const right = n === q.answer;
   let missed = loadMissed().filter((p) => p !== q.pref);
-  if (right) { quiz.ok++; quiz.streak++; quiz.best = Math.max(quiz.best, quiz.streak); }
+  if (right) { quiz.roundOk++; saveBank(loadBank() + 1); quiz.ok++; quiz.streak++; quiz.best = Math.max(quiz.best, quiz.streak); }
   else { quiz.streak = 0; missed = [q.pref, ...missed].slice(0, 47); }
   saveMissed(missed);
   $("choices").querySelectorAll("button").forEach((b) => {
@@ -340,10 +348,35 @@ function answer(n) {
   for (const p of q.show) qs.querySelectorAll(`[data-p="${p}"]`).forEach((el) => el.classList.add("hint"));
   if (q.show.length) quizBox(qs, ".target, .hint", 1.3);
   $("quizAfter").textContent = (right ? "正解。" : "ざんねん。") + q.after;
-  $("quizScore").textContent = `${quiz.ok} / ${quiz.total}`
+  $("quizScore").textContent = `この回 ${quiz.roundOk} / ${quiz.n}`
     + (quiz.streak >= 2 ? `・${quiz.streak}連続` : "")
     + (agg.has(q.pref) ? `(${q.pref}は行ったことがある)` : "");
   $("missedCount").textContent = missed.length ? `まちがえた県 ${missed.length}` : "";
+  showBank();
+  if (quiz.n >= ROUND) endRound();
+}
+
+// たまった正解(この端末)。50で1点。
+function showBank(extra = "") {
+  const b = loadBank();
+  $("quizBank").textContent = `たまった正解 ${Math.min(b, PER_POINT)} / ${PER_POINT}` + extra;
+}
+
+// 回の終わり: 結果を出し、正解が50たまっていれば1点書く。書けなければ、ためたまま次の回の終わりにまた試す。
+async function endRound() {
+  $("btnNext").textContent = `もう1回(${ROUND}問)`;
+  $("quizAfter").textContent += ` ── ${ROUND}問中 ${quiz.roundOk}問 正解。`;
+  if (loadBank() < PER_POINT) { showBank(`(あと${PER_POINT - loadBank()}で1点)`); return; }
+  showBank("(1点を書いています…)");
+  try {
+    await writeQuizPoint();
+    saveBank(loadBank() - PER_POINT);
+    showBank("");
+    $("quizAfter").textContent += "正解が50たまったので、1点 加点した(地図クイズ)。";
+  } catch (e) {
+    showBank("(1点はまだ書けていない。次の回の終わりにまた試す)");
+    console.warn("m6: 地図クイズの加点に失敗", e);
+  }
 }
 
 function stats() {
@@ -378,6 +411,7 @@ $("quizKind").addEventListener("change", nextQuiz);
 $("quizKind").insertAdjacentHTML("beforeend", QUIZ_KINDS.map(([k, label]) => `<option value="${k}">${label}</option>`).join("")
   + '<option value="review">まちがい直し</option>');
 { const m = loadMissed().length; $("missedCount").textContent = m ? `まちがえた県 ${m}` : ""; }
+showBank();
 
 fetch("../m5/prefectures.geojson").then((r) => r.json()).then((gj) => {
   features = gj.features;

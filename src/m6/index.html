@@ -71,6 +71,8 @@
   .quiz-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
   .quiz-head select { font-size: 0.8rem; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--input-bg); color: var(--ink); }
   .quiz-prompt { font-weight: 700; font-size: 0.95rem; }
+  .quiz-round { font-size: 0.72rem; color: var(--ink-soft); margin-right: 8px; }
+  .quiz-bank { font-size: 0.72rem; color: var(--ink-soft); margin-top: 4px; text-align: right; }
   .quiz-after { font-size: 0.8rem; margin-top: 8px; min-height: 1.2em; }
   #quizMap path.target2 { fill: #3b7dd8; stroke: var(--ink); stroke-width: 0.8; }
   #quizMap path.hint { fill: #2a8f6f; opacity: .75; }
@@ -84,7 +86,7 @@
 <body>
   <p><a href="../../">← 戻る</a></p>
   <h1>路歴（m6） / 地図あそび</h1>
-  <p class="lede">ab-44(地図もの全般)の試作。t14 の案を1枚の地図に層として重ねている。訪問(visits)と毎日スコア(scores)は Firestore から読むだけで、このページからは何も書かない(クイズでまちがえた県だけ、この端末に覚える)。</p>
+  <p class="lede">ab-44(地図もの全般)の試作。t14 の案を1枚の地図に層として重ねている。訪問(visits)と毎日スコア(scores)は Firestore から読むだけで、このページから書くのは、県あてクイズの加点だけ(1回5問、正解が50たまると1点)。正解の数とまちがえた県は、この端末に覚える。</p>
 
   <div class="stats">
     <div class="stat-item"><div class="stat-num" id="statPrefs">—</div><div class="stat-label">制覇した都道府県 / 47</div></div>
@@ -138,15 +140,16 @@
   <div class="section">
     <div class="section-title">県あてクイズ(「地図」を「知育」と空目した案)</div>
     <div class="quiz-head">
-      <span class="quiz-prompt" id="quizPrompt"></span>
+      <span><span class="quiz-round" id="quizRound"></span><span class="quiz-prompt" id="quizPrompt"></span></span>
       <select id="quizKind" aria-label="クイズの種類"><option value="mix">いろいろ</option></select>
     </div>
     <svg id="quizMap"></svg>
     <div class="choices" id="choices"></div>
     <div class="quiz-after" id="quizAfter"></div>
-    <div class="quiz-foot"><span id="quizScore">0 / 0</span><span id="missedCount"></span><button type="button" id="btnNext">次へ</button></div>
+    <div class="quiz-foot"><span id="quizScore">この回 0 / 0</span><span id="missedCount"></span><button type="button" id="btnNext">次へ</button></div>
+    <div class="quiz-bank" id="quizBank"></div>
   </div>
 
-  <script type="module" src="app.js?v=202610031500"></script>
+  <script type="module" src="app.js?v=202610031600"></script>
 </body>
 </html>
