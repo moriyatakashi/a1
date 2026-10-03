@@ -9,7 +9,7 @@
 // 表と計算は geo.js。まちがえた県はこの端末にだけ覚える(localStorage)。
 // 同日の3回目: クイズは1回5問、正解50で1点を pointEvents に書く(このページで Firestore に書くのはこれだけ、quiz-point.js)。
 
-import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031700";
+import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031800";
 import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz } from "./geo.js?v=202610031700";
 
 const RAD = Math.PI / 180;

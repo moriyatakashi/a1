@@ -3,7 +3,7 @@
 // setDoc で書いたものは window.__fsWrites に積む(書き込みの中身を確かめるとき用)。scores 以外は others の
 // { コレクション名: { id: 中身 } }(ab-43 のチェック項目 scoreConfig / scoreItems など)。
 // 書き込みは scores のものだけ __fsWrites に、それ以外は window.__fsOtherWrites に { col, id, ...中身 } で積む。
-// writeBatch(ab-53 の訪問)は commit のときに setDoc と同じく書く。
+// writeBatch(ab-53 の訪問)は commit のときに setDoc と同じく書く。query+where は == だけ(ab-95、全件読みを絞る形)。
 const BASE = "https://www.gstatic.com/firebasejs/";
 
 function modules(scores, others) {
@@ -17,7 +17,13 @@ function modules(scores, others) {
       export const collection = (db, name) => ({ name });
       export const doc = (db, name, id) => ({ name, id });
       export async function getDoc(ref) { const d = col_(ref.name)[ref.id]; return { exists: () => !!d, data: () => d }; }
-      export async function getDocs(col) { return { docs: Object.entries(col_(col.name)).map(([id, d]) => ({ id, data: () => d })) }; }
+      // query(collection, where(...)) は == だけ(読む件数を絞る形を確かめる用)。
+      export const where = (field, op, value) => ({ field, op, value });
+      export const query = (col, ...conds) => ({ name: col.name, conds });
+      export async function getDocs(col) {
+        const ok = (d) => (col.conds || []).every((c) => c.op === "==" && d[c.field] === c.value);
+        return { docs: Object.entries(col_(col.name)).filter(([, d]) => ok(d)).map(([id, d]) => ({ id, data: () => d })) };
+      }
       function record(name, id, data) {
         if (name === "scores") window.__fsWrites = (window.__fsWrites || []).concat([{ id, ...data }]);
         else window.__fsOtherWrites = (window.__fsOtherWrites || []).concat([{ col: name, id, ...data }]);
