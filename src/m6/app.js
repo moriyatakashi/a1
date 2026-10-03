@@ -4,6 +4,11 @@
 // 地図は m5 と同じ prefectures.geojson(実座標)をメルカトル投影して SVG にする(沖縄は左上の別枠)。
 // 訪問・スコアは Firestore を読むだけ(読みは誰でも、Rules)。読みに失敗しても地図とクイズは動くよう、
 // ストアは動的 import にしている。
+// 10/03 の2回目(Takashi「減らすのは最小限で、いろいろ改良」): 次に晴らせる県(となりの未踏県)の層、地方ごとの制覇、
+// 県の詳細(地方・県庁所在地・面積・となり)、クイズの種類(となり・広さ・県庁所在地・まちがい直し)を足した。
+// 表と計算は geo.js。まちがえた県はこの端末にだけ覚える(localStorage、何も書かない約束は Firestore について)。
+
+import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz } from "./geo.js?v=202610031500";
 
 const RAD = Math.PI / 180;
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2));
@@ -66,6 +71,9 @@ let features = [];
 let agg = new Map();
 let visits = [];
 let selected = null;
+let adj = new Map();
+let centerOf = new Map();
+let names = [];
 
 function drawMap() {
   const paths = features.map((f) => {
@@ -83,9 +91,10 @@ function drawMap() {
     <path d="M30 60 H170 V200 H30 Z" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/>
     <g id="prefs">${paths}</g>
     <rect class="fog-rect" id="fog" width="760" height="760" filter="url(#fogTex)" mask="url(#fogMask)"/>
+    <g id="front"></g>
     <g id="dots"></g>
     <g id="walk"></g>`;
-  svg.querySelector("#prefs").addEventListener("click", (e) => {
+  svg.addEventListener("click", (e) => {
     const n = e.target.dataset && e.target.dataset.p;
     if (n) select(n);
   });
@@ -119,6 +128,12 @@ function paint() {
   else lg.textContent = "";
   // 霧は少し透かして、県境がうっすら見えるようにする。
   $("fog").style.opacity = $("fogOn").checked ? 0.82 : 0;
+  if ($("frontOn").checked && agg.size) lg.insertAdjacentHTML("beforeend", `<span class="front-key"></span>次に晴らせる県(行った県のとなり)`);
+  // 次に晴らせる県は霧の上に点線で縁どる(霧の中でも見える)。
+  const front = $("frontOn").checked ? frontier(new Set(agg.keys()), adj) : new Set();
+  svg.querySelector("#front").innerHTML = [...front].map((n) =>
+    [...svg.querySelectorAll(`#prefs [data-p="${n}"]`)].map((el) => `<path class="front" data-p="${n}" d="${el.getAttribute("d")}"/>`).join("")
+  ).join("");
   fitView();
   svg.querySelector("#dots").innerHTML = $("dotsOn").checked
     ? visits.filter(hasXY).map((v) => { const [x, y] = projPoint(v); return `<circle class="dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2"/>`; }).join("")
@@ -149,11 +164,41 @@ function select(n) {
   selected = n;
   paint();
   const a = agg.get(n);
-  if (!a) { $("info").innerHTML = `<b>${esc(n)}</b> — まだ行っていない(霧の中)`; return; }
+  const ns = [...(adj.get(n) || [])];
+  const nb = ns.length
+    ? "となり: " + ns.map((m) => (agg.has(m) ? `${esc(m)}✓` : esc(m))).join("・")
+    : "となりの県なし(海の向こう)";
+  const facts = `<div class="facts">${esc(regionOf(n))}地方 / 県庁所在地 ${esc(CAPITALS[n] || "?")} / 面積 ${areaText(n)}<br>${nb}</div>`;
+  if (!a) {
+    const near = ns.filter((m) => agg.has(m));
+    const hint = near.length ? `。${near.map(esc).join("・")}から入れる` : "";
+    $("info").innerHTML = `<b>${esc(n)}</b> — まだ行っていない(霧の中)${hint}${facts}`;
+    return;
+  }
   const score = a.avgScore === null ? "点数なし" : `その日の点数 平均 ${a.avgScore.toFixed(1)}`;
   const recent = a.places.slice(0, 5).map((v) => `${esc(v.date)} ${esc(v.place)}`).join("<br>");
-  $("info").innerHTML = `<b>${esc(n)}</b> — ${a.count}回・${a.dates.size}日、初訪問 ${esc(a.first || "?")}、${score}<div class="places">${recent}</div>`;
+  $("info").innerHTML = `<b>${esc(n)}</b> — ${a.count}回・${a.dates.size}日、初訪問 ${esc(a.first || "?")}、${score}${facts}<div class="places">${recent}</div>`;
 }
+
+// 地方ごとの制覇(バー)と、次の一県(最後の訪問地からいちばん近い、まだ行っていない県)。
+function drawRegions() {
+  const visited = new Set(agg.keys());
+  $("regions").innerHTML = regionProgress(visited).map((r) =>
+    `<div class="region${r.done === r.total ? " full" : ""}"><span>${esc(r.name)}</span><span class="rbar"><i style="width:${(100 * r.done / r.total).toFixed(0)}%"></i></span><span>${r.done}/${r.total}</span></div>`
+  ).join("");
+  const last = [...visits].filter(hasXY).sort((x, y) => (y.date + y.time).localeCompare(x.date + x.time))[0];
+  const rest = names.filter((n) => !visited.has(n) && centerOf.has(n));
+  if (!last || !rest.length) { $("nextPref").textContent = ""; return; }
+  const front = frontier(visited, adj);
+  const d = (n) => distKm(last, centerOf.get(n));
+  const best = rest.sort((x, y) => d(x) - d(y))[0];
+  $("nextPref").innerHTML = `次の一県: <button type="button" class="linkish" data-p="${esc(best)}">${esc(best)}</button>`
+    + `(最後の訪問地 ${esc(last.place || last.pref || "")} から約${Math.round(d(best))}km${front.has(best) ? "、となりなので地続き" : ""})`;
+}
+$("nextPref").addEventListener("click", (e) => {
+  const n = e.target.dataset && e.target.dataset.p;
+  if (n) { select(n); $("map").scrollIntoView({ behavior: "smooth", block: "center" }); }
+});
 
 // 霧を晴らす: 初訪問の早い順に、1県ずつ穴を開ける(スクラッチくじの開封感)。
 let revealTimer = null;
@@ -216,53 +261,89 @@ function hashAngle(s) {
   for (const c of s) h = (h * 31 + c.codePointAt(0)) | 0;
   return (Math.abs(h) % 25) - 12;
 }
+// 地方ごとに見出しを付けて並べる(見出しは段の頭から全幅)。
 function drawStamps() {
-  $("stamps").innerHTML = features.map((f) => f.properties.N03_001).filter((n, i, arr) => arr.indexOf(n) === i).map((n) => {
-    const a = agg.get(n), s = shortName(n);
-    const fs = s.length >= 3 ? 13 : 17;
-    const art = a
-      ? `<g transform="rotate(${hashAngle(n)} 28 28)"><circle cx="28" cy="28" r="24" fill="none" stroke="#c94545" stroke-width="3"/>
-           <circle cx="28" cy="28" r="19" fill="none" stroke="#c94545" stroke-width="1"/>
-           <text x="28" y="27" fill="#c94545" font-size="${fs}" font-weight="800" text-anchor="middle" dominant-baseline="central">${esc(s)}</text>
-           <text x="28" y="41" fill="#c94545" font-size="6" text-anchor="middle">${esc((a.first || "").slice(2).replace(/-/g, "."))}</text></g>`
-      : `<circle cx="28" cy="28" r="24" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/>`;
-    return `<div class="stamp"><svg viewBox="0 0 56 56">${art}</svg>${esc(n)}</div>`;
-  }).join("");
+  $("stamps").innerHTML = REGIONS.map(([rname, ps]) =>
+    `<div class="stamp-region">${esc(rname)} ${ps.filter((p) => agg.has(p)).length}/${ps.length}</div>` + ps.map(stampHtml).join("")
+  ).join("");
+}
+function stampHtml(n) {
+  const a = agg.get(n), s = shortName(n);
+  const fs = s.length >= 3 ? 13 : 17;
+  const art = a
+    ? `<g transform="rotate(${hashAngle(n)} 28 28)"><circle cx="28" cy="28" r="24" fill="none" stroke="#c94545" stroke-width="3"/>
+         <circle cx="28" cy="28" r="19" fill="none" stroke="#c94545" stroke-width="1"/>
+         <text x="28" y="27" fill="#c94545" font-size="${fs}" font-weight="800" text-anchor="middle" dominant-baseline="central">${esc(s)}</text>
+         <text x="28" y="41" fill="#c94545" font-size="6" text-anchor="middle">${esc((a.first || "").slice(2).replace(/-/g, "."))}</text></g>`
+    : `<circle cx="28" cy="28" r="24" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/>`;
+  return `<div class="stamp"><svg viewBox="0 0 56 56">${art}</svg>${esc(n)}</div>`;
 }
 
-// 県あてクイズ: 1県だけ塗った地図を、その県のまわりに寄せて出す。4択。
-const quiz = { ok: 0, total: 0, answered: false };
-function nextQuiz() {
-  const names = [...new Set(features.map((f) => f.properties.N03_001))];
-  const target = names[Math.floor(Math.random() * names.length)];
-  const others = names.filter((n) => n !== target).sort(() => Math.random() - 0.5).slice(0, 3);
-  const qs = $("quizMap");
-  qs.innerHTML = features.map((f) => {
-    const n = f.properties.N03_001;
-    return `<path class="${n === target ? "target" : ""}" d="${toPath(f.geometry, projFor(n))}"/>`;
-  }).join("");
+// クイズ: 種類(形あて・となり・広さ・県庁所在地)を選べる。「いろいろ」は毎回くじ引き、
+// 「まちがい直し」はまちがえた県を主役にして出す。まちがえた県はこの端末にだけ覚える。
+const MISSED_KEY = "m6.quizMissed";
+const loadMissed = () => { try { return JSON.parse(localStorage.getItem(MISSED_KEY) || "[]"); } catch { return []; } };
+const saveMissed = (a) => { try { localStorage.setItem(MISSED_KEY, JSON.stringify(a)); } catch { /* 覚えられなくても遊べる */ } };
+const quiz = { ok: 0, total: 0, streak: 0, best: 0, answered: false, q: null };
+
+function quizBox(qs, sel, pad) {
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-  qs.querySelectorAll(".target").forEach((el) => {
+  qs.querySelectorAll(sel).forEach((el) => {
     const b = el.getBBox();
     x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height);
   });
-  const w = Math.max(160, (x1 - x0) * 3), h = Math.max(110, (y1 - y0) * 3);
+  const w = Math.max(160, (x1 - x0) * pad), h = Math.max(110, (y1 - y0) * pad);
   qs.setAttribute("viewBox", `${((x0 + x1) / 2 - w / 2).toFixed(1)} ${((y0 + y1) / 2 - h / 2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`);
+}
+
+function nextQuiz() {
+  const mode = $("quizKind").value;
+  const missed = loadMissed();
+  const kinds = QUIZ_KINDS.map(([k]) => k);
+  const kind = mode === "mix" || mode === "review" ? kinds[Math.floor(Math.random() * kinds.length)] : mode;
+  const q = makeQuiz(kind, { names, adj }, Math.random, mode === "review" ? missed : null);
+  quiz.q = q;
   quiz.answered = false;
-  $("choices").innerHTML = [target, ...others].sort(() => Math.random() - 0.5)
-    .map((n) => `<button type="button" data-n="${n}">${n}</button>`).join("");
-  $("choices").onclick = (e) => {
+  $("quizPrompt").textContent = (mode === "review" && !missed.length ? "(まちがえた県はまだ無いので、ふつうに出す)" : "") + q.prompt;
+  $("quizAfter").textContent = "";
+  const qs = $("quizMap");
+  qs.innerHTML = features.map((f) => {
+    const n = f.properties.N03_001;
+    return `<path class="${q.marks[n] || ""}" data-p="${n}" d="${toPath(f.geometry, projFor(n))}"/>`;
+  }).join("");
+  quizBox(qs, ".target, .target2", q.kind === "area" ? 1.6 : 3);
+  const choices = $("choices");
+  choices.classList.toggle("two", q.choices.length === 2);
+  choices.innerHTML = q.choices.map((c) => `<button type="button" data-n="${esc(c)}"${q.marks[c] ? ` data-mark="${q.marks[c]}"` : ""}>${esc(c)}</button>`).join("");
+  choices.onclick = (e) => {
     const n = e.target.dataset && e.target.dataset.n;
     if (!n || quiz.answered) return;
-    quiz.answered = true;
-    quiz.total++;
-    if (n === target) quiz.ok++;
-    $("choices").querySelectorAll("button").forEach((b) => {
-      if (b.dataset.n === target) b.classList.add("ok");
-      else if (b.dataset.n === n) b.classList.add("ng");
-    });
-    $("quizScore").textContent = `${quiz.ok} / ${quiz.total}` + (agg.has(target) ? `(${target}は行ったことがある)` : "");
+    answer(n);
   };
+}
+
+function answer(n) {
+  const q = quiz.q;
+  quiz.answered = true;
+  quiz.total++;
+  const right = n === q.answer;
+  let missed = loadMissed().filter((p) => p !== q.pref);
+  if (right) { quiz.ok++; quiz.streak++; quiz.best = Math.max(quiz.best, quiz.streak); }
+  else { quiz.streak = 0; missed = [q.pref, ...missed].slice(0, 47); }
+  saveMissed(missed);
+  $("choices").querySelectorAll("button").forEach((b) => {
+    if (b.dataset.n === q.answer) b.classList.add("ok");
+    else if (b.dataset.n === n) b.classList.add("ng");
+  });
+  // 答えのあと: となりの県を塗って見せる。
+  const qs = $("quizMap");
+  for (const p of q.show) qs.querySelectorAll(`[data-p="${p}"]`).forEach((el) => el.classList.add("hint"));
+  if (q.show.length) quizBox(qs, ".target, .hint", 1.3);
+  $("quizAfter").textContent = (right ? "正解。" : "ざんねん。") + q.after;
+  $("quizScore").textContent = `${quiz.ok} / ${quiz.total}`
+    + (quiz.streak >= 2 ? `・${quiz.streak}連続` : "")
+    + (agg.has(q.pref) ? `(${q.pref}は行ったことがある)` : "");
+  $("missedCount").textContent = missed.length ? `まちがえた県 ${missed.length}` : "";
 }
 
 function stats() {
@@ -286,15 +367,23 @@ async function loadData() {
   paint();
   drawStamps();
   stats();
+  drawRegions();
 }
 
-["colorBy", "fogOn", "dotsOn", "zoomIn"].forEach((id) => $(id).addEventListener("change", paint));
+["colorBy", "fogOn", "dotsOn", "zoomIn", "frontOn"].forEach((id) => $(id).addEventListener("change", paint));
 $("btnReveal").addEventListener("click", reveal);
 $("btnWalk").addEventListener("click", walk);
 $("btnNext").addEventListener("click", nextQuiz);
+$("quizKind").addEventListener("change", nextQuiz);
+$("quizKind").insertAdjacentHTML("beforeend", QUIZ_KINDS.map(([k, label]) => `<option value="${k}">${label}</option>`).join("")
+  + '<option value="review">まちがい直し</option>');
+{ const m = loadMissed().length; $("missedCount").textContent = m ? `まちがえた県 ${m}` : ""; }
 
 fetch("../m5/prefectures.geojson").then((r) => r.json()).then((gj) => {
   features = gj.features;
+  names = [...new Set(features.map((f) => f.properties.N03_001))];
+  adj = adjacency(features);
+  centerOf = centers(features);
   drawMap();
   paint();
   drawStamps();

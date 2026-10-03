@@ -53,18 +53,47 @@
   .quiz-foot button { font-size: 0.8rem; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px;
     background: var(--input-bg); color: var(--ink); cursor: pointer; }
   .err { color: #c94545; font-size: 0.8rem; }
+
+  /* 10/03 2回目: 次に晴らせる県・地方ごとの制覇・県の詳細・クイズの種類 */
+  .front { fill: none; stroke: #e8743b; stroke-width: 1.3; stroke-dasharray: 4 3; cursor: pointer; pointer-events: stroke; }
+  .front-key { display: inline-block; width: 22px; height: 0; border-top: 2px dashed #e8743b; margin-left: 10px; }
+  .regions { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 14px; font-size: 0.72rem; margin-bottom: 8px; }
+  .region { display: grid; grid-template-columns: 4.5em 1fr 2.6em; align-items: center; gap: 6px; color: var(--ink-soft); }
+  .region.full { color: #c94545; font-weight: 700; }
+  .rbar { height: 6px; border-radius: 3px; background: var(--input-bg); border: 1px solid var(--line); overflow: hidden; }
+  .rbar i { display: block; height: 100%; background: #e8743b; }
+  .region.full .rbar i { background: #c94545; }
+  .next-pref { font-size: 0.8rem; margin-bottom: 12px; min-height: 1.2em; }
+  .linkish { font: inherit; font-weight: 700; color: #e8743b; background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; }
+  .info .facts { color: var(--ink-soft); font-size: 0.75rem; margin-top: 4px; }
+  .stamp-region { grid-column: 1 / -1; font-size: 0.72rem; font-weight: 700; color: var(--ink-soft); border-bottom: 1px solid var(--line); padding-top: 6px; }
+  .stamp-region:first-child { padding-top: 0; }
+  .quiz-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .quiz-head select { font-size: 0.8rem; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--input-bg); color: var(--ink); }
+  .quiz-prompt { font-weight: 700; font-size: 0.95rem; }
+  .quiz-after { font-size: 0.8rem; margin-top: 8px; min-height: 1.2em; }
+  #quizMap path.target2 { fill: #3b7dd8; stroke: var(--ink); stroke-width: 0.8; }
+  #quizMap path.hint { fill: #2a8f6f; opacity: .75; }
+  .choices.two { grid-template-columns: 1fr 1fr; }
+  .choices button[data-mark]::before { content: "●"; margin-right: 6px; }
+  .choices button[data-mark="target"]::before { color: #e8743b; }
+  .choices button[data-mark="target2"]::before { color: #3b7dd8; }
+  .choices button.ok::before, .choices button.ng::before { color: #fff; }
 </style>
 </head>
 <body>
   <p><a href="../../">← 戻る</a></p>
   <h1>路歴（m6） / 地図あそび</h1>
-  <p class="lede">ab-44(地図もの全般)の試作。t14 の案を1枚の地図に層として重ねている。訪問(visits)と毎日スコア(scores)は Firestore から読むだけで、このページからは何も書かない。</p>
+  <p class="lede">ab-44(地図もの全般)の試作。t14 の案を1枚の地図に層として重ねている。訪問(visits)と毎日スコア(scores)は Firestore から読むだけで、このページからは何も書かない(クイズでまちがえた県だけ、この端末に覚える)。</p>
 
   <div class="stats">
     <div class="stat-item"><div class="stat-num" id="statPrefs">—</div><div class="stat-label">制覇した都道府県 / 47</div></div>
     <div class="stat-item"><div class="stat-num" id="statVisits">—</div><div class="stat-label">訪問件数</div></div>
     <div class="stat-item"><div class="stat-num" id="statDays">—</div><div class="stat-label">訪問日数</div></div>
   </div>
+
+  <div class="regions" id="regions"></div>
+  <div class="next-pref" id="nextPref"></div>
 
   <div class="section">
     <div class="section-title">制覇マップ</div>
@@ -79,6 +108,7 @@
       <label><input type="checkbox" id="zoomIn" checked> 行ったあたりに寄る</label>
       <label><input type="checkbox" id="fogOn" checked> 霧</label>
       <label><input type="checkbox" id="dotsOn"> 訪問点</label>
+      <label><input type="checkbox" id="frontOn" checked> 次に晴らせる県</label>
       <button type="button" id="btnReveal">霧を晴らす</button>
       <span class="sep"></span>
       <label>
@@ -107,11 +137,16 @@
 
   <div class="section">
     <div class="section-title">県あてクイズ(「地図」を「知育」と空目した案)</div>
+    <div class="quiz-head">
+      <span class="quiz-prompt" id="quizPrompt"></span>
+      <select id="quizKind" aria-label="クイズの種類"><option value="mix">いろいろ</option></select>
+    </div>
     <svg id="quizMap"></svg>
     <div class="choices" id="choices"></div>
-    <div class="quiz-foot"><span id="quizScore">0 / 0</span><button type="button" id="btnNext">次へ</button></div>
+    <div class="quiz-after" id="quizAfter"></div>
+    <div class="quiz-foot"><span id="quizScore">0 / 0</span><span id="missedCount"></span><button type="button" id="btnNext">次へ</button></div>
   </div>
 
-  <script type="module" src="app.js?v=202610031200"></script>
+  <script type="module" src="app.js?v=202610031500"></script>
 </body>
 </html>

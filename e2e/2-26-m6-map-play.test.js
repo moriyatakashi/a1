@@ -60,11 +60,34 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.equal(await page.locator(".stamp").count(), 47);
     assert.equal(await page.locator('.stamp circle[stroke="#c94545"]').count(), 4); // 判1つに円2つ
 
-    // クイズ: 4択のどれかを押すと正解が緑になり、回答数が1になる
+    // クイズ(形あて): 4択のどれかを押すと正解が緑になり、回答数が1になる
+    await page.selectOption("#quizKind", "shape");
     assert.equal(await page.locator("#choices button").count(), 4);
     await page.locator("#choices button").first().click();
     assert.equal(await page.locator("#choices button.ok").count(), 1);
     assert.match(await page.textContent("#quizScore"), /^[01] \/ 1/);
+
+    // 10/03 2回目: 地方ごとの制覇・次の一県・次に晴らせる県・県の詳細
+    assert.match(await page.textContent("#regions"), /近畿2\/7/);
+    assert.match(await page.textContent("#nextPref"), /^次の一県: \S+\(最後の訪問地 大津市 から約\d+km/);
+    assert.ok(await page.locator('#front [data-p="京都府"]').count() > 0, "京都府は次に晴らせる");
+    assert.equal(await page.locator('#front [data-p="大阪府"]').count(), 0);
+    await page.click('#prefs [data-p="大阪府"]');
+    assert.match(await page.textContent("#info"), /近畿地方 \/ 県庁所在地 大阪市 \/ 面積 約1,900km²/);
+    assert.match(await page.textContent("#info"), /となり: .*京都府/);
+    await page.click("#nextPref button");
+    assert.match(await page.textContent("#info"), /まだ行っていない/);
+    assert.match(await page.textContent("#stamps"), /近畿 2\/7/);
+
+    // クイズの種類: どれでも正解が1つ緑になり、答えのあとに一言が出る
+    for (const [kind, n] of [["neighbor", 4], ["area", 2], ["capital", 4], ["mix", null], ["review", null]]) {
+      await page.selectOption("#quizKind", kind);
+      if (n) assert.equal(await page.locator("#choices button").count(), n, kind);
+      await page.locator("#choices button").first().click();
+      assert.equal(await page.locator("#choices button.ok").count(), 1, kind);
+      assert.ok((await page.textContent("#quizAfter")).length > 3, kind);
+    }
+    assert.match(await page.textContent("#quizScore"), /^\d \/ 6/);
 
     // 歩く・霧を晴らすでエラーが出ない
     await page.click("#btnWalk");
