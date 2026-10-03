@@ -9,11 +9,11 @@ tables:
   - name: Scores
     note: 日々のスコア記録(m1、旧n1)。2026-07-31追加。ab-24(2026-09-29)で正本はFirestoreへ移り、Azure側は書き込み停止(410)。ab-53で消すまでは凍結した旧データとして取り続ける。
   - name: Visits
-    note: 訪問記録(n2)。2026-07-31追加。
+    note: 訪問記録(n2)。2026-07-31追加。ab-53(2026-10-03)で正本は Firestore の visits へ移り、Azure 側は書き込み停止(410)。消すまでは凍結した旧データとして取り続ける。
   # 2026-10-03 ab-53: Firestore へ移すまでの保険(それまで日次バックアップが無かった)。移した日に
   # firestore_collections へ足し、ここは「凍結」と書く(Scores と同じ扱い)。Sessions はトークンなので取らない。
   - name: PointEvents
-    note: 加点イベント(ba-165)。ab-53 ② で Firestore へ移す予定。
+    note: 加点イベント(ba-165)。ab-53(2026-10-03)で正本は Firestore の pointEvents へ移り、Azure 側は書き込み停止(410)。凍結した旧データ。
   - name: WeeklyScores
     note: 週次得点の確定スナップショット(ba-53)。ab-53 ③ で移す予定。
   - name: MonthlyScores
@@ -32,3 +32,7 @@ firestore_collections:
     note: 毎日スコアの正本(ab-24 以降、m1 が直接書く)。
   - name: scoringRules
     note: ba の難易度別配点の版(ab-53、2026-10-03 Azure ScoringRules から移した。足すだけで直さない・消さない)。
+  - name: visits
+    note: 訪問の正本(ab-53 以降、m2・x5 が直接書く)。
+  - name: pointEvents
+    note: 加点イベントの正本(ab-53 以降、訪問の初訪問加点を m2・x5 が同じ batch で書く)。
