@@ -51,13 +51,10 @@ categories:
       - code: bg
         desc: BaLog Index
         href: src/bd/bg/
-      - code: g8
-        desc: aa(オープン台帳)の設計記録(aa は 2026-10-01 に廃止)
-        href: src/g/g8/
   - label: まとめ・文書・設計
     items:
       - code: bd
-        desc: カタログ＋be文書/設計メモ(be・g8・c群を収容)
+        desc: カタログ＋be文書/設計メモ(be・c群を収容)
         href: src/bd/
       - code: cd
         desc: カタログ(別系統)
