@@ -176,13 +176,14 @@ function paint() {
   ).join("");
   fitView();
   svg.querySelector("#dots").innerHTML = $("dotsOn").checked
-    ? visits.filter(hasXY).map((v) => { const [x, y] = projPoint(v); return `<circle class="dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2"/>`; }).join("")
+    ? visits.filter(hasXY).map((v) => { const [x, y] = projPoint(v); return `<circle class="dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${dotR()}"/>`; }).join("")
     : "";
 }
 
 // 「行ったあたりに寄る」: 行った県(本土側)の外枠に、まわりを少し足した正方形の範囲を見せる。
 // 市区町村で見ているときは、行った市区町村の外枠に寄る(県の外枠だと市区町村が小さすぎる)。
 function fitView() {
+  if (userView) { applyView(); return; }
   const byCity = fogUnit() === "city" && cityAgg.size;
   const els = !$("zoomIn").checked ? []
     : byCity ? [...cityAgg.values()].filter((a) => a.pref !== OKINAWA).flatMap((a) => [...svg.querySelectorAll(`#cities [data-c="${a.code}"]`)])
@@ -198,6 +199,84 @@ function fitView() {
   const y = Math.max(0, Math.min(760 - w, (y0 + y1) / 2 - w / 2));
   svg.setAttribute("viewBox", `${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${w.toFixed(1)}`);
 }
+
+// 地図の拡大・移動(10/04、ab-44): ピンチ・Ctrl+ホイール(トラックパッドのピンチもこれ)・＋−で拡大縮小、ドラッグで移動。
+// 一度動かしたら、タップなどで描き直しても寄せ直さない(「全体」で「行ったあたりに寄る」の表示に戻る)。
+// 線は拡大しても太らないよう CSS の vector-effect、訪問点は大きさを表示の幅に合わせる。
+let userView = null; // [x, y, w](正方形)
+const viewBox = () => svg.getAttribute("viewBox").split(" ").map(Number);
+const dotR = () => (Math.max(0.4, 2 * viewBox()[2] / 760)).toFixed(2);
+function applyView() {
+  const [x, y, w] = userView;
+  svg.setAttribute("viewBox", `${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${w.toFixed(2)}`);
+  svg.querySelectorAll("#dots circle").forEach((c) => c.setAttribute("r", dotR()));
+  $("btnFit").hidden = false;
+}
+function setView(x, y, w) {
+  w = Math.max(12, Math.min(760, w));
+  userView = [Math.max(-w / 2, Math.min(760 - w / 2, x)), Math.max(-w / 2, Math.min(760 - w / 2, y)), w];
+  applyView();
+}
+// 画面の座標 → 地図(viewBox)の座標。地図は正方形なので縦横同じ倍率。
+function toMap(cx, cy, vb = viewBox()) {
+  const r = svg.getBoundingClientRect();
+  return [vb[0] + ((cx - r.left) / r.width) * vb[2], vb[1] + ((cy - r.top) / r.height) * vb[2]];
+}
+// (cx, cy) の下の地点を動かさずに k 倍の幅にする(k < 1 で拡大)。
+function zoomAt(cx, cy, k, vb = viewBox()) {
+  const [px, py] = toMap(cx, cy, vb);
+  const w = Math.max(12, Math.min(760, vb[2] * k)), f = w / vb[2];
+  setView(px - (px - vb[0]) * f, py - (py - vb[1]) * f, w);
+}
+function zoomCenter(k) {
+  const r = svg.getBoundingClientRect();
+  zoomAt(r.left + r.width / 2, r.top + r.height / 2, k);
+}
+svg.addEventListener("wheel", (e) => {
+  if (!e.ctrlKey) return; // ふつうのホイールはページのスクロールのまま
+  e.preventDefault();
+  zoomAt(e.clientX, e.clientY, Math.exp(Math.max(-100, Math.min(100, e.deltaY)) * 0.01));
+}, { passive: false });
+const ptrs = new Map();
+let gesture = null, dragged = false;
+function startGesture() {
+  const ps = [...ptrs.values()];
+  gesture = ps.length ? { ps: ps.map((p) => ({ ...p })), vb: viewBox() } : null;
+}
+svg.addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  if (!ptrs.size) dragged = false;
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  startGesture();
+});
+svg.addEventListener("pointermove", (e) => {
+  if (!ptrs.has(e.pointerId) || !gesture) return;
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const now = [...ptrs.values()], [a0, b0] = gesture.ps, vb = gesture.vb;
+  const r = svg.getBoundingClientRect(), s = vb[2] / r.width;
+  if (now.length === 1 && a0) {
+    const dx = now[0].x - a0.x, dy = now[0].y - a0.y;
+    if (!dragged && Math.hypot(dx, dy) < 5) return; // 小さな揺れはタップのうち
+    dragged = true;
+    setView(vb[0] - dx * s, vb[1] - dy * s, vb[2]);
+  } else if (now.length >= 2 && b0) {
+    dragged = true;
+    const d0 = Math.hypot(a0.x - b0.x, a0.y - b0.y), d1 = Math.hypot(now[0].x - now[1].x, now[0].y - now[1].y);
+    if (d0 < 1 || d1 < 1) return;
+    // 始めの2本指の真ん中にあった地点が、いまの真ん中に来るように。
+    const [px, py] = toMap((a0.x + b0.x) / 2, (a0.y + b0.y) / 2, vb);
+    const w = Math.max(12, Math.min(760, vb[2] * d0 / d1));
+    const mx = ((now[0].x + now[1].x) / 2 - r.left) / r.width, my = ((now[0].y + now[1].y) / 2 - r.top) / r.height;
+    setView(px - mx * w, py - my * w, w);
+  }
+});
+const endPtr = (e) => { if (ptrs.delete(e.pointerId)) startGesture(); };
+["pointerup", "pointercancel", "pointerleave"].forEach((t) => svg.addEventListener(t, endPtr));
+// ドラッグ・ピンチのあとの click は、県や市区町村を選んだことにしない。
+svg.addEventListener("click", (e) => { if (dragged) { e.stopPropagation(); dragged = false; } }, true);
+$("btnZoomIn").addEventListener("click", () => zoomCenter(0.6));
+$("btnZoomOut").addEventListener("click", () => zoomCenter(1 / 0.6));
+$("btnFit").addEventListener("click", () => { userView = null; $("btnFit").hidden = true; paint(); });
 
 const hasXY = (v) => Number.isFinite(v.lat) && Number.isFinite(v.lng);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -509,7 +588,8 @@ async function loadData() {
   stats();
 }
 
-["colorBy", "fogOn", "dotsOn", "zoomIn", "frontOn"].forEach((id) => $(id).addEventListener("change", paint));
+["colorBy", "fogOn", "dotsOn", "frontOn"].forEach((id) => $(id).addEventListener("change", paint));
+$("zoomIn").addEventListener("change", () => { userView = null; $("btnFit").hidden = true; paint(); });
 // 霧の細かさ(県/市区町村)はこの端末に覚える。既定は市区町村(行くと地図が変わる方)。
 try { const u = localStorage.getItem(FOG_UNIT_KEY); if (u === "pref" || u === "city") $("fogUnit").value = u; } catch { /* 覚えられなくても動く */ }
 $("fogUnit").addEventListener("change", () => {

@@ -19,12 +19,17 @@
   .layers .sep { width: 1px; align-self: stretch; background: var(--line); }
 
   .map-wrap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; position: relative; }
-  #map { display: block; width: 100%; height: auto; touch-action: manipulation; }
-  .pref { fill: var(--input-bg); stroke: var(--line); stroke-width: 0.5; cursor: pointer; transition: fill .4s; }
-  .pref.sel { stroke: var(--ink); stroke-width: 1.4; }
+  /* 10/04: 地図の上の1本指はドラッグで移動(ページのスクロールは地図の外で)。線は拡大しても太らない */
+  #map { display: block; width: 100%; height: auto; touch-action: none; user-select: none; }
+  #map path { vector-effect: non-scaling-stroke; }
+  .pref { fill: var(--input-bg); stroke: var(--line); stroke-width: 0.6; cursor: pointer; transition: fill .4s; }
+  .pref.sel { stroke: var(--ink); stroke-width: 1.6; }
+  .zoom-btns { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .zoom-btns button { min-width: 34px; height: 30px; font-size: 0.85rem; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--input-bg); color: var(--ink); cursor: pointer; opacity: .92; }
   /* 10/04(ab-107): 市区町村の境界。県より細い線で、行った県の分だけ描く */
-  .city { fill: transparent; stroke: var(--line); stroke-width: 0.18; cursor: pointer; transition: fill .4s; }
-  .city.sel { stroke: var(--ink); stroke-width: 0.7; }
+  .city { fill: transparent; stroke: var(--line); stroke-width: 0.3; cursor: pointer; transition: fill .4s; }
+  .city.sel { stroke: var(--ink); stroke-width: 1.2; }
   .credit { font-size: 0.68rem; color: var(--ink-soft); margin-top: 18px; }
   .dot { fill: #b5651d; stroke: var(--paper); stroke-width: 0.4; pointer-events: none; }
   .fog-rect { pointer-events: none; transition: opacity .5s; }
@@ -139,6 +144,11 @@
     <div class="map-wrap">
       <svg id="map" viewBox="0 0 760 760"></svg>
       <div id="walkCaption"></div>
+      <div class="zoom-btns">
+        <button type="button" id="btnZoomIn" aria-label="拡大">＋</button>
+        <button type="button" id="btnZoomOut" aria-label="縮小">−</button>
+        <button type="button" id="btnFit" hidden>全体</button>
+      </div>
       <div class="legend" id="legend"></div>
     </div>
     <div class="info" id="info">県や市区町村をタップすると、そこの訪問がここに出る。</div>
@@ -166,6 +176,6 @@
 
   <p class="credit">市区町村の境界: 「国土数値情報(行政区域データ)」(国土交通省)を加工して作成(スマートニュース メディア研究所 japan-topography の簡略版をもとに、座標を丸めて県ごとに分けた)。2021年1月時点の市区町村。</p>
 
-  <script type="module" src="app.js?v=202610041200"></script>
+  <script type="module" src="app.js?v=202610041400"></script>
 </body>
 </html>

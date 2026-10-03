@@ -68,6 +68,26 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.match(await page.textContent("#info"), /大阪府 — 2回・2日.*市区町村 2\/\d+/);
     await page.click("#btnReveal");
     await page.waitForFunction(() => document.querySelectorAll("#fogHoles path").length === 3);
+    // 拡大・移動: ＋で幅が縮み「全体」が出る、ドラッグで動いても選んだことにはならない、「全体」で戻る
+    const w0 = await page.evaluate(() => Number(document.getElementById("map").getAttribute("viewBox").split(" ")[2]));
+    await page.click("#btnZoomIn");
+    const vb1 = await page.evaluate(() => document.getElementById("map").getAttribute("viewBox").split(" ").map(Number));
+    assert.ok(Math.abs(vb1[2] - w0 * 0.6) < 0.5, `${w0} → ${vb1[2]}`);
+    assert.ok(await page.isVisible("#btnFit"));
+    const infoBefore = await page.textContent("#info");
+    const box = await page.locator("#map").boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 60, box.y + box.height / 2 + 30, { steps: 5 });
+    await page.mouse.up();
+    const vb2 = await page.evaluate(() => document.getElementById("map").getAttribute("viewBox").split(" ").map(Number));
+    assert.ok(vb2[0] < vb1[0] && vb2[1] < vb1[1], "右下へドラッグすると左上が見える");
+    assert.equal(await page.textContent("#info"), infoBefore, "ドラッグは選んだことにしない");
+    await page.locator('#cities [data-c="27127"]').dispatchEvent("click"); // 描き直しても寄せ直さない
+    assert.deepEqual(await page.evaluate(() => document.getElementById("map").getAttribute("viewBox").split(" ").map(Number)), vb2);
+    await page.click("#btnFit");
+    assert.equal(await page.evaluate(() => Number(document.getElementById("map").getAttribute("viewBox").split(" ")[2])), w0);
+    assert.ok(!(await page.isVisible("#btnFit")));
     // 県で に切り替えると、霧の穴は県の形になり、市区町村の線は隠れる(選んだものはこの端末に覚える)
     await page.selectOption("#fogUnit", "pref");
     assert.ok(await page.locator("#fogHoles path").count() >= 2);
