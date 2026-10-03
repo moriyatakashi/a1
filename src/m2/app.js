@@ -3,9 +3,10 @@
 // config.jsを自分でimportする(ba-9追補)。HTML側の<script>読込に依存しないため、
 // 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
 import "../common/config.js";
-import { todayStr, withCredential } from "../common/utils.js";
-const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
-const VISITS_API = `${API_BASE}/visits`;
+import { todayStr } from "../common/utils.js";
+// ab-53(2026-10-03): 訪問は Firestore(visits)を直接読み書きする。初訪問の加点もそこで付ける。
+import { fetchVisits, saveVisit } from "../common/visit-store.js";
+import { saveErrorText } from "../common/firebase.js";
 
 const canvas = document.getElementById("mapCanvas");
 const ctx = canvas.getContext("2d");
@@ -199,7 +200,7 @@ function initVisitInput() {
 
   let _lat = null, _lng = null;
   // ba-165②(2026-07-29): 逆ジオコーディング結果のうち県/市/町の3階層を別フィールドとして
-  // 保持しておき、visits POST時にそのまま送る(自動加点の判定に使うのはbackend側)。
+  // 保持しておき、保存時にそのまま渡す(自動加点の判定は common/visit-store.js、ab-53)。
   let _pref = null, _city = null, _town = null;
 
   elBtnGps.addEventListener("click", () => {
@@ -243,16 +244,7 @@ function initVisitInput() {
     const time = elTimeInput.value;
     if (!place) { elPlaceInput.focus(); return; }
     try {
-      const res = await fetch(VISITS_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(withCredential({
-          place, date, time, lat: _lat, lng: _lng,
-          pref: _pref, city: _city, town: _town,
-        })),
-      });
-      if (!res.ok) { elStatus.textContent = "エラー: 追加に失敗しました"; return; }
-      const saved = await res.json();
+      const saved = await saveVisit({ place, date, time, lat: _lat, lng: _lng, pref: _pref, city: _city, town: _town });
       elPlaceInput.value = "";
       _lat = null; _lng = null; _pref = null; _city = null; _town = null;
       const granLabel = { pref: "県", city: "市", town: "町" }[saved.autoPointGranularity];
@@ -260,7 +252,7 @@ function initVisitInput() {
       setTimeout(() => elStatus.textContent = "", 3000);
       load();
     } catch (e) {
-      elStatus.textContent = "エラー: " + e.message;
+      elStatus.textContent = saveErrorText(e);
     }
   });
 }
@@ -401,14 +393,13 @@ async function load() {
   // ba: 下地を「県境＋訪問市区町村」の2レイヤーに一本化(既存の関西3市geojsonは廃止)。
   // 隣接10県(未訪問、和歌山・岡山・鳥取・徳島・福井・石川・富山・長野・山梨・東京)は
   // 別ファイルに分けてグレーの背景レイヤーとして追加(元の10府県のデータはそのまま)。
-  const [prefGeo, adjacentGeo, cityGeo, visitRes] = await Promise.all([
+  const [prefGeo, adjacentGeo, cityGeo, allVisits] = await Promise.all([
     fetchGeo("data/prefectures_east.geojson"),
     fetchGeo("data/prefectures_adjacent.geojson"),
     fetchGeo("data/cities_visited.geojson"),
-    fetch(VISITS_API, { cache: "no-store", headers: { "X-Visits-Credential": window.__credential || "" } })
+    fetchVisits().catch((e) => { console.warn("訪問の読み込みに失敗", e); return []; }),
   ]);
 
-  const allVisits = visitRes.ok ? await visitRes.json() : [];
   // 訪問記録をcreatedAtのISO 8601タイムスタンプで降順(新しい順)に並べ替える
   // これにより、同じ分に複数エントリがあっても最新を正確に特定できる
   allVisits.sort((a, b) => {

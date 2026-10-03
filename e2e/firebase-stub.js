@@ -3,6 +3,7 @@
 // setDoc で書いたものは window.__fsWrites に積む(書き込みの中身を確かめるとき用)。scores 以外は others の
 // { コレクション名: { id: 中身 } }(ab-43 のチェック項目 scoreConfig / scoreItems など)。
 // 書き込みは scores のものだけ __fsWrites に、それ以外は window.__fsOtherWrites に { col, id, ...中身 } で積む。
+// writeBatch(ab-53 の訪問)は commit のときに setDoc と同じく書く。
 const BASE = "https://www.gstatic.com/firebasejs/";
 
 function modules(scores, others) {
@@ -25,6 +26,10 @@ function modules(scores, others) {
         const S = col_(ref.name);
         S[ref.id] = opts && opts.merge ? { ...(S[ref.id] || {}), ...data } : data;
         record(ref.name, ref.id, data);
+      }
+      export function writeBatch(db) {
+        const ops = [];
+        return { set: (ref, data) => { ops.push([ref, data]); }, commit: async () => { for (const [r, d] of ops) await setDoc(r, d); } };
       }
       export async function addDoc(col, data) {
         const id = "auto" + (++seq);

@@ -1,7 +1,8 @@
 import "../../common/config.js";
-import { todayStr, withCredential } from "../../common/utils.js";
-const API_BASE = window.AA_API_BASE;
-const VISITS_API = `${API_BASE}/visits`;
+import { todayStr } from "../../common/utils.js";
+// ab-53(2026-10-03): 訪問は Firestore(visits)を直接読み書きする。初訪問の加点もそこで付ける。
+import { fetchVisits, saveVisit } from "../../common/visit-store.js";
+import { saveErrorText } from "../../common/firebase.js";
 const canvas = document.getElementById("mapCanvas");
 const ctx = canvas.getContext("2d");
 const popup = document.getElementById("popup");
@@ -192,16 +193,7 @@ function initVisitInput() {
     const time = elTimeInput.value;
     if (!place) { elPlaceInput.focus(); return; }
     try {
-      const res = await fetch(VISITS_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(withCredential({
-          place, date, time, lat: _lat, lng: _lng,
-          pref: _pref, city: _city, town: _town,
-        })),
-      });
-      if (!res.ok) { elStatus.textContent = "エラー: 追加に失敗しました"; return; }
-      const saved = await res.json();
+      const saved = await saveVisit({ place, date, time, lat: _lat, lng: _lng, pref: _pref, city: _city, town: _town });
       elPlaceInput.value = "";
       _lat = null; _lng = null; _pref = null; _city = null; _town = null;
       const granLabel = { pref: "県", city: "市", town: "町" }[saved.autoPointGranularity];
@@ -209,7 +201,7 @@ function initVisitInput() {
       setTimeout(() => elStatus.textContent = "", 3000);
       load();
     } catch (e) {
-      elStatus.textContent = "エラー: " + e.message;
+      elStatus.textContent = saveErrorText(e);
     }
   });
 }
@@ -326,13 +318,12 @@ async function load() {
   const emptyMsg = document.getElementById("emptyMsg");
   listEl.innerHTML = "";
   emptyMsg.style.display = "none";
-  const [prefGeo, adjacentGeo, cityGeo, visitRes] = await Promise.all([
+  const [prefGeo, adjacentGeo, cityGeo, allVisits] = await Promise.all([
     fetchGeo("data/prefectures_east.geojson"),
     fetchGeo("data/prefectures_adjacent.geojson"),
     fetchGeo("data/cities_visited.geojson"),
-    fetch(VISITS_API, { cache: "no-store", headers: { "X-Visits-Credential": window.__credential || "" } })
+    fetchVisits().catch((e) => { console.warn("訪問の読み込みに失敗", e); return []; }),
   ]);
-  const allVisits = visitRes.ok ? await visitRes.json() : [];
   allVisits.sort((a, b) => {
     const ta = new Date(a.createdAt || 0).getTime();
     const tb = new Date(b.createdAt || 0).getTime();
