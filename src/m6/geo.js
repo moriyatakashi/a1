@@ -99,6 +99,63 @@ export function frontier(visited, adj) {
 export const regionProgress = (visited) =>
   REGIONS.map(([name, ps]) => ({ name, done: ps.filter((p) => visited.has(p)).length, total: ps.length }));
 
+// ---- 市区町村(ab-107) ----
+// 県コード2桁。REGIONS を並べた順がそのまま JIS の県コード順(北海道=01 … 沖縄=47)。
+const PREF_ORDER = REGIONS.flatMap(([, ps]) => ps);
+export const prefCode = (n) => { const i = PREF_ORDER.indexOf(n); return i < 0 ? null : String(i + 1).padStart(2, "0"); };
+
+// 点 [lng, lat] が輪の中か(偶奇則)。
+function inRing(x, y, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+// 外周の中で、どの穴(琵琶湖など)の中でもなければ中。
+export function inGeometry([x, y], geom) {
+  return polysOf(geom).some(([outer, ...holes]) => inRing(x, y, outer) && !holes.some((h) => inRing(x, y, h)));
+}
+
+// 市区町村ごとの集計。cityFeatures は src/m6/city/NN.json の features を集めたもの(properties: c=団体コード, n=名前)。
+// 緯度経度がある訪問は点の内外で決める(霧の穴と訪問点が食い違わないように)。境界は簡略化してあるので、
+// 市境ぎりぎりの点はとなりの市に入ることがある(数百m)。点が無い・どこにも入らない訪問は、
+// visits の city(+town の頭の区名)と名前が合えばそこに数える。
+// 返り値: Map(コード → { code, name, pref, count, first })
+export function cityVisits(visits, cityFeatures, prefOf = () => "") {
+  const boxed = cityFeatures.map((f) => {
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const poly of polysOf(f.geometry)) for (const [x, y] of poly[0]) {
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+    }
+    return { f, box: [x0, y0, x1, y1] };
+  });
+  const byName = (v) => {
+    if (!v.city) return null;
+    const hit = cityFeatures.find((f) => f.properties.n === v.city
+      || (f.properties.n.startsWith(v.city) && (v.town || "").startsWith(f.properties.n.slice(v.city.length))));
+    return hit || null;
+  };
+  const out = new Map();
+  for (const v of visits) {
+    let f = null;
+    if (Number.isFinite(v.lat) && Number.isFinite(v.lng)) {
+      const hit = boxed.find(({ f, box: [x0, y0, x1, y1] }) =>
+        v.lng >= x0 && v.lng <= x1 && v.lat >= y0 && v.lat <= y1 && inGeometry([v.lng, v.lat], f.geometry));
+      f = hit ? hit.f : null;
+    }
+    if (!f) f = byName(v); // 簡略化した境界のすき間(県境など)に落ちた点も、名前で拾う
+    if (!f) continue;
+    const { c, n } = f.properties;
+    const a = out.get(c) || { code: c, name: n, pref: prefOf(c), count: 0, first: "" };
+    a.count++;
+    if (v.date && (!a.first || v.date < a.first)) a.first = v.date;
+    out.set(c, a);
+  }
+  return out;
+}
+
 // ---- クイズ ----
 // 1問 = { kind, prompt, marks: {県名: "target"|"target2"}, choices: [文字列], answer: 文字列, pref: 主役の県, after: 答えたあとの一言, show: 答えたあとに塗る県 }
 export const QUIZ_KINDS = [

@@ -8,9 +8,11 @@
 // 県の詳細(地方・県庁所在地・面積・となり)、クイズの種類(となり・広さ・県庁所在地・まちがい直し)を足した。
 // 表と計算は geo.js。まちがえた県はこの端末にだけ覚える(localStorage)。
 // 同日の3回目: クイズは1回5問、正解50で1点を pointEvents に書く(このページで Firestore に書くのはこれだけ、quiz-point.js)。
+// 10/04(ab-107): 霧を市区町村単位にもできるようにした(県だと日々の移動で地図が変わらないため)。境界は city/NN.json
+// (scripts/build-m6-cities.mjs で作る)を、行ったことのある県の分だけ読む。どの市区町村かは訪問の緯度経度の内外で決める(geo.js)。
 
 import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031800";
-import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz } from "./geo.js?v=202610031700";
+import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits } from "./geo.js?v=202610041200";
 
 const RAD = Math.PI / 180;
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2));
@@ -73,9 +75,16 @@ let features = [];
 let agg = new Map();
 let visits = [];
 let selected = null;
+let selectedCity = null;
 let adj = new Map();
 let centerOf = new Map();
 let names = [];
+// 市区町村(ab-107)。cityFeats は読み込んだ県の分だけ、cityAgg はコード→{code,name,pref,count,first}、cityTotal は県→市区町村の数。
+let cityFeats = [];
+let cityAgg = new Map();
+const cityTotal = new Map();
+const FOG_UNIT_KEY = "m6.fogUnit";
+const fogUnit = () => $("fogUnit").value;
 
 function drawMap() {
   const paths = features.map((f) => {
@@ -92,30 +101,59 @@ function drawMap() {
     </defs>
     <path d="M30 60 H170 V200 H30 Z" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/>
     <g id="prefs">${paths}</g>
+    <g id="cities"></g>
     <rect class="fog-rect" id="fog" width="760" height="760" filter="url(#fogTex)" mask="url(#fogMask)"/>
     <g id="front"></g>
     <g id="dots"></g>
     <g id="walk"></g>`;
   svg.addEventListener("click", (e) => {
-    const n = e.target.dataset && e.target.dataset.p;
-    if (n) select(n);
+    const d = e.target.dataset || {};
+    if (d.c) selectCity(d.c);
+    else if (d.p) select(d.p);
   });
 }
 
-function holePath(n) {
-  return [...svg.querySelectorAll(`#prefs [data-p="${n}"]`)].map((el) => `<path d="${el.getAttribute("d")}" fill="black"/>`).join("");
+// 霧の穴: 県で/市区町村での切り替えに合わせて、県の形か市区町村の形をくり抜く。keys は県名か団体コード。
+function holePath(sel) {
+  return [...svg.querySelectorAll(sel)].map((el) => `<path d="${el.getAttribute("d")}" fill="black"/>`).join("");
 }
-function setFogHoles(prefs) {
-  svg.querySelector("#fogHoles").innerHTML = prefs.map(holePath).join("");
+function setFogHoles(keys, unit = fogUnit()) {
+  svg.querySelector("#fogHoles").innerHTML = keys.map((k) => holePath(unit === "city" ? `#cities [data-c="${k}"]` : `#prefs [data-p="${k}"]`)).join("");
+}
+const openAllFog = () => setFogHoles(fogUnit() === "city" ? [...cityAgg.keys()] : [...agg.keys()]);
+
+// 行ったことのある県の市区町村を読み込んで描く(県ごとのファイル、読めなかった県は県単位のまま)。
+async function loadCities() {
+  const prefs = [...agg.keys()].filter((n) => prefCode(n) && !cityTotal.has(n));
+  const got = await Promise.all(prefs.map((n) =>
+    fetch(`city/${prefCode(n)}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
+  got.forEach((gj, i) => {
+    if (!gj) return;
+    cityTotal.set(prefs[i], gj.features.length);
+    cityFeats.push(...gj.features.map((f) => ({ ...f, pref: prefs[i] })));
+  });
+  const prefByCode = new Map(cityFeats.map((f) => [f.properties.c, f.pref]));
+  cityAgg = cityVisits(visits, cityFeats, (c) => prefByCode.get(c));
+  svg.querySelector("#cities").innerHTML = cityFeats.map((f) =>
+    `<path class="city" data-c="${f.properties.c}" data-p="${esc(f.pref)}" d="${toPath(f.geometry, projFor(f.pref))}"/>`).join("");
 }
 
 function paint() {
   const by = $("colorBy").value;
+  const byCity = fogUnit() === "city";
   const max = Math.max(1, ...[...agg.values()].map((a) => a.count));
+  svg.querySelector("#cities").style.display = byCity ? "" : "none";
+  // 市区町村で見るとき、訪問回数は市区町村ごとに塗る(その県の地色は塗らない)。
+  const cmax = Math.max(1, ...[...cityAgg.values()].map((a) => a.count));
+  svg.querySelectorAll("#cities .city").forEach((el) => {
+    const a = cityAgg.get(el.dataset.c);
+    el.style.fill = byCity && a && by === "count" ? mix(HEAT, 20 + 80 * (Math.log(1 + a.count) / Math.log(1 + cmax))) : "";
+    el.classList.toggle("sel", el.dataset.c === selectedCity);
+  });
   svg.querySelectorAll("#prefs .pref").forEach((el) => {
     const a = agg.get(el.dataset.p);
     let fill = "";
-    if (a && by === "count") fill = mix(HEAT, 20 + 80 * (Math.log(1 + a.count) / Math.log(1 + max)));
+    if (a && by === "count" && !(byCity && cityTotal.has(el.dataset.p))) fill = mix(HEAT, 20 + 80 * (Math.log(1 + a.count) / Math.log(1 + max)));
     if (a && by === "score" && a.avgScore !== null) {
       // 80点を真ん中に、低いと青・高いと橙。
       const t = Math.max(-1, Math.min(1, (a.avgScore - 80) / 20));
@@ -125,7 +163,7 @@ function paint() {
     el.classList.toggle("sel", el.dataset.p === selected);
   });
   const lg = $("legend");
-  if (by === "count") lg.innerHTML = `少<span class="bar" style="background:linear-gradient(90deg,${mix(HEAT, 20)},${HEAT})"></span>多(訪問回数、対数)`;
+  if (by === "count") lg.innerHTML = `少<span class="bar" style="background:linear-gradient(90deg,${mix(HEAT, 20)},${HEAT})"></span>多(訪問回数、対数${byCity ? "、市区町村ごと" : ""})`;
   else if (by === "score") lg.innerHTML = `60<span class="bar" style="background:linear-gradient(90deg,${COOL},${mix(COOL, 25)},${mix(HEAT, 25)},${HEAT})"></span>100(その県にいた日の点数の平均)`;
   else lg.textContent = "";
   // 霧は少し透かして、県境がうっすら見えるようにする。
@@ -143,10 +181,12 @@ function paint() {
 }
 
 // 「行ったあたりに寄る」: 行った県(本土側)の外枠に、まわりを少し足した正方形の範囲を見せる。
+// 市区町村で見ているときは、行った市区町村の外枠に寄る(県の外枠だと市区町村が小さすぎる)。
 function fitView() {
-  const els = $("zoomIn").checked
-    ? [...agg.keys()].filter((n) => n !== OKINAWA).flatMap((n) => [...svg.querySelectorAll(`#prefs [data-p="${n}"]`)])
-    : [];
+  const byCity = fogUnit() === "city" && cityAgg.size;
+  const els = !$("zoomIn").checked ? []
+    : byCity ? [...cityAgg.values()].filter((a) => a.pref !== OKINAWA).flatMap((a) => [...svg.querySelectorAll(`#cities [data-c="${a.code}"]`)])
+    : [...agg.keys()].filter((n) => n !== OKINAWA).flatMap((n) => [...svg.querySelectorAll(`#prefs [data-p="${n}"]`)]);
   if (!els.length) { svg.setAttribute("viewBox", "0 0 760 760"); return; }
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   els.forEach((el) => {
@@ -162,15 +202,24 @@ function fitView() {
 const hasXY = (v) => Number.isFinite(v.lat) && Number.isFinite(v.lng);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+// 県の市区町村の制覇(読み込めた県だけ)。
+function cityProgressText(n) {
+  if (!cityTotal.has(n)) return "";
+  const done = [...cityAgg.values()].filter((a) => a.pref === n).length;
+  return `市区町村 ${done}/${cityTotal.get(n)}`;
+}
+
 function select(n) {
   selected = n;
+  selectedCity = null;
   paint();
   const a = agg.get(n);
   const ns = [...(adj.get(n) || [])];
   const nb = ns.length
     ? "となり: " + ns.map((m) => (agg.has(m) ? `${esc(m)}✓` : esc(m))).join("・")
     : "となりの県なし(海の向こう)";
-  const facts = `<div class="facts">${esc(regionOf(n))}地方 / 県庁所在地 ${esc(CAPITALS[n] || "?")} / 面積 ${areaText(n)}<br>${nb}</div>`;
+  const cp = cityProgressText(n);
+  const facts = `<div class="facts">${esc(regionOf(n))}地方 / 県庁所在地 ${esc(CAPITALS[n] || "?")} / 面積 ${areaText(n)}${cp ? " / " + cp : ""}<br>${nb}</div>`;
   if (!a) {
     const near = ns.filter((m) => agg.has(m));
     const hint = near.length ? `。${near.map(esc).join("・")}から入れる` : "";
@@ -181,6 +230,26 @@ function select(n) {
   const recent = a.places.slice(0, 5).map((v) => `${esc(v.date)} ${esc(v.place)}`).join("<br>");
   $("info").innerHTML = `<b>${esc(n)}</b> — ${a.count}回・${a.dates.size}日、初訪問 ${esc(a.first || "?")}、${score}${facts}<div class="places">${recent}</div>`;
 }
+
+// 市区町村をタップしたとき。まだのところは霧の中、行ったところは回数と初訪問と最近の訪問。
+function selectCity(c) {
+  const f = cityFeats.find((x) => x.properties.c === c);
+  if (!f) return;
+  selected = f.pref;
+  selectedCity = c;
+  paint();
+  const a = cityAgg.get(c);
+  const head = `<b>${esc(f.properties.n)}</b>(<button type="button" class="linkish" data-p="${esc(f.pref)}">${esc(f.pref)}</button>、${cityProgressText(f.pref)})`;
+  if (!a) { $("info").innerHTML = `${head} — まだ行っていない(霧の中)`; return; }
+  const mine = visits.filter((v) => cityVisits([v], [f]).size)
+    .sort((x, y) => (y.date + y.time).localeCompare(x.date + x.time)).slice(0, 5);
+  $("info").innerHTML = `${head} — ${a.count}回、初訪問 ${esc(a.first || "?")}`
+    + `<div class="places">${mine.map((v) => `${esc(v.date)} ${esc(v.place)}`).join("<br>")}</div>`;
+}
+$("info").addEventListener("click", (e) => {
+  const n = e.target.dataset && e.target.dataset.p;
+  if (n) select(n);
+});
 
 // 地方ごとの制覇(バー)と、次の一県(最後の訪問地からいちばん近い、まだ行っていない県)。
 function drawRegions() {
@@ -202,22 +271,25 @@ $("nextPref").addEventListener("click", (e) => {
   if (n) { select(n); $("map").scrollIntoView({ behavior: "smooth", block: "center" }); }
 });
 
-// 霧を晴らす: 初訪問の早い順に、1県ずつ穴を開ける(スクラッチくじの開封感)。
+// 霧を晴らす: 初訪問の早い順に、1県ずつ(市区町村で見ているときは1市区町村ずつ)穴を開ける(スクラッチくじの開封感)。
+// 市区町村は数が多いので、全体で20秒くらいに収まるよう間隔を縮める。
 let revealTimer = null;
 function reveal() {
   clearInterval(revealTimer);
   $("fogOn").checked = true;
   paint();
-  const order = [...agg.values()].sort((a, b) => (a.first || "9").localeCompare(b.first || "9")).map((a) => a.pref);
+  const byCity = fogUnit() === "city";
+  const src = byCity ? [...cityAgg.values()] : [...agg.values()];
+  const order = src.sort((a, b) => (a.first || "9").localeCompare(b.first || "9")).map((a) => (byCity ? a.code : a.pref));
   const opened = [];
   setFogHoles(opened);
   revealTimer = setInterval(() => {
     if (!order.length) { clearInterval(revealTimer); return; }
-    const n = order.shift();
-    opened.push(n);
+    const k = order.shift();
+    opened.push(k);
     setFogHoles(opened);
-    select(n);
-  }, 450);
+    if (byCity) selectCity(k); else select(k);
+  }, byCity ? Math.max(80, Math.min(450, 20000 / order.length)) : 450);
 }
 
 // 家人キャラが訪問を日付順にたどる。同じ場所に続けて居た分はまとめる。
@@ -410,6 +482,7 @@ async function endRound() {
 
 function stats() {
   $("statPrefs").textContent = agg.size;
+  $("statCities").textContent = cityAgg.size || "—";
   $("statVisits").textContent = visits.length;
   $("statDays").textContent = new Set(visits.map((v) => v.date).filter(Boolean)).size;
 }
@@ -425,14 +498,27 @@ async function loadData() {
   } catch (e) {
     $("err").textContent = "訪問・点数の読み込みに失敗した(地図とクイズだけ動く): " + (e && e.message ? e.message : e);
   }
-  setFogHoles([...agg.keys()]);
+  setFogHoles([...agg.keys()], "pref");
   paint();
   drawStamps();
   stats();
   drawRegions();
+  await loadCities();
+  openAllFog();
+  paint();
+  stats();
 }
 
 ["colorBy", "fogOn", "dotsOn", "zoomIn", "frontOn"].forEach((id) => $(id).addEventListener("change", paint));
+// 霧の細かさ(県/市区町村)はこの端末に覚える。既定は市区町村(行くと地図が変わる方)。
+try { const u = localStorage.getItem(FOG_UNIT_KEY); if (u === "pref" || u === "city") $("fogUnit").value = u; } catch { /* 覚えられなくても動く */ }
+$("fogUnit").addEventListener("change", () => {
+  try { localStorage.setItem(FOG_UNIT_KEY, fogUnit()); } catch { /* 同上 */ }
+  clearInterval(revealTimer);
+  openAllFog();
+  if (fogUnit() === "pref") selectedCity = null;
+  paint();
+});
 $("btnReveal").addEventListener("click", reveal);
 $("btnWalk").addEventListener("click", walk);
 $("btnNext").addEventListener("click", nextQuiz);

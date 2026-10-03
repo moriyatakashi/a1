@@ -55,6 +55,25 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.equal(await page.textContent("#statVisits"), "3");
     assert.equal(await page.textContent("#statDays"), "3");
 
+    // 10/04(ab-107): 霧は既定で市区町村。行った県の市区町村を読み、訪問の緯度経度から 北区・西区・大津市 の3つが晴れる
+    await page.waitForFunction(() => document.getElementById("statCities").textContent === "3");
+    assert.equal(await page.inputValue("#fogUnit"), "city");
+    assert.equal(await page.locator("#fogHoles path").count(), 3);
+    assert.ok(await page.locator('#cities [data-p="京都府"]').count() === 0, "行っていない県の市区町村は読まない");
+    await page.locator('#cities [data-c="27127"]').dispatchEvent("click");
+    assert.match(await page.textContent("#info"), /^大阪市北区\(大阪府、市区町村 2\/\d+\) — 1回、初訪問 2026-09-20/);
+    await page.locator('#cities [data-c="27128"]').dispatchEvent("click"); // 中央区は行っていない
+    assert.match(await page.textContent("#info"), /大阪市中央区.*まだ行っていない/);
+    await page.click("#info button"); // 県名を押すと県の詳細
+    assert.match(await page.textContent("#info"), /大阪府 — 2回・2日.*市区町村 2\/\d+/);
+    await page.click("#btnReveal");
+    await page.waitForFunction(() => document.querySelectorAll("#fogHoles path").length === 3);
+    // 県で に切り替えると、霧の穴は県の形になり、市区町村の線は隠れる(選んだものはこの端末に覚える)
+    await page.selectOption("#fogUnit", "pref");
+    assert.ok(await page.locator("#fogHoles path").count() >= 2);
+    assert.equal(await page.locator("#cities").evaluate((g) => g.style.display), "none");
+    assert.equal(await page.evaluate(() => localStorage.getItem("m6.fogUnit")), "pref");
+
     // 大阪府: 2回・2日、その日の点数の平均 85
     await page.click('#prefs [data-p="大阪府"]');
     const info = await page.textContent("#info");

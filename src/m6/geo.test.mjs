@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable } from "./geo.js";
+import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits } from "./geo.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const features = JSON.parse(fs.readFileSync(path.join(HERE, "../m5/prefectures.geojson"), "utf8")).features;
@@ -94,4 +94,45 @@ test("1回の中: もう出た県(avoid)は、ほかに出せるうちは主役�
   // まちがえた県が全部もう出ていたら、ほかの県から出す
   const q = makeQuiz("shape", { names, adj, avoid: new Set(["香川県"]) }, seeded(3), ["香川県"]);
   assert.notEqual(q.pref, "香川県");
+});
+
+// ---- 市区町村(ab-107) ----
+const city = (nn) => JSON.parse(fs.readFileSync(path.join(HERE, `city/${nn}.json`), "utf8"));
+
+test("県コード: REGIONS の順が JIS の県コード、city/NN.json の県と合う", () => {
+  assert.equal(prefCode("北海道"), "01");
+  assert.equal(prefCode("東京都"), "13");
+  assert.equal(prefCode("沖縄県"), "47");
+  assert.equal(prefCode("どこか"), null);
+  for (const n of names) {
+    const c = city(prefCode(n));
+    assert.equal(c.pref, n);
+    assert.ok(c.features.every((f) => f.properties.c.startsWith(prefCode(n))), n);
+  }
+});
+
+test("市区町村: 緯度経度から点の内外で決まる、政令市は区まで", () => {
+  const fs27 = [...city("27").features, ...city("25").features];
+  const vs = [
+    { lat: 34.7025, lng: 135.4959, date: "2026-09-02" }, // 梅田
+    { lat: 34.7030, lng: 135.4970, date: "2026-08-01" }, // 梅田(もう1回、こっちが先)
+    { lat: 35.0170, lng: 135.9600, date: "2026-09-27" }, // 草津
+    { lat: 35.0, lng: 140.0 },                            // どこでもない(千葉沖)
+  ];
+  const got = cityVisits(vs, fs27);
+  assert.deepEqual([...got.values()].map((a) => [a.name, a.count, a.first]).sort(),
+    [["大阪市北区", 2, "2026-08-01"], ["草津市", 1, "2026-09-27"]]);
+});
+
+test("市区町村: 緯度経度が無ければ visits の city・town の名前で合わせる", () => {
+  const got = cityVisits([{ city: "大阪市", town: "北区梅田" }, { city: "豊中市", town: "" }, { city: "架空市" }], city("27").features);
+  assert.deepEqual([...got.values()].map((a) => a.name).sort(), ["大阪市北区", "豊中市"]);
+});
+
+test("inGeometry: 穴の中は外", () => {
+  const sq = (a, b) => [[a, a], [b, a], [b, b], [a, b], [a, a]];
+  const g = { type: "Polygon", coordinates: [sq(0, 10), sq(4, 6)] };
+  assert.ok(inGeometry([2, 2], g));
+  assert.ok(!inGeometry([5, 5], g));
+  assert.ok(!inGeometry([11, 5], g));
 });

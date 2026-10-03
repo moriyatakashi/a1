@@ -22,6 +22,10 @@
   #map { display: block; width: 100%; height: auto; touch-action: manipulation; }
   .pref { fill: var(--input-bg); stroke: var(--line); stroke-width: 0.5; cursor: pointer; transition: fill .4s; }
   .pref.sel { stroke: var(--ink); stroke-width: 1.4; }
+  /* 10/04(ab-107): 市区町村の境界。県より細い線で、行った県の分だけ描く */
+  .city { fill: transparent; stroke: var(--line); stroke-width: 0.18; cursor: pointer; transition: fill .4s; }
+  .city.sel { stroke: var(--ink); stroke-width: 0.7; }
+  .credit { font-size: 0.68rem; color: var(--ink-soft); margin-top: 18px; }
   .dot { fill: #b5651d; stroke: var(--paper); stroke-width: 0.4; pointer-events: none; }
   .fog-rect { pointer-events: none; transition: opacity .5s; }
   .trail { fill: none; stroke: #e8743b; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: .8; pointer-events: none; }
@@ -94,6 +98,7 @@
 
   <div class="stats">
     <div class="stat-item"><div class="stat-num" id="statPrefs">—</div><div class="stat-label">制覇した都道府県 / 47</div></div>
+    <div class="stat-item"><div class="stat-num" id="statCities">—</div><div class="stat-label">行った市区町村</div></div>
     <div class="stat-item"><div class="stat-num" id="statVisits">—</div><div class="stat-label">訪問件数</div></div>
     <div class="stat-item"><div class="stat-num" id="statDays">—</div><div class="stat-label">訪問日数</div></div>
   </div>
@@ -113,6 +118,10 @@
       </label>
       <label><input type="checkbox" id="zoomIn" checked> 行ったあたりに寄る</label>
       <label><input type="checkbox" id="fogOn" checked> 霧</label>
+      <select id="fogUnit" aria-label="霧の細かさ">
+        <option value="city">市区町村で</option>
+        <option value="pref">県で</option>
+      </select>
       <label><input type="checkbox" id="dotsOn"> 訪問点</label>
       <label><input type="checkbox" id="frontOn" checked> 次に晴らせる県</label>
       <button type="button" id="btnReveal">霧を晴らす</button>
@@ -132,7 +141,7 @@
       <div id="walkCaption"></div>
       <div class="legend" id="legend"></div>
     </div>
-    <div class="info" id="info">県をタップすると、そこの訪問がここに出る。</div>
+    <div class="info" id="info">県や市区町村をタップすると、そこの訪問がここに出る。</div>
     <p class="err" id="err"></p>
   </div>
 
@@ -155,6 +164,8 @@
     <div class="quiz-bank" id="quizBank"></div>
   </div>
 
-  <script type="module" src="app.js?v=202610031800"></script>
+  <p class="credit">市区町村の境界: 「国土数値情報(行政区域データ)」(国土交通省)を加工して作成(スマートニュース メディア研究所 japan-topography の簡略版をもとに、座標を丸めて県ごとに分けた)。2021年1月時点の市区町村。</p>
+
+  <script type="module" src="app.js?v=202610041200"></script>
 </body>
 </html>
