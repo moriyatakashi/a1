@@ -21,7 +21,7 @@
   .map-wrap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; position: relative; }
   /* 10/04: 地図の上の1本指はドラッグで移動(ページのスクロールは地図の外で)。線は拡大しても太らない */
   #map { display: block; width: 100%; height: auto; touch-action: none; user-select: none; }
-  #map path { vector-effect: non-scaling-stroke; }
+  #map path, #map circle { vector-effect: non-scaling-stroke; }
   .pref { fill: var(--input-bg); stroke: var(--line); stroke-width: 0.6; cursor: pointer; transition: fill .4s; }
   .pref.sel { stroke: var(--ink); stroke-width: 1.6; }
   .zoom-btns { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 4px; }
@@ -30,6 +30,17 @@
   /* 10/04(ab-107): 市区町村の境界。県より細い線で、行った県の分だけ描く */
   .city { fill: transparent; stroke: var(--line); stroke-width: 0.3; cursor: pointer; transition: fill .4s; }
   .city.sel { stroke: var(--ink); stroke-width: 1.2; }
+  /* 同日(ab-108): 日本100名城 */
+  .castle { fill: var(--paper); stroke: #8a5a2b; stroke-width: 1.2; cursor: pointer; }
+  .castle.done { fill: #c94545; stroke: #fff; }
+  .castle.sel { stroke: var(--ink); stroke-width: 2.2; }
+  .castle-line { font-size: 0.8rem; margin-bottom: 6px; min-height: 1.2em; }
+  .castle-book { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; margin-top: 8px; }
+  .castle-stamp { font: inherit; font-size: 0.7rem; text-align: left; padding: 5px 6px; border: 1px dashed var(--line); border-radius: 6px;
+    background: none; color: var(--ink-soft); cursor: pointer; }
+  .castle-stamp span { display: block; font-size: 0.6rem; }
+  .castle-stamp.near { border-color: #e8743b; color: var(--ink); }
+  .castle-stamp.done { border: 2px solid #c94545; color: #c94545; font-weight: 700; }
   .credit { font-size: 0.68rem; color: var(--ink-soft); margin-top: 18px; }
   .dot { fill: #b5651d; stroke: var(--paper); stroke-width: 0.4; pointer-events: none; }
   .fog-rect { pointer-events: none; transition: opacity .5s; }
@@ -104,6 +115,7 @@
   <div class="stats">
     <div class="stat-item"><div class="stat-num" id="statPrefs">—</div><div class="stat-label">制覇した都道府県 / 47</div></div>
     <div class="stat-item"><div class="stat-num" id="statCities">—</div><div class="stat-label">行った市区町村</div></div>
+    <div class="stat-item"><div class="stat-num" id="statCastles">—</div><div class="stat-label">100名城</div></div>
     <div class="stat-item"><div class="stat-num" id="statVisits">—</div><div class="stat-label">訪問件数</div></div>
     <div class="stat-item"><div class="stat-num" id="statDays">—</div><div class="stat-label">訪問日数</div></div>
   </div>
@@ -129,6 +141,7 @@
       </select>
       <label><input type="checkbox" id="dotsOn"> 訪問点</label>
       <label><input type="checkbox" id="frontOn" checked> 次に晴らせる県</label>
+      <label><input type="checkbox" id="castlesOn" checked> 100名城</label>
       <button type="button" id="btnReveal">霧を晴らす</button>
       <span class="sep"></span>
       <label>
@@ -161,6 +174,14 @@
   </div>
 
   <div class="section">
+    <div class="section-title">日本100名城</div>
+    <div class="castle-line" id="castleSummary"></div>
+    <div class="castle-line" id="castleClose"></div>
+    <div class="castle-line" id="castleNext"></div>
+    <div class="castle-book" id="castleBook"></div>
+  </div>
+
+  <div class="section">
     <div class="section-title">県あてクイズ(「地図」を「知育」と空目した案)</div>
     <div class="quiz-head">
       <span><span class="quiz-round" id="quizRound"></span><span class="quiz-prompt" id="quizPrompt"></span></span>
@@ -174,8 +195,8 @@
     <div class="quiz-bank" id="quizBank"></div>
   </div>
 
-  <p class="credit">市区町村の境界: 「国土数値情報(行政区域データ)」(国土交通省)を加工して作成(スマートニュース メディア研究所 japan-topography の簡略版をもとに、座標を丸めて県ごとに分けた)。2021年1月時点の市区町村。</p>
+  <p class="credit">市区町村の境界: 「国土数値情報(行政区域データ)」(国土交通省)を加工して作成(スマートニュース メディア研究所 japan-topography の簡略版をもとに、座標を丸めて県ごとに分けた)。2021年1月時点の市区町村。<br>日本100名城の番号・座標: Wikidata(CC0)。</p>
 
-  <script type="module" src="app.js?v=202610041400"></script>
+  <script type="module" src="app.js?v=202610041500"></script>
 </body>
 </html>

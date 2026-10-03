@@ -10,9 +10,11 @@
 // 同日の3回目: クイズは1回5問、正解50で1点を pointEvents に書く(このページで Firestore に書くのはこれだけ、quiz-point.js)。
 // 10/04(ab-107): 霧を市区町村単位にもできるようにした(県だと日々の移動で地図が変わらないため)。境界は city/NN.json
 // (scripts/build-m6-cities.mjs で作る)を、行ったことのある県の分だけ読む。どの市区町村かは訪問の緯度経度の内外で決める(geo.js)。
+// 同日(ab-108): 日本100名城の層とスタンプ帳。表は castles.json(Wikidata から scripts/build-m6-castles.mjs で作る)、
+// 訪問が城から1km以内に入ったら「行った」。まだの城は、いちばん近づいた距離を出す。
 
 import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031800";
-import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits } from "./geo.js?v=202610041200";
+import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM } from "./geo.js?v=202610041500";
 
 const RAD = Math.PI / 180;
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2));
@@ -76,6 +78,9 @@ let agg = new Map();
 let visits = [];
 let selected = null;
 let selectedCity = null;
+let selectedCastle = null;
+let castleState = [];
+const castlesReady = fetch("castles.json").then((r) => (r.ok ? r.json() : [])).catch(() => []);
 let adj = new Map();
 let centerOf = new Map();
 let names = [];
@@ -105,10 +110,12 @@ function drawMap() {
     <rect class="fog-rect" id="fog" width="760" height="760" filter="url(#fogTex)" mask="url(#fogMask)"/>
     <g id="front"></g>
     <g id="dots"></g>
+    <g id="castles"></g>
     <g id="walk"></g>`;
   svg.addEventListener("click", (e) => {
     const d = e.target.dataset || {};
-    if (d.c) selectCity(d.c);
+    if (d.k) selectCastle(Number(d.k));
+    else if (d.c) selectCity(d.c);
     else if (d.p) select(d.p);
   });
 }
@@ -176,7 +183,14 @@ function paint() {
   ).join("");
   fitView();
   svg.querySelector("#dots").innerHTML = $("dotsOn").checked
-    ? visits.filter(hasXY).map((v) => { const [x, y] = projPoint(v); return `<circle class="dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${dotR()}"/>`; }).join("")
+    ? visits.filter(hasXY).map((v) => { const [x, y] = projPoint(v); return `<circle class="dot" data-rk="1" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${dotR()}"/>`; }).join("")
+    : "";
+  // 100名城: 行った城は朱の丸、まだの城は白抜き。霧の上に出す(目標として見えるように)。
+  svg.querySelector("#castles").innerHTML = $("castlesOn").checked
+    ? castleState.map((c) => {
+      const [x, y] = projPoint(c), rk = c.done ? 2 : 1.6;
+      return `<circle class="castle${c.done ? " done" : ""}${c.num === selectedCastle ? " sel" : ""}" data-k="${c.num}" data-rk="${rk}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * rk).toFixed(2)}"><title>${c.num} ${esc(c.name)}</title></circle>`;
+    }).join("")
     : "";
 }
 
@@ -209,7 +223,7 @@ const dotR = () => (Math.max(0.4, 2 * viewBox()[2] / 760)).toFixed(2);
 function applyView() {
   const [x, y, w] = userView;
   svg.setAttribute("viewBox", `${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${w.toFixed(2)}`);
-  svg.querySelectorAll("#dots circle").forEach((c) => c.setAttribute("r", dotR()));
+  svg.querySelectorAll("[data-rk]").forEach((c) => c.setAttribute("r", (dotR() * c.dataset.rk).toFixed(2)));
   $("btnFit").hidden = false;
 }
 function setView(x, y, w) {
@@ -291,6 +305,7 @@ function cityProgressText(n) {
 function select(n) {
   selected = n;
   selectedCity = null;
+  selectedCastle = null;
   paint();
   const a = agg.get(n);
   const ns = [...(adj.get(n) || [])];
@@ -316,6 +331,7 @@ function selectCity(c) {
   if (!f) return;
   selected = f.pref;
   selectedCity = c;
+  selectedCastle = null;
   paint();
   const a = cityAgg.get(c);
   const head = `<b>${esc(f.properties.n)}</b>(<button type="button" class="linkish" data-p="${esc(f.pref)}">${esc(f.pref)}</button>、${cityProgressText(f.pref)})`;
@@ -559,6 +575,47 @@ async function endRound() {
   }
 }
 
+// ---- 日本100名城(ab-108) ----
+const kmText = (d) => (d < 10 ? d.toFixed(1) : Math.round(d).toLocaleString()) + "km";
+function selectCastle(num) {
+  const c = castleState.find((x) => x.num === num);
+  if (!c) return;
+  selectedCastle = num;
+  selected = null;
+  selectedCity = null;
+  paint();
+  const head = `<b>${c.num} ${esc(c.name)}</b>(<button type="button" class="linkish" data-p="${esc(c.pref)}">${esc(c.pref)}</button>、日本100名城)`;
+  $("info").innerHTML = c.done
+    ? `${head} — 行った(${CASTLE_KM}km以内に${c.count}回、初めて ${esc(c.first || "?")})`
+    : `${head} — まだ。` + (Number.isFinite(c.near) ? `いちばん近づいたのは約${kmText(c.near)}(${esc(c.nearPlace)})` : "");
+}
+function drawCastles() {
+  const done = castleState.filter((c) => c.done);
+  $("statCastles").textContent = castleState.length ? done.length : "—";
+  $("castleSummary").textContent = castleState.length
+    ? `行った ${done.length} / 100(訪問が城から${CASTLE_KM}km以内に入ったら)` : "城の表が読めなかった";
+  // あと少し: まだの城で、いちばん近づいたのが近い順に3つ。
+  const close = castleState.filter((c) => !c.done && Number.isFinite(c.near)).sort((a, b) => a.near - b.near).slice(0, 3);
+  $("castleClose").innerHTML = close.length ? "あと少し: " + close.map((c) =>
+    `<button type="button" class="linkish" data-k="${c.num}">${esc(c.name)}</button>(約${kmText(c.near)}まで近づいた)`).join("・") : "";
+  // 次の名城: 最後の訪問地からいちばん近い、まだの城。
+  const last = [...visits].filter(hasXY).sort((x, y) => (y.date + y.time).localeCompare(x.date + x.time))[0];
+  const rest = castleState.filter((c) => !c.done);
+  if (last && rest.length) {
+    const best = rest.sort((a, b) => distKm(last, a) - distKm(last, b))[0];
+    $("castleNext").innerHTML = `次の名城: <button type="button" class="linkish" data-k="${best.num}">${esc(best.name)}</button>(最後の訪問地 ${esc(last.place || last.pref || "")} から約${kmText(distKm(last, best))})`;
+  } else $("castleNext").textContent = "";
+  $("castleBook").innerHTML = REGIONS.map(([rname, ps]) => {
+    const cs = castleState.filter((c) => ps.includes(c.pref));
+    return `<div class="stamp-region">${esc(rname)} ${cs.filter((c) => c.done).length}/${cs.length}</div>` + cs.map((c) =>
+      `<button type="button" class="castle-stamp${c.done ? " done" : c.near <= 10 ? " near" : ""}" data-k="${c.num}"><span>${c.num}</span>${esc(c.name)}</button>`).join("");
+  }).join("");
+}
+["castleClose", "castleNext", "castleBook"].forEach((id) => $(id).addEventListener("click", (e) => {
+  const b = e.target.closest("[data-k]");
+  if (b) { selectCastle(Number(b.dataset.k)); $("map").scrollIntoView({ behavior: "smooth", block: "center" }); }
+}));
+
 function stats() {
   $("statPrefs").textContent = agg.size;
   $("statCities").textContent = cityAgg.size || "—";
@@ -577,6 +634,8 @@ async function loadData() {
   } catch (e) {
     $("err").textContent = "訪問・点数の読み込みに失敗した(地図とクイズだけ動く): " + (e && e.message ? e.message : e);
   }
+  castleState = castleVisits(visits, await castlesReady);
+  drawCastles();
   setFogHoles([...agg.keys()], "pref");
   paint();
   drawStamps();
@@ -588,7 +647,7 @@ async function loadData() {
   stats();
 }
 
-["colorBy", "fogOn", "dotsOn", "frontOn"].forEach((id) => $(id).addEventListener("change", paint));
+["colorBy", "fogOn", "dotsOn", "frontOn", "castlesOn"].forEach((id) => $(id).addEventListener("change", paint));
 $("zoomIn").addEventListener("change", () => { userView = null; $("btnFit").hidden = true; paint(); });
 // 霧の細かさ(県/市区町村)はこの端末に覚える。既定は市区町村(行くと地図が変わる方)。
 try { const u = localStorage.getItem(FOG_UNIT_KEY); if (u === "pref" || u === "city") $("fogUnit").value = u; } catch { /* 覚えられなくても動く */ }

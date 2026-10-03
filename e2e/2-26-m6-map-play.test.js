@@ -68,6 +68,21 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.match(await page.textContent("#info"), /大阪府 — 2回・2日.*市区町村 2\/\d+/);
     await page.click("#btnReveal");
     await page.waitForFunction(() => document.querySelectorAll("#fogHoles path").length === 3);
+    // 同日(ab-108): 日本100名城。3つの訪問はどの城からも1km以上離れているので0。大坂城がいちばん近い(梅田あたりから約2.6km)
+    assert.equal(await page.textContent("#statCastles"), "0");
+    assert.equal(await page.locator("#castles circle").count(), 100);
+    assert.equal(await page.locator(".castle-stamp").count(), 100);
+    assert.match(await page.textContent("#castleSummary"), /^行った 0 \/ 100/);
+    assert.match(await page.textContent("#castleClose"), /^あと少し: 大坂城\(約\d\.\dkmまで近づいた\)/);
+    assert.match(await page.textContent("#castleNext"), /^次の名城: \S+\(最後の訪問地 大津市 から約/);
+    await page.click('.castle-stamp[data-k="54"]');
+    await page.waitForTimeout(800); // 地図へのなめらかなスクロールが終わるのを待つ
+    assert.match(await page.textContent("#info"), /^54 大坂城\(大阪府、日本100名城\) — まだ。いちばん近づいたのは約\d\.\dkm\(大阪市 /);
+    assert.equal(await page.locator("#castles circle.sel").getAttribute("data-k"), "54");
+    await page.uncheck("#castlesOn");
+    assert.equal(await page.locator("#castles circle").count(), 0);
+    await page.check("#castlesOn");
+
     // 拡大・移動: ＋で幅が縮み「全体」が出る、ドラッグで動いても選んだことにはならない、「全体」で戻る
     const w0 = await page.evaluate(() => Number(document.getElementById("map").getAttribute("viewBox").split(" ")[2]));
     await page.click("#btnZoomIn");

@@ -156,6 +156,27 @@ export function cityVisits(visits, cityFeatures, prefOf = () => "") {
   return out;
 }
 
+// ---- 日本100名城(ab-108) ----
+// castles.json の行 [番号, 名前, 緯度, 経度, 県, Q番号] ごとに、訪問がいちばん近づいた距離(near, km)と、
+// km 以内に入った回数・最初の日を出す。km 以内に入ったら「行った」(スタンプ)。新しく書くものは無い。
+export const CASTLE_KM = 1;
+export function castleVisits(visits, castles, km = CASTLE_KM) {
+  const pts = visits.filter((v) => Number.isFinite(v.lat) && Number.isFinite(v.lng));
+  return castles.map(([num, name, lat, lng, pref, qid]) => {
+    const c = { num, name, lat, lng, pref, qid, near: Infinity, nearPlace: "", count: 0, first: "" };
+    for (const v of pts) {
+      const d = distKm(v, c);
+      if (d < c.near) { c.near = d; c.nearPlace = v.place || ""; }
+      if (d <= km) {
+        c.count++;
+        if (v.date && (!c.first || v.date < c.first)) c.first = v.date;
+      }
+    }
+    c.done = c.count > 0;
+    return c;
+  });
+}
+
 // ---- クイズ ----
 // 1問 = { kind, prompt, marks: {県名: "target"|"target2"}, choices: [文字列], answer: 文字列, pref: 主役の県, after: 答えたあとの一言, show: 答えたあとに塗る県 }
 export const QUIZ_KINDS = [

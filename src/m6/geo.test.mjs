@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits } from "./geo.js";
+import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits } from "./geo.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const features = JSON.parse(fs.readFileSync(path.join(HERE, "../m5/prefectures.geojson"), "utf8")).features;
@@ -135,4 +135,31 @@ test("inGeometry: 穴の中は外", () => {
   assert.ok(inGeometry([2, 2], g));
   assert.ok(!inGeometry([5, 5], g));
   assert.ok(!inGeometry([11, 5], g));
+});
+
+// ---- 日本100名城(ab-108) ----
+test("100名城: 表は1〜100がそろい、県は47都道府県のどれか", () => {
+  const cs = JSON.parse(fs.readFileSync(path.join(HERE, "castles.json"), "utf8"));
+  assert.deepEqual(cs.map((c) => c[0]), Array.from({ length: 100 }, (_, i) => i + 1));
+  assert.ok(cs.every((c) => names.includes(c[4])), "県名");
+  assert.equal(cs.find((c) => c[0] === 59)[4], "兵庫県"); // 姫路城
+  assert.equal(cs.find((c) => c[0] === 100)[4], "沖縄県"); // 首里城
+});
+
+test("100名城: 1km 以内に入ったら行った、いちばん近づいた距離も出す", () => {
+  const cs = [[54, "大坂城", 34.68722, 135.52583, "大阪府", "Q"], [59, "姫路城", 34.83944, 134.69389, "兵庫県", "Q"]];
+  const vs = [
+    { lat: 34.6880, lng: 135.5300, date: "2026-09-02", place: "大阪城公園" }, // 約0.4km
+    { lat: 34.6870, lng: 135.5250, date: "2026-08-01", place: "天守" },
+    { lat: 34.7025, lng: 135.4959, date: "2026-07-01", place: "梅田" },       // 約3km、行ったには入らない
+    { lat: NaN, lng: NaN, date: "2026-01-01" },
+  ];
+  const [osaka, himeji] = castleVisits(vs, cs);
+  assert.equal(osaka.done, true);
+  assert.equal(osaka.count, 2);
+  assert.equal(osaka.first, "2026-08-01");
+  assert.ok(osaka.near < 0.1);
+  assert.equal(himeji.done, false);
+  assert.ok(himeji.near > 60 && himeji.near < 80, String(himeji.near));
+  assert.equal(himeji.nearPlace, "梅田");
 });
