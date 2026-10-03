@@ -13,6 +13,19 @@ export function saveBank(n) {
   try { localStorage.setItem(BANK_KEY, String(n)); } catch { /* 覚えられなくても遊べる */ }
 }
 
+// これまでに地図クイズで付いた点の合計(pointEvents は読みは誰でも)。読めなければ null。
+export async function fetchQuizPoints() {
+  try {
+    const [{ collection, getDocs }, { db }] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js"), import("../common/firebase.js"),
+    ]);
+    const snap = await getDocs(collection(db, "pointEvents"));
+    return snap.docs.map((d) => d.data()).filter((e) => e.catalogId === "map_quiz").reduce((s, e) => s + (Number(e.points) || 0), 0);
+  } catch {
+    return null;
+  }
+}
+
 // 1点書く。成功したら true。
 export async function writeQuizPoint() {
   const [{ doc, setDoc }, { db, ensureFirebaseLogin }] = await Promise.all([

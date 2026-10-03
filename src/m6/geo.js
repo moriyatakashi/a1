@@ -118,11 +118,15 @@ const short = (n) => (n === "北海道" ? n : n.replace(/[都府県]$/, ""));
 export const capitalAskable = (n) => !CAPITALS[n].startsWith(short(n));
 
 // kinds のどれかで、なるべく focus(まちがえた県など)の県を主役にして1問作る。出せないときは null。
+// ctx.avoid(この回にもう出た県)は、ほかに出せる県があるうちは主役にしない(1回5問で同じ県が続かないように)。
 export function makeQuiz(kind, ctx, rng = Math.random, focus = null) {
   const { names, adj } = ctx;
+  const avoid = ctx.avoid || new Set();
   const from = (ok) => {
-    const f = focus && focus.filter((n) => names.includes(n) && ok(n));
-    return f && f.length ? pick(f, rng) : pick(names.filter(ok), rng);
+    const f = focus && focus.filter((n) => names.includes(n) && ok(n) && !avoid.has(n));
+    if (f && f.length) return pick(f, rng);
+    const fresh = names.filter((n) => ok(n) && !avoid.has(n));
+    return pick(fresh.length ? fresh : names.filter(ok), rng);
   };
   if (kind === "shape") {
     const t = from(() => true);

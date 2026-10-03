@@ -72,6 +72,10 @@
   .quiz-head select { font-size: 0.8rem; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--input-bg); color: var(--ink); }
   .quiz-prompt { font-weight: 700; font-size: 0.95rem; }
   .quiz-round { font-size: 0.72rem; color: var(--ink-soft); margin-right: 8px; }
+  .quiz-summary { list-style: none; padding: 0; margin: 6px 0 0; font-size: 0.75rem; }
+  .quiz-summary li { padding: 2px 0; }
+  .quiz-summary li.ok { color: #2a8f6f; }
+  .quiz-summary li.ng { color: #c94545; }
   .quiz-bank { font-size: 0.72rem; color: var(--ink-soft); margin-top: 4px; text-align: right; }
   .quiz-after { font-size: 0.8rem; margin-top: 8px; min-height: 1.2em; }
   #quizMap path.target2 { fill: #3b7dd8; stroke: var(--ink); stroke-width: 0.8; }
@@ -146,10 +150,11 @@
     <svg id="quizMap"></svg>
     <div class="choices" id="choices"></div>
     <div class="quiz-after" id="quizAfter"></div>
+    <ul class="quiz-summary" id="quizSummary"></ul>
     <div class="quiz-foot"><span id="quizScore">この回 0 / 0</span><span id="missedCount"></span><button type="button" id="btnNext">次へ</button></div>
     <div class="quiz-bank" id="quizBank"></div>
   </div>
 
-  <script type="module" src="app.js?v=202610031600"></script>
+  <script type="module" src="app.js?v=202610031700"></script>
 </body>
 </html>

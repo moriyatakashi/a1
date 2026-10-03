@@ -9,8 +9,8 @@
 // 表と計算は geo.js。まちがえた県はこの端末にだけ覚える(localStorage)。
 // 同日の3回目: クイズは1回5問、正解50で1点を pointEvents に書く(このページで Firestore に書くのはこれだけ、quiz-point.js)。
 
-import { PER_POINT, loadBank, saveBank, writeQuizPoint } from "./quiz-point.js?v=202610031600";
-import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz } from "./geo.js?v=202610031500";
+import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031700";
+import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz } from "./geo.js?v=202610031700";
 
 const RAD = Math.PI / 180;
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2));
@@ -288,7 +288,10 @@ const loadMissed = () => { try { return JSON.parse(localStorage.getItem(MISSED_K
 const saveMissed = (a) => { try { localStorage.setItem(MISSED_KEY, JSON.stringify(a)); } catch { /* 覚えられなくても遊べる */ } };
 // 1回=5問(Takashi「クイズ長すぎる、4回か5回くらい」)。回の終わりに、たまった正解が50を超えていたら1点(quiz-point.js)。
 const ROUND = 5;
-const quiz = { ok: 0, total: 0, streak: 0, best: 0, answered: false, q: null, n: 0, roundOk: 0 };
+// 同日の4回目: 1回の中で同じ県を主役にしない、回の終わりに5問の振り返り、「いろいろ」にもときどきまちがえた県、
+// キーボード(1〜4で答える・Enterで次へ)、これまでの地図クイズの加点の合計。
+const quiz = { ok: 0, total: 0, streak: 0, best: 0, answered: false, q: null, n: 0, roundOk: 0, used: new Set(), log: [] };
+let quizPoints = null; // これまでの地図クイズの加点(pointEvents から、読めなければ null)
 
 function quizBox(qs, sel, pad) {
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
@@ -301,14 +304,18 @@ function quizBox(qs, sel, pad) {
 }
 
 function nextQuiz() {
-  if (quiz.n >= ROUND) { quiz.n = 0; quiz.roundOk = 0; }
+  if (quiz.n >= ROUND) { quiz.n = 0; quiz.roundOk = 0; quiz.used.clear(); quiz.log = []; }
+  $("quizSummary").innerHTML = "";
+  showBank("");
   $("btnNext").textContent = "次へ";
   $("quizRound").textContent = `${quiz.n + 1} / ${ROUND}問目`;
   const mode = $("quizKind").value;
   const missed = loadMissed();
   const kinds = QUIZ_KINDS.map(([k]) => k);
   const kind = mode === "mix" || mode === "review" ? kinds[Math.floor(Math.random() * kinds.length)] : mode;
-  const q = makeQuiz(kind, { names, adj }, Math.random, mode === "review" ? missed : null);
+  // 「いろいろ」でも、まちがえた県があれば3問に1問くらいはそこから出す。
+  const focus = mode === "review" || (mode === "mix" && Math.random() < 1 / 3) ? missed : null;
+  const q = makeQuiz(kind, { names, adj, avoid: quiz.used }, Math.random, focus);
   quiz.q = q;
   quiz.answered = false;
   $("quizPrompt").textContent = (mode === "review" && !missed.length ? "(まちがえた県はまだ無いので、ふつうに出す)" : "") + q.prompt;
@@ -339,6 +346,8 @@ function answer(n) {
   if (right) { quiz.roundOk++; saveBank(loadBank() + 1); quiz.ok++; quiz.streak++; quiz.best = Math.max(quiz.best, quiz.streak); }
   else { quiz.streak = 0; missed = [q.pref, ...missed].slice(0, 47); }
   saveMissed(missed);
+  quiz.used.add(q.pref);
+  quiz.log.push({ q, right, chosen: n });
   $("choices").querySelectorAll("button").forEach((b) => {
     if (b.dataset.n === q.answer) b.classList.add("ok");
     else if (b.dataset.n === n) b.classList.add("ng");
@@ -357,20 +366,40 @@ function answer(n) {
 }
 
 // たまった正解(この端末)。50で1点。
-function showBank(extra = "") {
+// extra を渡すと、その注記を覚えておく(加点の合計があとから読めて描き直すときも消えないように)。
+let bankNote = "";
+function showBank(extra) {
+  if (extra !== undefined) bankNote = extra;
   const b = loadBank();
-  $("quizBank").textContent = `たまった正解 ${Math.min(b, PER_POINT)} / ${PER_POINT}` + extra;
+  $("quizBank").textContent = `たまった正解 ${Math.min(b, PER_POINT)} / ${PER_POINT}` + bankNote
+    + (quizPoints ? `・これまでの地図クイズの加点 ${quizPoints}点` : "");
+}
+
+const summaryLine = (q) => ({
+  shape: `形あて: ${q.answer}`,
+  neighbor: `${q.pref}のとなり: ${q.answer}`,
+  area: `${q.choices.join("と")}、広いのは ${q.answer}`,
+  capital: `${q.pref}の県庁所在地: ${q.answer}`,
+}[q.kind] || q.answer);
+
+// 回の終わりの振り返り: 5問を ○× で並べる(まちがえた問は答えも)。
+function drawSummary() {
+  $("quizSummary").innerHTML = quiz.log.map(({ q, right, chosen }) =>
+    `<li class="${right ? "ok" : "ng"}">${right ? "○" : "×"} ${esc(summaryLine(q))}${right ? "" : `(${esc(chosen)}と答えた)`}</li>`
+  ).join("");
 }
 
 // 回の終わり: 結果を出し、正解が50たまっていれば1点書く。書けなければ、ためたまま次の回の終わりにまた試す。
 async function endRound() {
   $("btnNext").textContent = `もう1回(${ROUND}問)`;
   $("quizAfter").textContent += ` ── ${ROUND}問中 ${quiz.roundOk}問 正解。`;
+  drawSummary();
   if (loadBank() < PER_POINT) { showBank(`(あと${PER_POINT - loadBank()}で1点)`); return; }
   showBank("(1点を書いています…)");
   try {
     await writeQuizPoint();
     saveBank(loadBank() - PER_POINT);
+    quizPoints = (quizPoints || 0) + 1;
     showBank("");
     $("quizAfter").textContent += "正解が50たまったので、1点 加点した(地図クイズ)。";
   } catch (e) {
@@ -412,6 +441,18 @@ $("quizKind").insertAdjacentHTML("beforeend", QUIZ_KINDS.map(([k, label]) => `<o
   + '<option value="review">まちがい直し</option>');
 { const m = loadMissed().length; $("missedCount").textContent = m ? `まちがえた県 ${m}` : ""; }
 showBank();
+fetchQuizPoints().then((n) => { quizPoints = n; showBank(); });
+
+// キーボード: 1〜4(テンキーも)で答える、Enter で次へ。選択欄などで打っているときは何もしない。
+document.addEventListener("keydown", (e) => {
+  // 選択肢のボタンにフォーカスがあるとき(マウスで答えた直後)は、ここで受ける。ほかのボタンは自分の Enter に任せる。
+  const onChoice = e.target.closest && e.target.closest("#choices");
+  if (e.ctrlKey || e.metaKey || e.altKey || (!onChoice && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName))) return;
+  const i = "1234".indexOf(e.key);
+  const bs = $("choices").querySelectorAll("button");
+  if (i >= 0 && bs[i] && !quiz.answered) { e.preventDefault(); answer(bs[i].dataset.n); }
+  else if (e.key === "Enter" && quiz.answered) { e.preventDefault(); nextQuiz(); }
+});
 
 fetch("../m5/prefectures.geojson").then((r) => r.json()).then((gj) => {
   features = gj.features;

@@ -45,7 +45,11 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     const page = await browser.newPage();
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    await routeFirebaseStub(page, SCORES, { visits: VISITS });
+    // これまでの地図クイズの加点が1点(初訪問の加点は数えない)
+    await routeFirebaseStub(page, SCORES, { visits: VISITS, pointEvents: {
+      p1: { axis: "地図クイズ", points: 1, catalogId: "map_quiz", period: "week", by: "takashi" },
+      p2: { axis: "初訪問", points: 10, catalogId: "visit_new", period: "week", by: "takashi" },
+    } });
     await page.goto(`http://localhost:${server.address().port}/src/m6/`);
     await page.waitForFunction(() => document.getElementById("statPrefs").textContent === "2");
     assert.equal(await page.textContent("#statVisits"), "3");
@@ -90,9 +94,18 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.match(await page.textContent("#quizScore"), /^この回 \d \/ 5/);
     assert.match(await page.textContent("#quizAfter"), /5問中 \d問 正解/);
     assert.equal(await page.textContent("#btnNext"), "もう1回(5問)");
-    assert.match(await page.textContent("#quizBank"), /^たまった正解 \d \/ 50\(あと\d+で1点\)/);
+    assert.match(await page.textContent("#quizBank"), /^たまった正解 \d \/ 50\(あと\d+で1点\)・これまでの地図クイズの加点 1点$/);
+    assert.equal(await page.locator("#quizSummary li").count(), 5, "回の終わりに5問の振り返り");
+    assert.match(await page.textContent("#quizSummary"), /形あて: /);
     await page.click("#btnNext");
     assert.equal(await page.textContent("#quizRound"), "1 / 5問目");
+    assert.equal(await page.locator("#quizSummary li").count(), 0);
+    // キーボード: 1 で答え、Enter で次へ
+    await page.locator("#quizPrompt").click();
+    await page.keyboard.press("1");
+    assert.equal(await page.locator("#choices button.ok").count(), 1);
+    await page.keyboard.press("Enter");
+    assert.equal(await page.textContent("#quizRound"), "2 / 5問目");
 
     // 歩く・霧を晴らすでエラーが出ない
     await page.click("#btnWalk");
@@ -106,9 +119,11 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     // 正解が50たまっている状態で1回(5問)終えると、pointEvents に1点を1件書き、ためた分から50引く
     await page.evaluate(() => localStorage.setItem("m6.quizBank", "50"));
     await page.selectOption("#quizKind", "shape");
+    // 回の途中から始まるので、回が終わる(ボタンが「もう1回」になる)まで答える
     for (let i = 0; i < 5; i++) {
       if (i) await page.click("#btnNext");
       await page.locator("#choices button").first().click();
+      if ((await page.textContent("#btnNext")).startsWith("もう1回")) break;
     }
     await page.waitForFunction(() => (window.__fsOtherWrites || []).length === 1);
     const [pe] = await page.evaluate(() => window.__fsOtherWrites);
@@ -118,6 +133,7 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.equal(pe.period, "week");
     assert.equal(pe.by, "takashi");
     await page.waitForFunction(() => /1点 加点した/.test(document.getElementById("quizAfter").textContent));
+    assert.match(await page.textContent("#quizBank"), /これまでの地図クイズの加点 2点$/);
     assert.ok(Number(await page.evaluate(() => localStorage.getItem("m6.quizBank"))) <= 5);
   } finally {
     await browser.close();

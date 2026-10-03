@@ -81,3 +81,17 @@ test("まちがい直し: まちがえた県があれば、その県が主役に
     assert.ok(capitalAskable(makeQuiz("capital", { names, adj }, seeded(seed), ["青森県"]).pref));
   }
 });
+
+test("1回の中: もう出た県(avoid)は、ほかに出せるうちは主役にしない", () => {
+  for (let seed = 1; seed <= 50; seed++) {
+    const rng = seeded(seed), avoid = new Set();
+    for (let i = 0; i < 5; i++) {
+      const q = makeQuiz(QUIZ_KINDS[i % QUIZ_KINDS.length][0], { names, adj, avoid }, rng);
+      assert.ok(!avoid.has(q.pref), `${seed}-${i}: ${q.pref}`);
+      avoid.add(q.pref);
+    }
+  }
+  // まちがえた県が全部もう出ていたら、ほかの県から出す
+  const q = makeQuiz("shape", { names, adj, avoid: new Set(["香川県"]) }, seeded(3), ["香川県"]);
+  assert.notEqual(q.pref, "香川県");
+});
