@@ -16,6 +16,10 @@ categories:
       - code: m5
         desc: 現在地マップ(実座標版)
         href: src/m5/
+      - code: m6
+        desc: 地図あそび(制覇・霧・スタンプ・クイズ)
+        href: src/m6/
+        stage: beta
       - code: bf
         desc: 訪問地図(別系統)
         href: src/bd/bf/

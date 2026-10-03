@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>m6 / 地図あそび</title>
+<link rel="stylesheet" href="../common/base.css?v=1">
+<style>
+  .lede { font-size: 0.8rem; color: var(--ink-soft); }
+  .stats { display: flex; gap: 20px; margin-bottom: 12px; flex-wrap: wrap; }
+  .stat-item { text-align: center; }
+  .stat-num { font-size: 1.4rem; font-weight: 800; }
+  .stat-label { font-size: 0.7rem; color: var(--ink-soft); }
+
+  .layers { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; margin-bottom: 10px; align-items: center; }
+  .layers label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  .layers select, .layers button { font-size: 0.8rem; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--input-bg); color: var(--ink); cursor: pointer; }
+  .layers .sep { width: 1px; align-self: stretch; background: var(--line); }
+
+  .map-wrap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; position: relative; }
+  #map { display: block; width: 100%; height: auto; touch-action: manipulation; }
+  .pref { fill: var(--input-bg); stroke: var(--line); stroke-width: 0.5; cursor: pointer; transition: fill .4s; }
+  .pref.sel { stroke: var(--ink); stroke-width: 1.4; }
+  .dot { fill: #b5651d; stroke: var(--paper); stroke-width: 0.4; pointer-events: none; }
+  .fog-rect { pointer-events: none; transition: opacity .5s; }
+  .trail { fill: none; stroke: #e8743b; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: .8; pointer-events: none; }
+  .walker circle { fill: #e8743b; stroke: #fff; stroke-width: 1.5; }
+  .walker text { fill: #fff; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+  .legend { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-top: 1px solid var(--line);
+    font-size: 0.7rem; color: var(--ink-soft); flex-wrap: wrap; min-height: 1.6em; }
+  .legend .bar { width: 120px; height: 8px; border-radius: 4px; }
+  #walkCaption { position: absolute; left: 8px; top: 8px; font-size: 0.72rem; padding: 3px 9px; border-radius: 999px;
+    background: rgba(20,23,26,0.72); color: #fff; display: none; }
+
+  .info { font-size: 0.82rem; margin-top: 10px; min-height: 2.4em; }
+  .info b { font-size: 0.95rem; }
+  .info .places { color: var(--ink-soft); font-size: 0.75rem; margin-top: 4px; }
+
+  .stamps { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
+  .stamp { text-align: center; font-size: 0.62rem; color: var(--ink-soft); }
+  .stamp svg { width: 56px; height: 56px; display: block; margin: 0 auto 2px; }
+
+  #quizMap { display: block; width: 100%; height: 220px; border: 1px solid var(--line); border-radius: 8px; }
+  #quizMap path { fill: var(--input-bg); stroke: var(--line); stroke-width: 0.5; }
+  #quizMap path.target { fill: #e8743b; stroke: var(--ink); stroke-width: 0.8; }
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .choices button { padding: 10px; font-size: 0.95rem; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--input-bg); color: var(--ink); cursor: pointer; }
+  .choices button.ok { border-color: #2a8f6f; background: #2a8f6f; color: #fff; }
+  .choices button.ng { border-color: #c94545; background: #c94545; color: #fff; }
+  .quiz-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 0.8rem; color: var(--ink-soft); }
+  .quiz-foot button { font-size: 0.8rem; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--input-bg); color: var(--ink); cursor: pointer; }
+  .err { color: #c94545; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>路歴（m6） / 地図あそび</h1>
+  <p class="lede">ab-44(地図もの全般)の試作。t14 の案を1枚の地図に層として重ねている。訪問(visits)と毎日スコア(scores)は Firestore から読むだけで、このページからは何も書かない。</p>
+
+  <div class="stats">
+    <div class="stat-item"><div class="stat-num" id="statPrefs">—</div><div class="stat-label">制覇した都道府県 / 47</div></div>
+    <div class="stat-item"><div class="stat-num" id="statVisits">—</div><div class="stat-label">訪問件数</div></div>
+    <div class="stat-item"><div class="stat-num" id="statDays">—</div><div class="stat-label">訪問日数</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">制覇マップ</div>
+    <div class="layers">
+      <label>色分け
+        <select id="colorBy">
+          <option value="count">訪問回数(ヒートマップ)</option>
+          <option value="score">その日の点数(平均)</option>
+          <option value="none">なし</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="zoomIn" checked> 行ったあたりに寄る</label>
+      <label><input type="checkbox" id="fogOn" checked> 霧</label>
+      <label><input type="checkbox" id="dotsOn"> 訪問点</label>
+      <button type="button" id="btnReveal">霧を晴らす</button>
+      <span class="sep"></span>
+      <label>
+        <select id="walkWho">
+          <option value="利">利尻</option>
+          <option value="す">すま</option>
+          <option value="礼">礼文</option>
+          <option value="天">天売</option>
+        </select>
+      </label>
+      <button type="button" id="btnWalk">と歩く</button>
+    </div>
+    <div class="map-wrap">
+      <svg id="map" viewBox="0 0 760 760"></svg>
+      <div id="walkCaption"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="info" id="info">県をタップすると、そこの訪問がここに出る。</div>
+    <p class="err" id="err"></p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">ご当地スタンプ帳</div>
+    <div class="stamps" id="stamps"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">県あてクイズ(「地図」を「知育」と空目した案)</div>
+    <svg id="quizMap"></svg>
+    <div class="choices" id="choices"></div>
+    <div class="quiz-foot"><span id="quizScore">0 / 0</span><button type="button" id="btnNext">次へ</button></div>
+  </div>
+
+  <script type="module" src="app.js?v=202610031200"></script>
+</body>
+</html>
