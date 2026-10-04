@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits } from "./geo.js";
+import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits, wishVisits, prefAt } from "./geo.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const features = JSON.parse(fs.readFileSync(path.join(HERE, "../m5/prefectures.geojson"), "utf8")).features;
@@ -162,4 +162,26 @@ test("100名城: 1km 以内に入ったら行った、いちばん近づいた�
   assert.equal(himeji.done, false);
   assert.ok(himeji.near > 60 && himeji.near < 80, String(himeji.near));
   assert.equal(himeji.nearPlace, "梅田");
+});
+
+// ---- 願望マップ(ab-84 の1) ----
+test("願望マップ: 1km 以内に入ったらかなった、元の項目(id・label)はそのまま", () => {
+  const ws = [
+    { id: "w1", label: "大阪城", lat: 34.68722, lng: 135.52583, pref: "大阪府", createdAt: "2026-10-04T00:00:00Z" },
+    { id: "w2", label: "函館山", lat: 41.7594, lng: 140.7044, pref: "北海道", createdAt: "2026-10-04T00:00:00Z" },
+  ];
+  const [a, b] = wishVisits([{ lat: 34.6880, lng: 135.5300, date: "2026-09-02", place: "大阪城公園" }], ws);
+  assert.equal(a.id, "w1");
+  assert.equal(a.label, "大阪城");
+  assert.equal(a.done, true);
+  assert.equal(a.first, "2026-09-02");
+  assert.equal(b.done, false);
+  assert.ok(b.near > 900, String(b.near));
+  assert.deepEqual(wishVisits([], []), []);
+});
+
+test("prefAt: 点がどの県か、海の上は空", () => {
+  assert.equal(prefAt([135.4959, 34.7025], features), "大阪府");
+  assert.equal(prefAt([140.7044, 41.7594], features), "北海道");
+  assert.equal(prefAt([137.0, 33.0], features), "");
 });

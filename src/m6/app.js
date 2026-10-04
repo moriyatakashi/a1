@@ -12,9 +12,12 @@
 // (scripts/build-m6-cities.mjs で作る)を、行ったことのある県の分だけ読む。どの市区町村かは訪問の緯度経度の内外で決める(geo.js)。
 // 同日(ab-108): 日本100名城の層とスタンプ帳。表は castles.json(Wikidata から scripts/build-m6-castles.mjs で作る)、
 // 訪問が城から1km以内に入ったら「行った」。まだの城は、いちばん近づいた距離を出す。
+// 同日(ab-84 の1、Takashi「すすめたい、ルールも」): 願望マップ。行きたい場所を地図をタップして置く(Firestore の wishes、
+// 置く・外すは Takashi 本人だけ、wish-store.js)。訪問が1km以内に入ったら「かなった」(名城と同じ決め方、書かない)。
 
+import { fetchWishes, addWish, removeWish } from "./wish-store.js?v=202610041800";
 import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031800";
-import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM } from "./geo.js?v=202610041500";
+import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM, wishVisits, WISH_KM, prefAt } from "./geo.js?v=202610041800";
 
 const RAD = Math.PI / 180;
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2));
@@ -24,12 +27,16 @@ function project(win, box) {
   const bw = (E - W) * RAD, bh = y0 - mercY(S);
   const s = Math.min(pw / bw, ph / bh);
   const ox = px + (pw - bw * s) / 2, oy = py + (ph - bh * s) / 2;
-  return ([lon, lat]) => [ox + (lon * RAD - x0) * s, oy + (y0 - mercY(lat)) * s];
+  const p = ([lon, lat]) => [ox + (lon * RAD - x0) * s, oy + (y0 - mercY(lat)) * s];
+  // 逆向き(地図の座標 → [経度, 緯度])。願望マップでタップした所を緯度経度にする。
+  p.inv = ([x, y]) => [((x - ox) / s + x0) / RAD, (2 * Math.atan(Math.exp(y0 - (y - oy) / s)) - Math.PI / 2) / RAD];
+  return p;
 }
 // m5 と同じ窓。本土と、沖縄だけの別枠。
 const MAIN = project([129.5, 30, 148.5, 46], [24, 20, 712, 716]);
 const OKI = project([127, 26, 128, 27], [42, 64, 156, 120]);
 const OKINAWA = "沖縄県";
+const OKI_BOX = [30, 60, 170, 200]; // 沖縄の別枠(地図の座標)
 const projFor = (pref) => (pref === OKINAWA ? OKI : MAIN);
 // 訪問点は県が空のこともあるので、座標が沖縄あたりなら別枠で描く。
 const projPoint = (v) => (v.pref === OKINAWA || (v.lng < 128.6 && v.lat < 27.6) ? OKI : MAIN)([v.lng, v.lat]);
@@ -111,10 +118,13 @@ function drawMap() {
     <g id="front"></g>
     <g id="dots"></g>
     <g id="castles"></g>
+    <g id="wishes"></g>
     <g id="walk"></g>`;
   svg.addEventListener("click", (e) => {
     const d = e.target.dataset || {};
-    if (d.k) selectCastle(Number(d.k));
+    if (wishMode) { pickWishAt(e.clientX, e.clientY); return; }
+    if (d.w) selectWish(d.w);
+    else if (d.k) selectCastle(Number(d.k));
     else if (d.c) selectCity(d.c);
     else if (d.p) select(d.p);
   });
@@ -192,6 +202,15 @@ function paint() {
       return `<circle class="castle${c.done ? " done" : ""}${c.num === selectedCastle ? " sel" : ""}" data-k="${c.num}" data-rk="${rk}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * rk).toFixed(2)}"><title>${c.num} ${esc(c.name)}</title></circle>`;
     }).join("")
     : "";
+  // 行きたい場所: 青い丸(かなったら塗りつぶし)。置こうとしている所は点線の丸。名城よりさらに上に出す。
+  const ws = $("wishesOn").checked || wishMode ? wishState : [];
+  svg.querySelector("#wishes").innerHTML = ws.map((w) => {
+    const [x, y] = projPoint(w);
+    return `<circle class="wish${w.done ? " done" : ""}${w.id === selectedWish ? " sel" : ""}" data-w="${esc(w.id)}" data-rk="2.2" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * 2.2).toFixed(2)}"><title>${esc(w.label)}</title></circle>`;
+  }).join("") + (pendingWish ? (() => {
+    const [x, y] = projPoint(pendingWish);
+    return `<circle class="wish pending" data-rk="2.6" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * 2.6).toFixed(2)}"/>`;
+  })() : "");
 }
 
 // 「行ったあたりに寄る」: 行った県(本土側)の外枠に、まわりを少し足した正方形の範囲を見せる。
@@ -306,6 +325,7 @@ function select(n) {
   selected = n;
   selectedCity = null;
   selectedCastle = null;
+  selectedWish = null;
   paint();
   const a = agg.get(n);
   const ns = [...(adj.get(n) || [])];
@@ -332,6 +352,7 @@ function selectCity(c) {
   selected = f.pref;
   selectedCity = c;
   selectedCastle = null;
+  selectedWish = null;
   paint();
   const a = cityAgg.get(c);
   const head = `<b>${esc(f.properties.n)}</b>(<button type="button" class="linkish" data-p="${esc(f.pref)}">${esc(f.pref)}</button>、${cityProgressText(f.pref)})`;
@@ -342,9 +363,14 @@ function selectCity(c) {
     + `<div class="places">${mine.map((v) => `${esc(v.date)} ${esc(v.place)}`).join("<br>")}</div>`;
 }
 $("info").addEventListener("click", (e) => {
-  const n = e.target.dataset && e.target.dataset.p;
-  if (n) select(n);
+  const d = e.target.dataset || {};
+  if (d.p) select(d.p);
+  else if (d.wishCastle) wishFromCastle(Number(d.wishCastle));
+  else if (d.wishDel) dropWish(d.wishDel);
+  else if (e.target.id === "wishSave") saveWish();
+  else if (e.target.id === "wishCancel") { pendingWish = null; $("info").textContent = "置くのをやめた。"; paint(); }
 });
+$("info").addEventListener("keydown", (e) => { if (e.target.id === "wishLabel" && e.key === "Enter") saveWish(); });
 
 // 地方ごとの制覇(バー)と、次の一県(最後の訪問地からいちばん近い、まだ行っていない県)。
 function drawRegions() {
@@ -583,11 +609,14 @@ function selectCastle(num) {
   selectedCastle = num;
   selected = null;
   selectedCity = null;
+  selectedWish = null;
   paint();
   const head = `<b>${c.num} ${esc(c.name)}</b>(<button type="button" class="linkish" data-p="${esc(c.pref)}">${esc(c.pref)}</button>、日本100名城)`;
+  const wished = wishState.some((w) => distKm(w, c) <= WISH_KM);
   $("info").innerHTML = c.done
     ? `${head} — 行った(${CASTLE_KM}km以内に${c.count}回、初めて ${esc(c.first || "?")})`
-    : `${head} — まだ。` + (Number.isFinite(c.near) ? `いちばん近づいたのは約${kmText(c.near)}(${esc(c.nearPlace)})` : "");
+    : `${head} — まだ。` + (Number.isFinite(c.near) ? `いちばん近づいたのは約${kmText(c.near)}(${esc(c.nearPlace)})` : "")
+      + (wished ? "(行きたい場所に入っている)" : ` <button type="button" class="wish-btn" data-wish-castle="${c.num}">行きたいに入れる</button>`);
 }
 function drawCastles() {
   const done = castleState.filter((c) => c.done);
@@ -611,6 +640,123 @@ function drawCastles() {
       `<button type="button" class="castle-stamp${c.done ? " done" : c.near <= 10 ? " near" : ""}" data-k="${c.num}"><span>${c.num}</span>${esc(c.name)}</button>`).join("");
   }).join("");
 }
+// ---- 願望マップ(ab-84 の1) ----
+// 行きたい場所は Firestore(wishes)。「＋行きたい」を押してから地図をタップすると、そこに置く(名前を付けて「置く」)。
+let wishes = [];        // Firestore から読んだもの
+let wishState = [];     // wishVisits の結果(かなったか・いちばん近づいた距離)
+let wishMode = false;
+let pendingWish = null; // 置こうとしている所 {lat, lng, pref}
+let selectedWish = null;
+const recomputeWishes = () => { wishState = wishVisits(visits, wishes); };
+// 書けなかったときの文(firebase.js は書くときだけ読む)。
+const errText = async (e) => { try { return (await import("../common/firebase.js")).saveErrorText(e); } catch { return "エラー: " + e; } };
+
+function setWishMode(on) {
+  wishMode = on;
+  $("btnWish").textContent = on ? "置くのをやめる" : "＋行きたい";
+  svg.classList.toggle("placing", on);
+  if (on) $("info").textContent = "行きたい場所をタップ(拡大・移動はそのままできる)。";
+  else if (pendingWish) { pendingWish = null; $("info").textContent = ""; }
+  paint();
+}
+
+// 地図をタップした所(画面の座標)を緯度経度にして、名前を付ける欄を出す。
+function pickWishAt(cx, cy) {
+  const [x, y] = toMap(cx, cy);
+  const inOki = x >= OKI_BOX[0] && x <= OKI_BOX[2] && y >= OKI_BOX[1] && y <= OKI_BOX[3];
+  const [lng, lat] = (inOki ? OKI : MAIN).inv([x, y]);
+  if (!(lat >= 20 && lat <= 46 && lng >= 122 && lng <= 154)) return;
+  const pref = prefAt([lng, lat], features);
+  const city = cityFeats.find((f) => f.pref === pref && cityVisits([{ lat, lng }], [f]).size);
+  pendingWish = { lat, lng, pref };
+  paint();
+  const where = city ? city.properties.n : pref;
+  $("info").innerHTML = `<b>ここに行きたい</b>(${esc(where || "海の上")}、${lat.toFixed(3)}, ${lng.toFixed(3)})`
+    + `<div class="wish-form"><input id="wishLabel" maxlength="60" placeholder="${esc(where || "名前")}" aria-label="行きたい場所の名前">`
+    + `<button type="button" id="wishSave">置く</button><button type="button" id="wishCancel">やめる</button></div>`;
+  $("wishLabel").focus();
+}
+
+async function saveWish(src = pendingWish, label) {
+  if (!src) return;
+  if (label === undefined) {
+    const el = $("wishLabel");
+    label = ((el && (el.value.trim() || el.placeholder)) || "").slice(0, 60);
+  }
+  if (!label) return;
+  $("wishStatus").textContent = "置いています…";
+  try {
+    const w = await addWish({ label, lat: src.lat, lng: src.lng, pref: src.pref });
+    wishes.push(w);
+    recomputeWishes();
+    pendingWish = null;
+    if (wishMode) setWishMode(false);
+    $("wishStatus").textContent = "";
+    drawWishes();
+    selectWish(w.id);
+  } catch (e) {
+    $("wishStatus").textContent = await errText(e);
+    console.warn("m6: 行きたい場所を置けなかった", e);
+  }
+}
+function wishFromCastle(num) {
+  const c = castleState.find((x) => x.num === num);
+  if (c) saveWish({ lat: c.lat, lng: c.lng, pref: c.pref }, c.name);
+}
+async function dropWish(id) {
+  const w = wishes.find((x) => x.id === id);
+  if (!w || !confirm(`「${w.label}」を行きたい場所から外す?`)) return;
+  $("wishStatus").textContent = "外しています…";
+  try {
+    await removeWish(id);
+    wishes = wishes.filter((x) => x.id !== id);
+    recomputeWishes();
+    selectedWish = null;
+    $("wishStatus").textContent = "";
+    $("info").textContent = `「${w.label}」を外した。`;
+    drawWishes();
+    paint();
+  } catch (e) {
+    $("wishStatus").textContent = await errText(e);
+  }
+}
+
+function selectWish(id) {
+  const w = wishState.find((x) => x.id === id);
+  if (!w) return;
+  selectedWish = id;
+  selected = null;
+  selectedCity = null;
+  selectedCastle = null;
+  paint();
+  const head = `<b>${esc(w.label)}</b>(${w.pref ? `<button type="button" class="linkish" data-p="${esc(w.pref)}">${esc(w.pref)}</button>、` : ""}行きたい場所、${esc(String(w.createdAt || "").slice(0, 10))}に置いた)`;
+  $("info").innerHTML = (w.done
+    ? `${head} — かなった(${WISH_KM}km以内に${w.count}回、初めて ${esc(w.first || "?")})`
+    : `${head} — まだ。` + (Number.isFinite(w.near) ? `いちばん近づいたのは約${kmText(w.near)}(${esc(w.nearPlace)})` : ""))
+    + ` <button type="button" class="wish-btn" data-wish-del="${esc(w.id)}">外す</button>`;
+}
+
+function drawWishes() {
+  const done = wishState.filter((w) => w.done);
+  $("wishSummary").textContent = wishState.length
+    ? `行きたい ${wishState.length}・かなった ${done.length}(訪問が${WISH_KM}km以内に入ったら)`
+    : "まだ無い。「＋行きたい」を押して地図をタップするか、名城を選んで「行きたいに入れる」。";
+  const last = [...visits].filter(hasXY).sort((x, y) => (y.date + y.time).localeCompare(x.date + x.time))[0];
+  const rest = wishState.filter((w) => !w.done);
+  if (last && rest.length) {
+    const best = [...rest].sort((a, b) => distKm(last, a) - distKm(last, b))[0];
+    $("wishNext").innerHTML = `いちばん近い行きたい場所: <button type="button" class="linkish" data-w="${esc(best.id)}">${esc(best.label)}</button>(最後の訪問地 ${esc(last.place || last.pref || "")} から約${kmText(distKm(last, best))})`;
+  } else $("wishNext").textContent = "";
+  // まだのもの(置いた順)が先、かなったものはあと。
+  $("wishList").innerHTML = [...rest, ...done].map((w) =>
+    `<button type="button" class="castle-stamp wish-stamp${w.done ? " done" : ""}" data-w="${esc(w.id)}"><span>${esc(w.pref || "")}${w.done ? "・かなった" : ""}</span>${esc(w.label)}</button>`).join("");
+}
+["wishNext", "wishList"].forEach((id) => $(id).addEventListener("click", (e) => {
+  const b = e.target.closest("[data-w]");
+  if (b) { selectWish(b.dataset.w); $("map").scrollIntoView({ behavior: "smooth", block: "center" }); }
+}));
+$("btnWish").addEventListener("click", () => setWishMode(!wishMode));
+
 ["castleClose", "castleNext", "castleBook"].forEach((id) => $(id).addEventListener("click", (e) => {
   const b = e.target.closest("[data-k]");
   if (b) { selectCastle(Number(b.dataset.k)); $("map").scrollIntoView({ behavior: "smooth", block: "center" }); }
@@ -636,6 +782,13 @@ async function loadData() {
   }
   castleState = castleVisits(visits, await castlesReady);
   drawCastles();
+  try {
+    wishes = await fetchWishes();
+  } catch (e) {
+    $("wishStatus").textContent = "行きたい場所の読み込みに失敗した: " + (e && e.message ? e.message : e);
+  }
+  recomputeWishes();
+  drawWishes();
   setFogHoles([...agg.keys()], "pref");
   paint();
   drawStamps();
@@ -647,7 +800,7 @@ async function loadData() {
   stats();
 }
 
-["colorBy", "fogOn", "dotsOn", "frontOn", "castlesOn"].forEach((id) => $(id).addEventListener("change", paint));
+["colorBy", "fogOn", "dotsOn", "frontOn", "castlesOn", "wishesOn"].forEach((id) => $(id).addEventListener("change", paint));
 $("zoomIn").addEventListener("change", () => { userView = null; $("btnFit").hidden = true; paint(); });
 // 霧の細かさ(県/市区町村)はこの端末に覚える。既定は市区町村(行くと地図が変わる方)。
 try { const u = localStorage.getItem(FOG_UNIT_KEY); if (u === "pref" || u === "city") $("fogUnit").value = u; } catch { /* 覚えられなくても動く */ }

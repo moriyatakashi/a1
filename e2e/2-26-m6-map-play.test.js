@@ -194,3 +194,71 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     server.close();
   }
 });
+
+// 同日(ab-84 の1): 願望マップ。wishes を読んで、かなった(訪問が1km以内)かを出す。
+// 地図をタップして置く・名城から入れる・外す が wishes に書かれる(書くのは Takashi 本人、Rules)。
+test("m6: 願望マップ(行きたい場所を置く・名城から入れる・外す)", async () => {
+  const server = await serveStatic();
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("dialog", (d) => d.accept());
+    await routeFirebaseStub(page, SCORES, { visits: VISITS, wishes: {
+      w1: { label: "梅田", lat: 34.701, lng: 135.501, pref: "大阪府", createdAt: "2026-10-01T00:00:00Z", by: "takashi" },
+      w2: { label: "函館山", lat: 41.7594, lng: 140.7044, pref: "北海道", createdAt: "2026-10-02T00:00:00Z", by: "takashi" },
+    } });
+    await page.goto(`http://localhost:${server.address().port}/src/m6/`);
+    await page.waitForFunction(() => /^行きたい 2・かなった 1/.test(document.getElementById("wishSummary").textContent));
+    assert.equal(await page.locator("#wishes circle").count(), 2);
+    assert.equal(await page.locator("#wishes circle.done").count(), 1);
+    assert.match(await page.textContent("#wishNext"), /^いちばん近い行きたい場所: 函館山\(最後の訪問地 大津市 から約/);
+    assert.deepEqual(await page.locator("#wishList button").allTextContents(), ["北海道函館山", "大阪府・かなった梅田"]);
+    await page.uncheck("#wishesOn");
+    assert.equal(await page.locator("#wishes circle").count(), 0);
+    await page.check("#wishesOn");
+
+    // 「＋行きたい」を押して地図をタップ → 名前を付けて置く
+    await page.click("#btnWish");
+    assert.equal(await page.textContent("#btnWish"), "置くのをやめる");
+    await page.locator("#map").scrollIntoViewIfNeeded();
+    const b = await page.locator('#prefs [data-p="奈良県"]').boundingBox();
+    await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+    assert.match(await page.textContent("#info"), /^ここに行きたい\(\S+、3\d\.\d{3}, 13\d\.\d{3}\)/);
+    assert.equal(await page.locator("#wishes circle.pending").count(), 1);
+    await page.fill("#wishLabel", "吉野山");
+    await page.click("#wishSave");
+    await page.waitForFunction(() => /^行きたい 3/.test(document.getElementById("wishSummary").textContent));
+    const [w] = await page.evaluate(() => window.__fsOtherWrites);
+    assert.equal(w.col, "wishes");
+    assert.equal(w.label, "吉野山");
+    assert.equal(w.pref, "奈良県");
+    assert.ok(w.lat > 33.8 && w.lat < 35 && w.lng > 135.5 && w.lng < 136.3, `${w.lat}, ${w.lng}`);
+    assert.equal(w.by, "takashi");
+    assert.deepEqual(Object.keys(w).sort(), ["by", "col", "createdAt", "id", "label", "lat", "lng", "pref"]);
+    assert.equal(await page.textContent("#btnWish"), "＋行きたい");
+    assert.match(await page.textContent("#info"), /^吉野山\(奈良県、行きたい場所、\d{4}-\d{2}-\d{2}に置いた\) — まだ。/);
+
+    // 名城から入れる(入れたあとは「入っている」になる)
+    await page.click('.castle-stamp[data-k="54"]');
+    await page.click('#info [data-wish-castle="54"]');
+    await page.waitForFunction(() => /^行きたい 4/.test(document.getElementById("wishSummary").textContent));
+    const ws = await page.evaluate(() => window.__fsOtherWrites);
+    assert.equal(ws[1].label, "大坂城");
+    await page.click('.castle-stamp[data-k="54"]');
+    assert.match(await page.textContent("#info"), /行きたい場所に入っている/);
+
+    // 外す
+    await page.click('#wishList [data-w="w2"]');
+    await page.click('#info [data-wish-del="w2"]');
+    await page.waitForFunction(() => /^行きたい 3/.test(document.getElementById("wishSummary").textContent));
+    assert.deepEqual(await page.evaluate(() => window.__fsDeletes), [{ col: "wishes", id: "w2" }]);
+    assert.equal(await page.textContent("#info"), "「函館山」を外した。");
+
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});

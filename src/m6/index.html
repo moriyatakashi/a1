@@ -41,6 +41,20 @@
   .castle-stamp span { display: block; font-size: 0.6rem; }
   .castle-stamp.near { border-color: #e8743b; color: var(--ink); }
   .castle-stamp.done { border: 2px solid #c94545; color: #c94545; font-weight: 700; }
+  /* 同日(ab-84 の1): 行きたい場所。青い丸、かなったら塗りつぶし。置くあいだは地図のカーソルを十字に */
+  .wish { fill: var(--paper); stroke: #3b7dd8; stroke-width: 2; cursor: pointer; }
+  .wish.done { fill: #3b7dd8; stroke: #fff; }
+  .wish.sel { stroke: var(--ink); stroke-width: 2.6; }
+  .wish.pending { fill: none; stroke: #3b7dd8; stroke-dasharray: 3 2; pointer-events: none; }
+  #map.placing, #map.placing * { cursor: crosshair; }
+  #btnWish { border-color: #3b7dd8; }
+  .wish-form { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .wish-form input { flex: 1; min-width: 10em; font-size: 0.85rem; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--input-bg); color: var(--ink); }
+  .wish-form button, .wish-btn { font-size: 0.8rem; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--input-bg); color: var(--ink); cursor: pointer; }
+  .castle-stamp.wish-stamp { border-color: #3b7dd8; color: var(--ink); }
+  .castle-stamp.wish-stamp.done { border: 2px solid #3b7dd8; color: #3b7dd8; }
   .credit { font-size: 0.68rem; color: var(--ink-soft); margin-top: 18px; }
   .dot { fill: #b5651d; stroke: var(--paper); stroke-width: 0.4; pointer-events: none; }
   .fog-rect { pointer-events: none; transition: opacity .5s; }
@@ -110,7 +124,7 @@
 <body>
   <p><a href="../../">← 戻る</a></p>
   <h1>路歴（m6） / 地図あそび</h1>
-  <p class="lede">ab-44(地図もの全般)の試作。t14 の案を1枚の地図に層として重ねている。訪問(visits)と毎日スコア(scores)は Firestore から読むだけで、このページから書くのは、県あてクイズの加点だけ(1回5問、正解が50たまると1点)。正解の数とまちがえた県は、この端末に覚える。</p>
+  <p class="lede">ab-44(地図もの全般)の試作。t14 の案を1枚の地図に層として重ねている。訪問(visits)と毎日スコア(scores)は Firestore から読むだけで、このページから書くのは、県あてクイズの加点(1回5問、正解が50たまると1点)と、行きたい場所(願望マップ、置く・外す)だけ。正解の数とまちがえた県は、この端末に覚える。</p>
 
   <div class="stats">
     <div class="stat-item"><div class="stat-num" id="statPrefs">—</div><div class="stat-label">制覇した都道府県 / 47</div></div>
@@ -142,6 +156,8 @@
       <label><input type="checkbox" id="dotsOn"> 訪問点</label>
       <label><input type="checkbox" id="frontOn" checked> 次に晴らせる県</label>
       <label><input type="checkbox" id="castlesOn" checked> 100名城</label>
+      <label><input type="checkbox" id="wishesOn" checked> 行きたい</label>
+      <button type="button" id="btnWish">＋行きたい</button>
       <button type="button" id="btnReveal">霧を晴らす</button>
       <span class="sep"></span>
       <label>
@@ -182,6 +198,14 @@
   </div>
 
   <div class="section">
+    <div class="section-title">行きたい場所(願望マップ)</div>
+    <div class="castle-line" id="wishSummary"></div>
+    <div class="castle-line" id="wishNext"></div>
+    <div class="castle-book" id="wishList"></div>
+    <p class="err" id="wishStatus"></p>
+  </div>
+
+  <div class="section">
     <div class="section-title">県あてクイズ(「地図」を「知育」と空目した案)</div>
     <div class="quiz-head">
       <span><span class="quiz-round" id="quizRound"></span><span class="quiz-prompt" id="quizPrompt"></span></span>
@@ -197,6 +221,6 @@
 
   <p class="credit">市区町村の境界: 「国土数値情報(行政区域データ)」(国土交通省)を加工して作成(スマートニュース メディア研究所 japan-topography の簡略版をもとに、座標を丸めて県ごとに分けた)。2021年1月時点の市区町村。<br>日本100名城の番号・座標: Wikidata(CC0)。</p>
 
-  <script type="module" src="app.js?v=202610041500"></script>
+  <script type="module" src="app.js?v=202610041800"></script>
 </body>
 </html>

@@ -177,6 +177,21 @@ export function castleVisits(visits, castles, km = CASTLE_KM) {
   });
 }
 
+// ---- 願望マップ(ab-84 の1、2026-10-04) ----
+// 行きたい場所(wishes の {id, label, lat, lng, pref, createdAt})ごとに、名城と同じく訪問がいちばん近づいた距離と、
+// km 以内に入った回数・最初の日を出す。km 以内に入ったら「かなった」。かなったかどうかは書かず、毎回訪問から決める。
+export const WISH_KM = 1;
+export function wishVisits(visits, wishes, km = WISH_KM) {
+  const rows = castleVisits(visits, wishes.map((w) => [w.id, w.label, w.lat, w.lng, w.pref, null]), km);
+  return rows.map((r, i) => ({ ...wishes[i], near: r.near, nearPlace: r.nearPlace, count: r.count, first: r.first, done: r.done }));
+}
+
+// 点 [lng, lat] がどの県の中か(県の features から)。どこにも入らない(海の上など)なら ""。
+export function prefAt(pt, features) {
+  const f = features.find((x) => inGeometry(pt, x.geometry));
+  return f ? f.properties.N03_001 : "";
+}
+
 // ---- クイズ ----
 // 1問 = { kind, prompt, marks: {県名: "target"|"target2"}, choices: [文字列], answer: 文字列, pref: 主役の県, after: 答えたあとの一言, show: 答えたあとに塗る県 }
 export const QUIZ_KINDS = [

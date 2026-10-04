@@ -33,6 +33,11 @@ function modules(scores, others) {
         S[ref.id] = opts && opts.merge ? { ...(S[ref.id] || {}), ...data } : data;
         record(ref.name, ref.id, data);
       }
+      // deleteDoc(ab-84 の願望マップ、2026-10-04)は window.__fsDeletes に { col, id } で積む。
+      export async function deleteDoc(ref) {
+        delete col_(ref.name)[ref.id];
+        window.__fsDeletes = (window.__fsDeletes || []).concat([{ col: ref.name, id: ref.id }]);
+      }
       export function writeBatch(db) {
         const ops = [];
         return { set: (ref, data) => { ops.push([ref, data]); }, commit: async () => { for (const [r, d] of ops) await setDoc(r, d); } };
