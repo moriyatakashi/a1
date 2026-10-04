@@ -56,7 +56,7 @@ const AB_ROUTES = {
     abDoc("A1", { seq: 1, title: "動いている古い件", createdAt: daysAgo(60), needsReply: true, to: ["suma"] }),
     abDoc("A2", { seq: 2, title: "寝ている件", createdAt: daysAgo(30) }),
     abDoc("A3", { seq: 3, title: "済んだ件", createdAt: daysAgo(90), done: true, needsReply: true, to: ["suma"] }),
-    abDoc("A4", { seq: 4, title: "返事がほしい件", createdAt: daysAgo(10), needsReply: true, to: ["suma", "reifon"] }),
+    abDoc("A4", { seq: 4, title: "返事がほしい件", createdAt: daysAgo(10), needsReply: true, to: ["suma", "rebun"] }),
   ] },
   [`${FS}/A1/notes`]: { documents: [note(daysAgo(2))] },
   [`${FS}/A2/notes`]: { documents: [note(daysAgo(0), "タイトルを変えた(旧: 寝ている件の古い名前)")] },

@@ -398,7 +398,7 @@ const VIEWS = {
 // --- 今の状態(2026-10-03、ab-45): 累計のチャートだけだと「今どうなっているか」が見えないので、上に置く ---
 // ab: 開いている件数、返事待ち(返事が要る・済んでいない)の宛先ごとの数、最後の動きが古い順の5件。
 // ba: 開いている件数(Takashi が無効にしたものは除く)。ba の古い open は ab へ移していく途中(ab-45 の時点で約55件)。
-const AB_TO_NAMES = { all: "みんな", rishiri: "利尻", suma: "すま", reifon: "礼文", teuri: "天売" };
+const AB_TO_NAMES = { all: "みんな", rishiri: "利尻", suma: "すま", rebun: "礼文", teuri: "天売" };
 // 投稿者名(by)→家人の名前。b1 の ai_family.json の ba_lane / aa_lane と同じ対応(変えたらここも直す)
 const BY_NAMES = { "claude-pc": "利尻", "claude-mobile": "すま", "claude-pi": "礼文", "claude-teuri": "天売", takashi: "Takashi" };
 const byName = (by) => BY_NAMES[by] || by;
