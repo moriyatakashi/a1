@@ -8,23 +8,22 @@
 <link rel="stylesheet" href="../common/base.css?v=1">
 <style>
   body { max-width: none; }
-  #map-root { max-width: 640px; margin: 0 auto; }
+  #map-root { max-width: 640px; margin: 0 auto; position: relative; }
+  #map path { vector-effect: non-scaling-stroke; }
   #map-root svg { display: block; width: 100%; height: auto; background: transparent; }
   .pref { fill: var(--input-bg); stroke: var(--line); stroke-width: 0.5; }
   .here { fill: #8fc7ec; }
   .lake { fill: #a9d6f2; stroke: #6fa8cf; stroke-width: 0.4; pointer-events: none; }
   @media (prefers-color-scheme: dark) { .lake { fill: #1f4560; stroke: #2f6a90; } }
-  #zoom-row { max-width: 640px; margin: 12px auto 0; display: flex; align-items: center; gap: 10px; }
-  #zoom-row input { flex: 1; }
 </style>
 </head>
 <body>
   <p><a href="../../">← 戻る</a></p>
   <h1>路歴（m5） / 現在地マップ</h1>
-  <p style="font-size:0.8rem;color:var(--ink-soft);">実座標のgeojsonをメルカトル投影で描画し、GPSで取得した現在地の都道府県をRay castingで判定・ハイライトする(a2から移設)。外部API・CDNは使わず完全ローカル。ズームスライダーで拡大できる。沖縄県は別枠(inset)で描画。</p>
+  <p style="font-size:0.8rem;color:var(--ink-soft);">実座標のgeojsonをメルカトル投影で描画し、GPSで取得した現在地の都道府県をRay castingで判定・ハイライトする(a2から移設)。外部API・CDNは使わず完全ローカル。2本指(PCはCtrl+ホイール)か＋−で拡大、ドラッグで移動できる。沖縄県は別枠(inset)で描画。</p>
   <div id="map-root"><svg id="map" viewBox="0 0 760 760"></svg></div>
-  <div id="zoom-row"><span style="font-size:0.8rem;color:var(--ink-soft);">ズーム</span><input type="range" id="z" min="1" max="8" step="0.1" value="1"><span id="zv" style="font-size:0.8rem;min-width:34px;text-align:right;">1.0×</span></div>
-  <script>
+  <script type="module">
+    import { panZoom } from "../common/svg-pan-zoom.js";
     // 現在地マップ(a2から移設)。実緯度経度geojsonをメルカトル投影してSVG化し、
     // GPS座標を外部APIなしでRay casting判定して該当県をハイライトする。完全ローカル。
     const RAD = Math.PI / 180;
@@ -62,16 +61,9 @@
       const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
       return polys.some(poly => inRing(lon, lat, poly[0]));
     }
-    const svg = document.getElementById("map"), z = document.getElementById("z"), zv = document.getElementById("zv");
-    let cx = 380, cy = 380;
-    const apply = () => {
-      const w = 760 / +z.value;
-      const x = Math.max(0, Math.min(760 - w, cx - w / 2));
-      const y = Math.max(0, Math.min(760 - w, cy - w / 2));
-      svg.setAttribute("viewBox", `${x} ${y} ${w} ${w}`);
-      zv.textContent = (+z.value).toFixed(1) + "×";
-    };
-    z.oninput = apply;
+    const svg = document.getElementById("map");
+    // 2本指で拡大・ドラッグで移動(10/06、ab-126 のついで。m6 と同じ操作)
+    const pz = panZoom(svg, { container: document.getElementById("map-root"), width: 760, height: 760 });
     // 湖(いまは琵琶湖だけ、ab-126)。県の上に水色で重ねる。読めなくても地図は出す。
     const lakesP = fetch("lakes.geojson").then(r => r.json()).catch(() => ({ features: [] }));
     fetch("prefectures.geojson").then(r => r.json()).then(async gj => {
@@ -93,8 +85,8 @@
           x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y);
           x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height);
         });
-        cx = (x0 + x1) / 2; cy = (y0 + y1) / 2;
-        z.value = 3; apply();
+        const w = 760 / 3; // 最初は今いる県を中心に 3 倍で見せる(そこから自由に動かせる)
+        pz.setView((x0 + x1) / 2 - w / 2, (y0 + y1) / 2 - w / 2, w);
       }, () => {});
     }).catch(() => { svg.innerHTML = '<text x="380" y="380" fill="#aaa" text-anchor="middle" font-size="16">地図の読み込みに失敗しました</text>'; });
   </script>

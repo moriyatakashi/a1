@@ -7,17 +7,18 @@
 <link rel="stylesheet" href="../common/base.css?v=1">
 <style>
   body { max-width: none; }
-  #map-root { max-width: 640px; margin: 0 auto; }
+  #map-root { max-width: 640px; margin: 0 auto; position: relative; }
+  #map-root polygon { vector-effect: non-scaling-stroke; }
   #map-root svg { display: block; width: 100%; height: auto; }
 </style>
 </head>
 <body>
   <p><a href="../../">← 戻る</a></p>
   <h1>路歴（m4） / 現在地マップ</h1>
-  <p style="font-size:0.8rem;color:var(--ink-soft);">GPSで取得した現在地の都道府県をハイライト表示する。外部API・CDNは使わず完全ローカルで判定(a2からの移植)。変換の精度はラフなため、県境付近では隣県と誤判定されることがある。沖縄・鹿児島南西諸島はこのSVGでは実際の地理的位置と別枠(inset)で描かれているため対象外。</p>
+  <p style="font-size:0.8rem;color:var(--ink-soft);">GPSで取得した現在地の都道府県をハイライト表示する。外部API・CDNは使わず完全ローカルで判定(a2からの移植)。変換の精度はラフなため、県境付近では隣県と誤判定されることがある。沖縄・鹿児島南西諸島はこのSVGでは実際の地理的位置と別枠(inset)で描かれているため対象外。2本指(PCはCtrl+ホイール)か＋−で拡大、ドラッグで移動できる。</p>
 
   <div id="map-root"></div>
 
-  <script type="module" src="app.js?v=1"></script>
+  <script type="module" src="app.js?v=2"></script>
 </body>
 </html>

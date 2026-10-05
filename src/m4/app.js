@@ -14,6 +14,8 @@
 // a2版との違い: bodyを丸ごと差し替えず、index.html側の#map-rootにだけ描画する
 // (a1側のページ枠・戻るリンク・見出しを維持するため)。
 
+import { panZoom } from '../common/svg-pan-zoom.js';
+
 // 1. map.json と transform.json を読み込み
 async function initializeMap() {
   const root = document.getElementById('map-root');
@@ -33,6 +35,9 @@ async function initializeMap() {
       return `<polygon points="${points}" fill="#a9d6f2" stroke="#6fa8cf" stroke-width="0.6" pointer-events="none"/>`;
     }).join('');
     root.querySelector('svg').insertAdjacentHTML('beforeend', lakeTags);
+
+    // 2本指で拡大・ドラッグで移動(10/06、m6 と同じ操作)
+    panZoom(root.querySelector('svg'), { container: root, width: 1000, height: 1000 });
 
     // 現在位置で県を判定・色変更
     detectAndHighlightPrefecture(geoData, transform);

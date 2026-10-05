@@ -98,7 +98,7 @@ function drawFeatures(features, proj, fillColor, strokeColor, lineWidth = 1) {
       });
       ctx.fillStyle = fillColor;
       ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = lineWidth;
+      ctx.lineWidth = lineWidth / view.scale; // 拡大しても線が太らないように
       ctx.fill();
       ctx.stroke();
     });
@@ -313,32 +313,52 @@ function renderMap() {
   ctx.restore();
 }
 
-let isPanning = false;
-let panStart = null;
+// 移動は1本指(マウスはドラッグ)、拡大縮小は2本指のピンチ(10/06、m6 と同じ操作)。
+// 指ごとの位置を持ち、指が増えたり減ったりしたら、そこから測り直す。
+const ptrs = new Map();
+let gesture = null;
 let panMoved = false;
+function startGesture() {
+  const ps = [...ptrs.values()];
+  gesture = ps.length ? { ps: ps.map(p => [...p]), scale: view.scale, tx: view.tx, ty: view.ty } : null;
+}
 
 canvas.addEventListener("pointerdown", e => {
-  if (view.scale <= 1) return; // 全体表示時はパン不要
-  const [x, y] = toCanvasCoords(e);
-  isPanning = true;
-  panMoved = false;
-  panStart = { x, y, tx0: view.tx, ty0: view.ty };
-  canvas.setPointerCapture(e.pointerId);
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  if (!ptrs.size) panMoved = false;
+  ptrs.set(e.pointerId, toCanvasCoords(e));
+  try { canvas.setPointerCapture(e.pointerId); } catch { /* 取れなくても動かせる */ }
+  startGesture();
 });
 
 canvas.addEventListener("pointermove", e => {
-  if (!isPanning || !panStart) return;
-  const [x, y] = toCanvasCoords(e);
-  const dx = x - panStart.x, dy = y - panStart.y;
-  if (Math.hypot(dx, dy) > 3) panMoved = true;
-  view.tx = panStart.tx0 + dx;
-  view.ty = panStart.ty0 + dy;
+  if (!ptrs.has(e.pointerId) || !gesture) return;
+  ptrs.set(e.pointerId, toCanvasCoords(e));
+  const now = [...ptrs.values()], [a0, b0] = gesture.ps;
+  if (now.length === 1 && a0) {
+    const dx = now[0][0] - a0[0], dy = now[0][1] - a0[1];
+    if (!panMoved && Math.hypot(dx, dy) <= 3) return; // 小さな揺れはタップのうち
+    panMoved = true;
+    view.tx = gesture.tx + dx;
+    view.ty = gesture.ty + dy;
+  } else if (now.length >= 2 && b0) {
+    panMoved = true;
+    const d0 = Math.hypot(a0[0] - b0[0], a0[1] - b0[1]), d1 = Math.hypot(now[0][0] - now[1][0], now[0][1] - now[1][1]);
+    if (d0 < 1 || d1 < 1) return;
+    // 始めの2本指の真ん中にあった地点が、いまの真ん中に来るように。
+    const scale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, gesture.scale * d1 / d0));
+    const bx = ((a0[0] + b0[0]) / 2 - gesture.tx) / gesture.scale, by = ((a0[1] + b0[1]) / 2 - gesture.ty) / gesture.scale;
+    view.scale = scale;
+    view.tx = (now[0][0] + now[1][0]) / 2 - bx * scale;
+    view.ty = (now[0][1] + now[1][1]) / 2 - by * scale;
+  } else return;
   clampPan();
   renderMap();
 });
 
-canvas.addEventListener("pointerup", () => { isPanning = false; panStart = null; });
-canvas.addEventListener("pointercancel", () => { isPanning = false; panStart = null; });
+const endPtr = e => { if (ptrs.delete(e.pointerId)) startGesture(); };
+canvas.addEventListener("pointerup", endPtr);
+canvas.addEventListener("pointercancel", endPtr);
 
 canvas.addEventListener("wheel", e => {
   e.preventDefault();
