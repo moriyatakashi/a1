@@ -28,6 +28,8 @@
   .zoom-btns button { min-width: 34px; height: 30px; font-size: 0.85rem; border: 1px solid var(--line); border-radius: 6px;
     background: var(--input-bg); color: var(--ink); cursor: pointer; opacity: .92; }
   /* 10/04(ab-107): 市区町村の境界。県より細い線で、行った県の分だけ描く */
+  .lake { fill: #a9d6f2; stroke: #6fa8cf; stroke-width: 0.4; pointer-events: none; }
+  @media (prefers-color-scheme: dark) { .lake { fill: #1f4560; stroke: #2f6a90; } }
   .city { fill: transparent; stroke: var(--line); stroke-width: 0.3; cursor: pointer; transition: fill .4s; }
   .city.sel { stroke: var(--ink); stroke-width: 1.2; }
   /* 同日(ab-108): 日本100名城 */

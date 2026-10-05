@@ -114,6 +114,7 @@ function drawMap() {
     <path d="M30 60 H170 V200 H30 Z" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/>
     <g id="prefs">${paths}</g>
     <g id="cities"></g>
+    <g id="lakes">${lakeFeatures.map((f) => `<path class="lake" d="${toPath(f.geometry, MAIN)}"/>`).join("")}</g>
     <rect class="fog-rect" id="fog" width="760" height="760" filter="url(#fogTex)" mask="url(#fogMask)"/>
     <g id="front"></g>
     <g id="dots"></g>
@@ -832,7 +833,11 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "Enter" && quiz.answered) { e.preventDefault(); nextQuiz(); }
 });
 
-fetch("../m5/prefectures.geojson").then((r) => r.json()).then((gj) => {
+// 湖(いまは琵琶湖だけ、ab-126)。県・市区町村の上、霧の下に水色で重ねる。読めなくても地図は出す。
+let lakeFeatures = [];
+const lakesP = fetch("../m5/lakes.geojson").then((r) => r.json()).then((gj) => gj.features).catch(() => []);
+fetch("../m5/prefectures.geojson").then((r) => r.json()).then(async (gj) => {
+  lakeFeatures = await lakesP;
   features = gj.features;
   names = [...new Set(features.map((f) => f.properties.N03_001))];
   adj = adjacency(features);

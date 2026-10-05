@@ -26,6 +26,14 @@ async function initializeMap() {
     // SVG を静的に生成
     root.innerHTML = generateSvgFromGeoJson(geoData);
 
+    // 湖(いまは琵琶湖だけ、ab-126)。実座標を transform.json で地図の座標にして上に重ねる(ラフな位置合わせ)。
+    const lakes = await fetch('../m5/lakes.geojson').then(r => r.json()).catch(() => ({ features: [] }));
+    const lakeTags = lakes.features.map(f => {
+      const points = f.geometry.coordinates[0].map(([lon, lat]) => gpsToSvg(lat, lon, transform).map(v => v.toFixed(1)).join(',')).join(' ');
+      return `<polygon points="${points}" fill="#a9d6f2" stroke="#6fa8cf" stroke-width="0.6" pointer-events="none"/>`;
+    }).join('');
+    root.querySelector('svg').insertAdjacentHTML('beforeend', lakeTags);
+
     // 現在位置で県を判定・色変更
     detectAndHighlightPrefecture(geoData, transform);
 

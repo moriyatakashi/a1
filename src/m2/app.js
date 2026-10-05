@@ -301,6 +301,7 @@ function renderMap() {
   drawFeatures(adjacentGeo.features, proj, "#5a5e66", "#3f4247", 1.5); // 隣接県(未訪問、グレーで背景として先に描く)
   drawFeatures(prefGeo.features, proj, "#eef1f4", "#8aa0b5", 2.5); // 県境(下地、太めにして境目を分かりやすく)
   drawFeatures(cityGeo.features, proj, "#cfe0f0", "#6f97c0"); // 訪問市区町村
+  drawFeatures(_mapData.lakeGeo.features, proj, "#a9d6f2", "#6fa8cf", 0.8); // 湖(いまは琵琶湖だけ、ab-126)
   // 最大表示(scale=1)はクラスタ化して見やすく、拡大時はテーブルの生データを1件=1点で出す
   if (withLatLng.length === 0) {
     _points = [];
@@ -393,10 +394,11 @@ async function load() {
   // ba: 下地を「県境＋訪問市区町村」の2レイヤーに一本化(既存の関西3市geojsonは廃止)。
   // 隣接10県(未訪問、和歌山・岡山・鳥取・徳島・福井・石川・富山・長野・山梨・東京)は
   // 別ファイルに分けてグレーの背景レイヤーとして追加(元の10府県のデータはそのまま)。
-  const [prefGeo, adjacentGeo, cityGeo, allVisits] = await Promise.all([
+  const [prefGeo, adjacentGeo, cityGeo, lakeGeo, allVisits] = await Promise.all([
     fetchGeo("data/prefectures_east.geojson"),
     fetchGeo("data/prefectures_adjacent.geojson"),
     fetchGeo("data/cities_visited.geojson"),
+    fetchGeo("../m5/lakes.geojson").catch(() => ({ features: [] })),
     fetchVisits().catch((e) => { console.warn("訪問の読み込みに失敗", e); return []; }),
   ]);
 
@@ -421,7 +423,7 @@ async function load() {
 
   const allFeatures = [...prefGeo.features, ...adjacentGeo.features, ...cityGeo.features];
   const proj = makeProjector(allFeatures, withLatLng, W, H);
-  _mapData = { prefGeo, adjacentGeo, cityGeo, withLatLng, proj };
+  _mapData = { prefGeo, adjacentGeo, cityGeo, lakeGeo, withLatLng, proj };
   renderMap();
 
   // 場所カード一覧は今日の分だけ表示(地図・統計は従来通り全期間)

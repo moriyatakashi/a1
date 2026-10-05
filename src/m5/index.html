@@ -12,6 +12,8 @@
   #map-root svg { display: block; width: 100%; height: auto; background: transparent; }
   .pref { fill: var(--input-bg); stroke: var(--line); stroke-width: 0.5; }
   .here { fill: #8fc7ec; }
+  .lake { fill: #a9d6f2; stroke: #6fa8cf; stroke-width: 0.4; pointer-events: none; }
+  @media (prefers-color-scheme: dark) { .lake { fill: #1f4560; stroke: #2f6a90; } }
   #zoom-row { max-width: 640px; margin: 12px auto 0; display: flex; align-items: center; gap: 10px; }
   #zoom-row input { flex: 1; }
 </style>
@@ -70,10 +72,15 @@
       zv.textContent = (+z.value).toFixed(1) + "×";
     };
     z.oninput = apply;
-    fetch("prefectures.geojson").then(r => r.json()).then(gj => {
+    // 湖(いまは琵琶湖だけ、ab-126)。県の上に水色で重ねる。読めなくても地図は出す。
+    const lakesP = fetch("lakes.geojson").then(r => r.json()).catch(() => ({ features: [] }));
+    fetch("prefectures.geojson").then(r => r.json()).then(async gj => {
+      const lakes = await lakesP;
+      const lp = project([129.5, 30, 148.5, 46], [24, 20, 712, 716]);
       svg.innerHTML =
         layer(gj, n => n !== "沖縄県", [129.5, 30, 148.5, 46], [24, 20, 712, 716])
-        + layer(gj, n => n === "沖縄県", [127, 26, 128, 27], [42, 64, 156, 120]);
+        + layer(gj, n => n === "沖縄県", [127, 26, 128, 27], [42, 64, 156, 120])
+        + lakes.features.map(f => `<path class="lake" d="${toPath(f.geometry, lp)}"/>`).join("");
       navigator.geolocation && navigator.geolocation.getCurrentPosition(pos => {
         const { longitude: lon, latitude: lat } = pos.coords;
         const f = gj.features.find(f => inFeature(lon, lat, f.geometry));
