@@ -16,10 +16,12 @@
 // 置く・外すは Takashi 本人だけ、wish-store.js)。訪問が1km以内に入ったら「かなった」(名城と同じ決め方、書かない)。
 // 10/07(ab-48、Takashi「やって」): 駅。表は stations.json(国土数値情報の鉄道データから scripts/build-m6-stations.mjs で作る、約9000駅)。
 // 訪問ごとに、いちばん近い駅が0.5km以内ならその駅に行った(geo.js)。地図には行った駅だけ描き、新幹線の駅はスタンプ帳にする。
+// 同日(ab-48 の続き): 市区町村役場(offices.json、霧の市区町村と同じ並び+政令市の市役所)と、ドーム6つ(domes.json、外から見れば行った)。
+// どちらも訪問が0.5km以内なら行った。役所は市区町村の詳細にも出す(霧は晴れたが役所はまだ、が見えるように)。
 
 import { fetchWishes, addWish, removeWish } from "./wish-store.js?v=202610041800";
 import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031800";
-import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM, wishVisits, WISH_KM, stationVisits, STATION_KM, STATION_KINDS, prefAt } from "./geo.js?v=202610071200";
+import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM, wishVisits, WISH_KM, stationVisits, STATION_KM, STATION_KINDS, officeVisits, OFFICE_KM, OFFICE_KINDS, domeVisits, DOME_KM, prefAt } from "./geo.js?v=202610071500";
 
 const RAD = Math.PI / 180;
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2));
@@ -95,6 +97,15 @@ let stations = null;
 let stationAgg = new Map();
 let selectedStation = null;
 const stationsReady = fetch("stations.json?v=202610071200").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+// 役所・ドーム(ab-48)。officeAgg は行の番号 → {i, count, first}(行った役所だけ)、domeState は domeVisits の結果。
+let offices = [];
+let officeAgg = new Map();
+let officeByCode = new Map();
+let selectedOffice = null;
+let domeState = [];
+let selectedDome = null;
+const officesReady = fetch("offices.json?v=202610071500").then((r) => (r.ok ? r.json() : [])).catch(() => []);
+const domesReady = fetch("domes.json?v=202610071500").then((r) => (r.ok ? r.json() : [])).catch(() => []);
 let adj = new Map();
 let centerOf = new Map();
 let names = [];
@@ -126,6 +137,8 @@ function drawMap() {
     <g id="front"></g>
     <g id="dots"></g>
     <g id="stations"></g>
+    <g id="offices"></g>
+    <g id="domes"></g>
     <g id="castles"></g>
     <g id="wishes"></g>
     <g id="walk"></g>`;
@@ -135,6 +148,8 @@ function drawMap() {
     if (d.w) selectWish(d.w);
     else if (d.k) selectCastle(Number(d.k));
     else if (d.s) selectStation(Number(d.s));
+    else if (d.o) selectOffice(Number(d.o));
+    else if (d.d) selectDome(Number(d.d));
     else if (d.c) selectCity(d.c);
     else if (d.p) select(d.p);
   });
@@ -212,6 +227,17 @@ function paint() {
     const r = stations.rows[i], [x, y] = projPoint({ lat: r[1], lng: r[2], pref: prefName(r[3]) });
     return `<circle class="station${stationAgg.has(i) ? " done" : ""}${i === selectedStation ? " sel" : ""}" data-s="${i}" data-rk="1.3" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * 1.3).toFixed(2)}"><title>${esc(r[0])}駅</title></circle>`;
   }).join("");
+  // 役所: 行った役所だけ紫の丸(選んだ役所は、まだでも白抜きで出す)。ドーム: 6つとも、行ったら塗りつぶし。
+  const ofs = [...($("officesOn").checked ? officeAgg.keys() : []),
+    ...(selectedOffice !== null && !($("officesOn").checked && officeAgg.has(selectedOffice)) ? [selectedOffice] : [])];
+  svg.querySelector("#offices").innerHTML = ofs.map((i) => {
+    const r = offices[i], [x, y] = projPoint({ lat: r[2], lng: r[3], pref: prefName(r[4]) });
+    return `<circle class="office${officeAgg.has(i) ? " done" : ""}${i === selectedOffice ? " sel" : ""}" data-o="${i}" data-rk="1.5" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * 1.5).toFixed(2)}"><title>${esc(r[1])}</title></circle>`;
+  }).join("");
+  svg.querySelector("#domes").innerHTML = $("domesOn").checked ? domeState.map((d) => {
+    const [x, y] = projPoint(d);
+    return `<circle class="dome${d.done ? " done" : ""}${d.num === selectedDome ? " sel" : ""}" data-d="${d.num}" data-rk="2.4" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * 2.4).toFixed(2)}"><title>${esc(d.name)}</title></circle>`;
+  }).join("") : "";
   // 100名城: 行った城は朱の丸、まだの城は白抜き。霧の上に出す(目標として見えるように)。
   svg.querySelector("#castles").innerHTML = $("castlesOn").checked
     ? castleState.map((c) => {
@@ -344,6 +370,8 @@ function select(n) {
   selectedCastle = null;
   selectedWish = null;
   selectedStation = null;
+  selectedOffice = null;
+  selectedDome = null;
   paint();
   const a = agg.get(n);
   const ns = [...(adj.get(n) || [])];
@@ -372,18 +400,21 @@ function selectCity(c) {
   selectedCastle = null;
   selectedWish = null;
   selectedStation = null;
+  selectedOffice = null;
+  selectedDome = null;
   paint();
   const a = cityAgg.get(c);
   const head = `<b>${esc(f.properties.n)}</b>(<button type="button" class="linkish" data-p="${esc(f.pref)}">${esc(f.pref)}</button>、${cityProgressText(f.pref)})`;
-  if (!a) { $("info").innerHTML = `${head} — まだ行っていない(霧の中)`; return; }
+  if (!a) { $("info").innerHTML = `${head} — まだ行っていない(霧の中)${officeLine(c)}`; return; }
   const mine = visits.filter((v) => cityVisits([v], [f]).size)
     .sort((x, y) => (y.date + y.time).localeCompare(x.date + x.time)).slice(0, 5);
-  $("info").innerHTML = `${head} — ${a.count}回、初訪問 ${esc(a.first || "?")}`
+  $("info").innerHTML = `${head} — ${a.count}回、初訪問 ${esc(a.first || "?")}${officeLine(c)}`
     + `<div class="places">${mine.map((v) => `${esc(v.date)} ${esc(v.place)}`).join("<br>")}</div>`;
 }
 $("info").addEventListener("click", (e) => {
   const d = e.target.dataset || {};
   if (d.p) select(d.p);
+  else if (d.o) selectOffice(Number(d.o));
   else if (d.wishCastle) wishFromCastle(Number(d.wishCastle));
   else if (d.wishDel) dropWish(d.wishDel);
   else if (e.target.id === "wishSave") saveWish();
@@ -630,6 +661,8 @@ function selectCastle(num) {
   selectedCity = null;
   selectedWish = null;
   selectedStation = null;
+  selectedOffice = null;
+  selectedDome = null;
   paint();
   const head = `<b>${c.num} ${esc(c.name)}</b>(<button type="button" class="linkish" data-p="${esc(c.pref)}">${esc(c.pref)}</button>、日本100名城)`;
   const wished = wishState.some((w) => distKm(w, c) <= WISH_KM);
@@ -672,6 +705,8 @@ function selectStation(i) {
   selectedCity = null;
   selectedCastle = null;
   selectedWish = null;
+  selectedOffice = null;
+  selectedDome = null;
   paint();
   const pref = prefName(r[3]);
   // 路線は事業者ごとにまとめる(東日本旅客鉄道: 山手線・中央線 / 京王電鉄: 京王線)。
@@ -715,6 +750,75 @@ function drawStations() {
 ["stationRecent", "shinkansenBook"].forEach((id) => $(id).addEventListener("click", (e) => {
   const b = e.target.closest("[data-s]");
   if (b) { selectStation(Number(b.dataset.s)); $("map").scrollIntoView({ behavior: "smooth", block: "center" }); }
+}));
+
+// ---- 市区町村役場・ドーム(ab-48) ----
+// 市区町村の詳細に出す1行(役所の表に無い市区町村は空)。
+function officeLine(code) {
+  const i = officeByCode.get(code);
+  if (i === undefined) return "";
+  const a = officeAgg.get(i);
+  return `<div class="facts"><button type="button" class="linkish" data-o="${i}">${esc(offices[i][1])}</button>: `
+    + (a ? `行った(初めて ${esc(a.first || "?")})` : "まだ") + "</div>";
+}
+function selectOffice(i) {
+  const r = offices[i];
+  if (!r) return;
+  selected = null;
+  selectedCity = null;
+  selectedCastle = null;
+  selectedWish = null;
+  selectedStation = null;
+  selectedDome = null;
+  selectedOffice = i;
+  paint();
+  const pref = prefName(r[4]);
+  const a = officeAgg.get(i);
+  const city = cityAgg.get(r[0]);
+  $("info").innerHTML = `<b>${esc(r[1])}</b>(<button type="button" class="linkish" data-p="${esc(pref)}">${esc(pref)}</button>) — `
+    + (a ? `行った(${OFFICE_KM * 1000}m以内に${a.count}回、初めて ${esc(a.first || "?")})` : "まだ")
+    + (city && !a ? `。${esc(city.name)}には${city.count}回行っている` : "");
+}
+function drawOffices() {
+  if (!offices.length) { $("officeSummary").textContent = "役所の表が読めなかった"; return; }
+  $("officeSummary").textContent = `行った ${officeAgg.size.toLocaleString()} / ${offices.length.toLocaleString()}(訪問が役所から${OFFICE_KM * 1000}m以内に入ったら)`;
+  $("officeKinds").textContent = OFFICE_KINDS.map(([k, t]) =>
+    `${t} ${[...officeAgg.keys()].filter((i) => offices[i][5] === k).length}/${offices.filter((r) => r[5] === k).length}`).join("・");
+  // 霧が晴れた(行った)市区町村のうち、役所の前まで行ったところ。まだのところは行った回数の多い順に。
+  const visited = [...cityAgg.values()].filter((c) => officeByCode.has(c.code));
+  const yet = visited.filter((c) => !officeAgg.has(officeByCode.get(c.code))).sort((x, y) => y.count - x.count);
+  $("officeFog").textContent = cityAgg.size
+    ? `霧が晴れた市区町村 ${visited.length} のうち、役所まで行ったのは ${visited.length - yet.length}` : "";
+  $("officeYet").innerHTML = yet.length ? "行ったのに役所はまだ: " + yet.slice(0, 12).map((c) =>
+    `<button type="button" class="linkish" data-o="${officeByCode.get(c.code)}">${esc(offices[officeByCode.get(c.code)][1])}</button>`).join("・")
+    + (yet.length > 12 ? ` ほか${yet.length - 12}` : "") : "";
+}
+function selectDome(num) {
+  const d = domeState.find((x) => x.num === num);
+  if (!d) return;
+  selected = null;
+  selectedCity = null;
+  selectedCastle = null;
+  selectedWish = null;
+  selectedStation = null;
+  selectedOffice = null;
+  selectedDome = num;
+  paint();
+  $("info").innerHTML = `<b>${esc(d.name)}</b>(<button type="button" class="linkish" data-p="${esc(d.pref)}">${esc(d.pref)}</button>、ドーム) — `
+    + (d.done ? `行った(外から${DOME_KM * 1000}m以内に${d.count}回、初めて ${esc(d.first || "?")})`
+      : "まだ。" + (Number.isFinite(d.near) ? `いちばん近づいたのは約${kmText(d.near)}(${esc(d.nearPlace)})` : ""));
+}
+function drawDomes() {
+  $("domeSummary").textContent = domeState.length
+    ? `行った ${domeState.filter((d) => d.done).length} / ${domeState.length}(中に入らなくても、訪問が${DOME_KM * 1000}m以内なら)` : "ドームの表が読めなかった";
+  $("domeBook").innerHTML = domeState.map((d) =>
+    `<button type="button" class="dome-stamp${d.done ? " done" : ""}" data-d="${d.num}"><span>${esc(shortName(d.pref))}${d.done ? "" : Number.isFinite(d.near) ? `・約${kmText(d.near)}` : ""}</span>${esc(d.name)}</button>`).join("");
+}
+["officeYet", "domeBook"].forEach((id) => $(id).addEventListener("click", (e) => {
+  const b = e.target.closest("[data-o],[data-d]");
+  if (!b) return;
+  if (b.dataset.o) selectOffice(Number(b.dataset.o)); else selectDome(Number(b.dataset.d));
+  $("map").scrollIntoView({ behavior: "smooth", block: "center" });
 }));
 
 // ---- 願望マップ(ab-84 の1) ----
@@ -806,6 +910,8 @@ function selectWish(id) {
   selectedCity = null;
   selectedCastle = null;
   selectedStation = null;
+  selectedOffice = null;
+  selectedDome = null;
   paint();
   const head = `<b>${esc(w.label)}</b>(${w.pref ? `<button type="button" class="linkish" data-p="${esc(w.pref)}">${esc(w.pref)}</button>、` : ""}行きたい場所、${esc(String(w.createdAt || "").slice(0, 10))}に置いた)`;
   $("info").innerHTML = (w.done
@@ -863,6 +969,11 @@ async function loadData() {
   stations = await stationsReady;
   if (stations) stationAgg = stationVisits(visits, stations.rows);
   drawStations();
+  offices = await officesReady;
+  officeByCode = new Map(offices.map((r, i) => [r[0], i]));
+  officeAgg = officeVisits(visits, offices);
+  domeState = domeVisits(visits, await domesReady);
+  drawDomes();
   try {
     wishes = await fetchWishes();
   } catch (e) {
@@ -876,12 +987,13 @@ async function loadData() {
   stats();
   drawRegions();
   await loadCities();
+  drawOffices();
   openAllFog();
   paint();
   stats();
 }
 
-["colorBy", "fogOn", "dotsOn", "frontOn", "stationsOn", "castlesOn", "wishesOn"].forEach((id) => $(id).addEventListener("change", paint));
+["colorBy", "fogOn", "dotsOn", "frontOn", "stationsOn", "officesOn", "domesOn", "castlesOn", "wishesOn"].forEach((id) => $(id).addEventListener("change", paint));
 $("zoomIn").addEventListener("change", () => { userView = null; $("btnFit").hidden = true; paint(); });
 // 霧の細かさ(県/市区町村)はこの端末に覚える。既定は市区町村(行くと地図が変わる方)。
 try { const u = localStorage.getItem(FOG_UNIT_KEY); if (u === "pref" || u === "city") $("fogUnit").value = u; } catch { /* 覚えられなくても動く */ }

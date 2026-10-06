@@ -215,6 +215,36 @@ export function stationVisits(visits, rows, km = STATION_KM) {
   return out;
 }
 
+// ---- 市区町村役場(ab-48、2026-10-07) ----
+// offices.json(scripts/build-m6-offices.mjs)の行 [団体コード, 名前, 緯度, 経度, 県コード, 種類] ごとに、訪問が OFFICE_KM 以内に
+// 入った回数と最初の日。役所はまばらなので名城と同じく「以内ならどれも」。2000件 × 訪問を全部比べないよう、ます目で引く。
+// 返り値: 行った役所の Map(行の番号 → { i, count, first })。
+export const OFFICE_KM = 0.5;
+export const OFFICE_KINDS = [[1, "市役所"], [2, "区役所"], [3, "町役場"], [4, "村役場"]];
+export function officeVisits(visits, rows, km = OFFICE_KM) {
+  const grid = new Map();
+  rows.forEach((r, i) => { const k = `${Math.floor(r[2] * 100)},${Math.floor(r[3] * 100)}`; grid.set(k, [...(grid.get(k) || []), i]); });
+  const out = new Map();
+  for (const v of visits) {
+    if (!Number.isFinite(v.lat) || !Number.isFinite(v.lng)) continue;
+    const y = Math.floor(v.lat * 100), x = Math.floor(v.lng * 100);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (const i of grid.get(`${y + dy},${x + dx}`) || []) {
+      if (distKm(v, { lat: rows[i][2], lng: rows[i][3] }) > km) continue;
+      const a = out.get(i) || { i, count: 0, first: "" };
+      a.count++;
+      if (v.date && (!a.first || v.date < a.first)) a.first = v.date;
+      out.set(i, a);
+    }
+  }
+  return out;
+}
+
+// ---- ドーム(ab-48、2026-10-07) ----
+// domes.json の行 [名前, 緯度, 経度, 県, Q番号]。中に入らなくても、外から見れば(訪問が DOME_KM 以内)行った。名城と同じ計算。
+export const DOME_KM = 0.5;
+export const domeVisits = (visits, domes, km = DOME_KM) =>
+  castleVisits(visits, domes.map(([name, lat, lng, pref, qid], i) => [i, name, lat, lng, pref, qid]), km);
+
 // 点 [lng, lat] がどの県の中か(県の features から)。どこにも入らない(海の上など)なら ""。
 export function prefAt(pt, features) {
   const f = features.find((x) => inGeometry(pt, x.geometry));

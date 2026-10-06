@@ -51,6 +51,17 @@
     background: none; color: var(--ink-soft); cursor: pointer; }
   .station-stamp span { display: block; font-size: 0.6rem; }
   .station-stamp.done { border: 2px solid #2a8f6f; color: #2a8f6f; font-weight: 700; }
+  /* 同日(ab-48 の続き): 市区町村役場(紫)とドーム(紺) */
+  .office { fill: var(--paper); stroke: #7a5fc4; stroke-width: 1; cursor: pointer; }
+  .office.done { fill: #7a5fc4; stroke: #fff; stroke-width: 0.6; }
+  .office.sel, .dome.sel { stroke: var(--ink); stroke-width: 2.2; }
+  .dome { fill: var(--paper); stroke: #2d4f8a; stroke-width: 1.6; cursor: pointer; }
+  .dome.done { fill: #2d4f8a; stroke: #fff; }
+  .dome-stamp { font: inherit; font-size: 0.7rem; text-align: left; padding: 5px 6px; border: 1px dashed var(--line); border-radius: 6px;
+    background: none; color: var(--ink-soft); cursor: pointer; }
+  .dome-stamp span { display: block; font-size: 0.6rem; }
+  .dome-stamp.done { border: 2px solid #2d4f8a; color: #2d4f8a; font-weight: 700; }
+  @media (prefers-color-scheme: dark) { .dome.done { fill: #6f95d6; } .dome-stamp.done { border-color: #6f95d6; color: #6f95d6; } }
   /* 同日(ab-84 の1): 行きたい場所。青い丸、かなったら塗りつぶし。置くあいだは地図のカーソルを十字に */
   .wish { fill: var(--paper); stroke: #3b7dd8; stroke-width: 2; cursor: pointer; }
   .wish.done { fill: #3b7dd8; stroke: #fff; }
@@ -167,6 +178,8 @@
       <label><input type="checkbox" id="dotsOn"> 訪問点</label>
       <label><input type="checkbox" id="frontOn" checked> 次に晴らせる県</label>
       <label><input type="checkbox" id="stationsOn" checked> 駅</label>
+      <label><input type="checkbox" id="officesOn" checked> 役所</label>
+      <label><input type="checkbox" id="domesOn" checked> ドーム</label>
       <label><input type="checkbox" id="castlesOn" checked> 100名城</label>
       <label><input type="checkbox" id="wishesOn" checked> 行きたい</label>
       <button type="button" id="btnWish">＋行きたい</button>
@@ -212,6 +225,20 @@
   </div>
 
   <div class="section">
+    <div class="section-title">市区町村役場</div>
+    <div class="castle-line" id="officeSummary"></div>
+    <div class="castle-line" id="officeKinds"></div>
+    <div class="castle-line" id="officeFog"></div>
+    <div class="castle-line" id="officeYet"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">ドーム(中じゃなくて外)</div>
+    <div class="castle-line" id="domeSummary"></div>
+    <div class="castle-book" id="domeBook"></div>
+  </div>
+
+  <div class="section">
     <div class="section-title">日本100名城</div>
     <div class="castle-line" id="castleSummary"></div>
     <div class="castle-line" id="castleClose"></div>
@@ -241,8 +268,8 @@
     <div class="quiz-bank" id="quizBank"></div>
   </div>
 
-  <p class="credit">市区町村の境界: 「国土数値情報(行政区域データ)」(国土交通省)を加工して作成(スマートニュース メディア研究所 japan-topography の簡略版をもとに、座標を丸めて県ごとに分けた)。2021年1月時点の市区町村。<br>日本100名城の番号・座標: Wikidata(CC0)。<br>駅: 「国土数値情報(鉄道データ)」(国土交通省、令和6年度)を加工して作成(路線ごとのホームを1駅にまとめた)。</p>
+  <p class="credit">市区町村の境界: 「国土数値情報(行政区域データ)」(国土交通省)を加工して作成(スマートニュース メディア研究所 japan-topography の簡略版をもとに、座標を丸めて県ごとに分けた)。2021年1月時点の市区町村。<br>日本100名城の番号・座標: Wikidata(CC0)。<br>駅: 「国土数値情報(鉄道データ)」(国土交通省、令和6年度)を加工して作成(路線ごとのホームを1駅にまとめた)。<br>市区町村役場・ドームの座標: Wikidata(CC0)。</p>
 
-  <script type="module" src="app.js?v=202610071200"></script>
+  <script type="module" src="app.js?v=202610071500"></script>
 </body>
 </html>

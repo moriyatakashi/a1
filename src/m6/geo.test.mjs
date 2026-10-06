@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits, wishVisits, stationVisits, STATION_KM, prefAt } from "./geo.js";
+import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits, wishVisits, stationVisits, STATION_KM, officeVisits, OFFICE_KM, domeVisits, prefAt } from "./geo.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const features = JSON.parse(fs.readFileSync(path.join(HERE, "../m5/prefectures.geojson"), "utf8")).features;
@@ -213,4 +213,33 @@ test("駅: 訪問ごとに、いちばん近い駅が0.5km以内ならその1駅
   assert.deepEqual([...got.keys()].sort(), [0, 1]);
   assert.deepEqual(got.get(0), { i: 0, count: 2, first: "2026-07-01" });
   assert.equal(got.get(1).count, 1);
+});
+
+// ---- 市区町村役場・ドーム(ab-48) ----
+test("役所: 表は m6 の市区町村と同じ並び(浜松市の旧区を除く)に政令市の市役所を足したもの", () => {
+  const rows = JSON.parse(fs.readFileSync(path.join(HERE, "offices.json"), "utf8"));
+  assert.ok(rows.length > 1900 && rows.length < 1950, String(rows.length));
+  assert.equal(new Set(rows.map((r) => r[0])).size, rows.length, "団体コードは重ならない");
+  assert.deepEqual(rows.find((r) => r[0] === "27100").slice(1, 2), ["大阪市役所"]);
+  assert.equal(rows.find((r) => r[0] === "13101")[1], "千代田区役所");
+  assert.equal(rows.filter((r) => r[5] === 1).length, 792); // 市は792
+});
+
+test("役所: 0.5km 以内に入った役所はどれも行った(近くに2つあれば2つとも)", () => {
+  const rows = [["27100", "大阪市役所", 34.69375, 135.50211, 27, 1], ["27127", "大阪市北区役所", 34.70489, 135.51047, 27, 2], ["28201", "姫路市役所", 34.81500, 134.68534, 28, 1]];
+  const got = officeVisits([
+    { lat: 34.6990, lng: 135.5060, date: "2026-09-02" }, // 市役所から約0.7km・北区役所から約0.8km: どちらでもない
+    { lat: 34.6940, lng: 135.5025, date: "2026-09-03" }, // 市役所の前
+    { lat: 34.6941, lng: 135.5024, date: "2026-08-01" },
+  ], rows);
+  assert.equal(OFFICE_KM, 0.5);
+  assert.deepEqual([...got.values()], [{ i: 0, count: 2, first: "2026-08-01" }]);
+});
+
+test("ドーム: 6つ、外から0.5km以内で行った", () => {
+  const domes = JSON.parse(fs.readFileSync(path.join(HERE, "domes.json"), "utf8"));
+  assert.equal(domes.length, 6);
+  const [tokyo] = domeVisits([{ lat: 35.7040, lng: 139.7510, date: "2026-09-02", place: "水道橋" }], domes.filter((d) => d[0] === "東京ドーム"));
+  assert.ok(tokyo.done && tokyo.near < 0.5);
+  assert.equal(tokyo.name, "東京ドーム");
 });

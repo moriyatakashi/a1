@@ -67,8 +67,25 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.match(await page.textContent("#info"), /大阪市中央区.*まだ行っていない/);
     // 県名を押すと県の詳細。上の地図と同じく dispatchEvent で押す(市区町村を描く処理が重いと、
     // page.click は押したあとの待ちで固まることがある、ab-106)
-    await page.locator("#info button").dispatchEvent("click");
+    // 10/07(ab-48): 市区町村の詳細には役所の行(リンク)も出るので、県名のボタンだけを押す
+    assert.match(await page.textContent("#info"), /大阪市中央区役所: まだ/);
+    await page.locator("#info button[data-p]").dispatchEvent("click");
     assert.match(await page.textContent("#info"), /大阪府 — 2回・2日.*市区町村 2\/\d+/);
+    // 10/07(ab-48): 駅・役所・ドーム。北区の訪問(34.70, 135.50)は東梅田駅がいちばん近い(0.5km以内)。役所はどれも0.5kmより遠い。
+    // ドームは京セラドーム大阪がいちばん近い(西区の訪問から約1.2km)
+    await page.waitForFunction(() => document.getElementById("officeFog").textContent !== "");
+    assert.equal(await page.textContent("#statStations"), "1");
+    assert.match(await page.textContent("#stationRecent"), /^最近はじめて行った駅: 東梅田\(09-20\)$/);
+    assert.equal(await page.locator("#stations circle").count(), 1);
+    assert.equal(await page.locator(".station-stamp").count(), 103, "新幹線の駅");
+    assert.match(await page.textContent("#officeSummary"), /^行った 0 \/ 1,916/);
+    assert.match(await page.textContent("#officeFog"), /^霧が晴れた市区町村 3 のうち、役所まで行ったのは 0$/);
+    assert.match(await page.textContent("#domeSummary"), /^行った 0 \/ 6/);
+    assert.equal(await page.locator("#domes circle").count(), 6);
+    await page.locator('.dome-stamp:has-text("京セラドーム大阪")').dispatchEvent("click");
+    assert.match(await page.textContent("#info"), /^京セラドーム大阪\(大阪府、ドーム\) — まだ。いちばん近づいたのは約1\.2km\(大阪市 西区\)/);
+    await page.locator("#stations circle").dispatchEvent("click");
+    assert.match(await page.textContent("#info"), /^東梅田駅\(大阪府、地下鉄・私鉄など\) — 行った.*谷町線/);
     await page.click("#btnReveal");
     await page.waitForFunction(() => document.querySelectorAll("#fogHoles path").length === 3);
     // 同日(ab-108): 日本100名城。3つの訪問はどの城からも1km以上離れているので0。大坂城がいちばん近い(梅田あたりから約2.6km)
