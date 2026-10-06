@@ -20,7 +20,9 @@ function modules(scores, others) {
       // query(collection, where(...)) は == だけ(読む件数を絞る形を確かめる用)。
       export const where = (field, op, value) => ({ field, op, value });
       export const query = (col, ...conds) => ({ name: col.name, conds });
+      // 読んだコレクション名を window.__fsReads に積む(全件読みの回数を確かめる用、ab-97)
       export async function getDocs(col) {
+        window.__fsReads = (window.__fsReads || []).concat([col.name]);
         const ok = (d) => (col.conds || []).every((c) => c.op === "==" && d[c.field] === c.value);
         return { docs: Object.entries(col_(col.name)).filter(([, d]) => ok(d)).map(([id, d]) => ({ id, data: () => d })) };
       }

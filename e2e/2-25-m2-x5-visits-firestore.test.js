@@ -73,7 +73,10 @@ async function addVisitVia(rel, address) {
       return t.startsWith("✓") && t;
     }, null, { timeout: 5000 })).jsonValue();
     const writes = await page.evaluate(() => window.__fsOtherWrites || []);
-    return { writes, status, azureCalls };
+    // 保存後の描き直しが終わるまで待ってから数える(件数が1増えるのを見る)
+    await page.waitForFunction(() => document.getElementById("statTotal").textContent === "2", null, { timeout: 5000 });
+    const visitReads = await page.evaluate(() => (window.__fsReads || []).filter((n) => n === "visits").length);
+    return { writes, status, azureCalls, visitReads };
   } finally {
     await browser.close();
     server.close();
@@ -81,7 +84,7 @@ async function addVisitVia(rel, address) {
 }
 
 test("m2: 新しい町への訪問は visits と pointEvents(町=2点)を Firestore に書き、Azure には行かない", async () => {
-  const { writes, status, azureCalls } = await addVisitVia("m2/", { state: "大阪府", city: "大阪市", suburb: "中央区" });
+  const { writes, status, azureCalls, visitReads } = await addVisitVia("m2/", { state: "大阪府", city: "大阪市", suburb: "中央区" });
   const visit = writes.find((w) => w.col === "visits");
   const point = writes.find((w) => w.col === "pointEvents");
   assert.equal(visit.place, "大阪市 中央区");
@@ -97,16 +100,19 @@ test("m2: 新しい町への訪問は visits と pointEvents(町=2点)を Firest
   assert.equal(point.visitId, visit.id);
   assert.match(status, /初町で自動加点/);
   assert.deepEqual(azureCalls, []);
+  // visits の全件読みは開いたときの1回だけ。保存の判定・保存後の描き直しでは読み直さない(ab-97)
+  assert.equal(visitReads, 1);
 });
 
 test("a2/x5: 新しい県なら県=10点だけ(市・町も新しくても二重加点しない)", async () => {
-  const { writes, status, azureCalls } = await addVisitVia("a2/x5/", { state: "京都府", city: "京都市", suburb: "山科区" });
+  const { writes, status, azureCalls, visitReads } = await addVisitVia("a2/x5/", { state: "京都府", city: "京都市", suburb: "山科区" });
   const points = writes.filter((w) => w.col === "pointEvents");
   assert.equal(points.length, 1);
   assert.equal(points[0].points, 10);
   assert.equal(points[0].note, "京都府(pref)");
   assert.match(status, /初県で自動加点/);
   assert.deepEqual(azureCalls, []);
+  assert.equal(visitReads, 1);
 });
 
 test("m2: 行ったことのある県・市・町なら加点は書かない", async () => {

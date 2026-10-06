@@ -193,13 +193,14 @@ function initVisitInput() {
     const time = elTimeInput.value;
     if (!place) { elPlaceInput.focus(); return; }
     try {
-      const saved = await saveVisit({ place, date, time, lat: _lat, lng: _lng, pref: _pref, city: _city, town: _town });
+      const saved = await saveVisit({ place, date, time, lat: _lat, lng: _lng, pref: _pref, city: _city, town: _town }, _visits);
       elPlaceInput.value = "";
       _lat = null; _lng = null; _pref = null; _city = null; _town = null;
       const granLabel = { pref: "県", city: "市", town: "町" }[saved.autoPointGranularity];
       elStatus.textContent = granLabel ? `✓ 追加しました(初${granLabel}で自動加点)` : "✓ 追加しました";
       setTimeout(() => elStatus.textContent = "", 3000);
-      load();
+      if (_visits) _visits.push(saved);
+      load(_visits);
     } catch (e) {
       elStatus.textContent = saveErrorText(e);
     }
@@ -313,7 +314,10 @@ function initZoomControls() {
   btnReset.addEventListener("click", resetView);
 }
 initZoomControls();
-async function load() {
+// 開いたときに読んだ visits(読めなかったら null)。保存の判定と保存後の描き直しに使い回し、
+// visits を何度も全件読まない(ab-97)。
+let _visits = null;
+async function load(cached = null) {
   const listEl = document.getElementById("visitList");
   const emptyMsg = document.getElementById("emptyMsg");
   listEl.innerHTML = "";
@@ -322,7 +326,7 @@ async function load() {
     fetchGeo("data/prefectures_east.geojson"),
     fetchGeo("data/prefectures_adjacent.geojson"),
     fetchGeo("data/cities_visited.geojson"),
-    fetchVisits().catch((e) => { console.warn("訪問の読み込みに失敗", e); return []; }),
+    cached || fetchVisits().then((v) => (_visits = v)).catch((e) => { console.warn("訪問の読み込みに失敗", e); return []; }),
   ]);
   allVisits.sort((a, b) => {
     const ta = new Date(a.createdAt || 0).getTime();

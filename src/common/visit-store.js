@@ -28,9 +28,11 @@ export function newVisitGranularity(visits, { pref, city, town }) {
 }
 
 // 訪問を1件保存する。初訪問なら加点イベントも同じ batch で書く(片方だけ入ることがない)。保存した訪問を返す。
-export async function saveVisit({ place, date, time, lat, lng, pref, city, town }) {
+// knownVisits: ページが開いたときに読んだ visits。渡せば初訪問の判定に使い回し、visits を読み直さない(ab-97)。
+// 読めていない(null)ときだけここで読む。空配列を「読めなかった」の代わりに渡すと全部が初訪問になるので渡さない。
+export async function saveVisit({ place, date, time, lat, lng, pref, city, town }, knownVisits = null) {
   await ensureFirebaseLogin();
-  const granularity = newVisitGranularity(await fetchVisits(), { pref, city, town });
+  const granularity = newVisitGranularity(knownVisits || await fetchVisits(), { pref, city, town });
   const now = new Date().toISOString();
   const id = crypto.randomUUID(); // Azure の頃の RowKey と同じ uuid の形
   const visit = {
