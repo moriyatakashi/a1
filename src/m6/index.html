@@ -43,6 +43,14 @@
   .castle-stamp span { display: block; font-size: 0.6rem; }
   .castle-stamp.near { border-color: #e8743b; color: var(--ink); }
   .castle-stamp.done { border: 2px solid #c94545; color: #c94545; font-weight: 700; }
+  /* 10/07(ab-48): 駅。行った駅は緑の小さな丸 */
+  .station { fill: var(--paper); stroke: #2a8f6f; stroke-width: 1; cursor: pointer; }
+  .station.done { fill: #2a8f6f; stroke: #fff; stroke-width: 0.6; }
+  .station.sel { stroke: var(--ink); stroke-width: 2; }
+  .station-stamp { font: inherit; font-size: 0.7rem; text-align: left; padding: 5px 6px; border: 1px dashed var(--line); border-radius: 6px;
+    background: none; color: var(--ink-soft); cursor: pointer; }
+  .station-stamp span { display: block; font-size: 0.6rem; }
+  .station-stamp.done { border: 2px solid #2a8f6f; color: #2a8f6f; font-weight: 700; }
   /* 同日(ab-84 の1): 行きたい場所。青い丸、かなったら塗りつぶし。置くあいだは地図のカーソルを十字に */
   .wish { fill: var(--paper); stroke: #3b7dd8; stroke-width: 2; cursor: pointer; }
   .wish.done { fill: #3b7dd8; stroke: #fff; }
@@ -131,6 +139,7 @@
   <div class="stats">
     <div class="stat-item"><div class="stat-num" id="statPrefs">—</div><div class="stat-label">制覇した都道府県 / 47</div></div>
     <div class="stat-item"><div class="stat-num" id="statCities">—</div><div class="stat-label">行った市区町村</div></div>
+    <div class="stat-item"><div class="stat-num" id="statStations">—</div><div class="stat-label">行った駅</div></div>
     <div class="stat-item"><div class="stat-num" id="statCastles">—</div><div class="stat-label">100名城</div></div>
     <div class="stat-item"><div class="stat-num" id="statVisits">—</div><div class="stat-label">訪問件数</div></div>
     <div class="stat-item"><div class="stat-num" id="statDays">—</div><div class="stat-label">訪問日数</div></div>
@@ -157,6 +166,7 @@
       </select>
       <label><input type="checkbox" id="dotsOn"> 訪問点</label>
       <label><input type="checkbox" id="frontOn" checked> 次に晴らせる県</label>
+      <label><input type="checkbox" id="stationsOn" checked> 駅</label>
       <label><input type="checkbox" id="castlesOn" checked> 100名城</label>
       <label><input type="checkbox" id="wishesOn" checked> 行きたい</label>
       <button type="button" id="btnWish">＋行きたい</button>
@@ -192,6 +202,16 @@
   </div>
 
   <div class="section">
+    <div class="section-title">駅</div>
+    <div class="castle-line" id="stationSummary"></div>
+    <div class="castle-line" id="stationKinds"></div>
+    <div class="castle-line" id="stationRegions"></div>
+    <div class="castle-line" id="stationRecent"></div>
+    <div class="castle-line">新幹線の駅</div>
+    <div class="castle-book" id="shinkansenBook"></div>
+  </div>
+
+  <div class="section">
     <div class="section-title">日本100名城</div>
     <div class="castle-line" id="castleSummary"></div>
     <div class="castle-line" id="castleClose"></div>
@@ -221,8 +241,8 @@
     <div class="quiz-bank" id="quizBank"></div>
   </div>
 
-  <p class="credit">市区町村の境界: 「国土数値情報(行政区域データ)」(国土交通省)を加工して作成(スマートニュース メディア研究所 japan-topography の簡略版をもとに、座標を丸めて県ごとに分けた)。2021年1月時点の市区町村。<br>日本100名城の番号・座標: Wikidata(CC0)。</p>
+  <p class="credit">市区町村の境界: 「国土数値情報(行政区域データ)」(国土交通省)を加工して作成(スマートニュース メディア研究所 japan-topography の簡略版をもとに、座標を丸めて県ごとに分けた)。2021年1月時点の市区町村。<br>日本100名城の番号・座標: Wikidata(CC0)。<br>駅: 「国土数値情報(鉄道データ)」(国土交通省、令和6年度)を加工して作成(路線ごとのホームを1駅にまとめた)。</p>
 
-  <script type="module" src="app.js?v=202610041800"></script>
+  <script type="module" src="app.js?v=202610071200"></script>
 </body>
 </html>

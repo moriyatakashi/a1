@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits, wishVisits, prefAt } from "./geo.js";
+import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits, wishVisits, stationVisits, STATION_KM, prefAt } from "./geo.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const features = JSON.parse(fs.readFileSync(path.join(HERE, "../m5/prefectures.geojson"), "utf8")).features;
@@ -184,4 +184,33 @@ test("prefAt: 点がどの県か、海の上は空", () => {
   assert.equal(prefAt([135.4959, 34.7025], features), "大阪府");
   assert.equal(prefAt([140.7044, 41.7594], features), "北海道");
   assert.equal(prefAt([137.0, 33.0], features), "");
+});
+// ---- 駅(ab-48) ----
+test("駅: 表は9000駅ほどで、新宿は JR・京王・小田急・地下鉄が1駅にまとまり、新幹線の駅は100ほど", () => {
+  const st = JSON.parse(fs.readFileSync(path.join(HERE, "stations.json"), "utf8"));
+  assert.ok(st.rows.length > 8500 && st.rows.length < 9500, String(st.rows.length));
+  assert.ok(st.rows.every((r) => r[3] >= 1 && r[3] <= 47 && r[4] > 0 && r[5].every((i) => st.lines[i])));
+  const shinjuku = st.rows.filter((r) => r[0] === "新宿");
+  assert.equal(shinjuku.length, 1);
+  assert.equal(shinjuku[0][3], 13);
+  const ops = new Set(shinjuku[0][5].map((i) => st.ops[st.lines[i][0]]));
+  for (const o of ["東日本旅客鉄道", "京王電鉄", "小田急電鉄", "東京地下鉄", "東京都"]) assert.ok(ops.has(o), o);
+  const shinkansen = st.rows.filter((r) => r[4] & 1).length;
+  assert.ok(shinkansen > 90 && shinkansen < 120, String(shinkansen));
+});
+
+test("駅: 訪問ごとに、いちばん近い駅が0.5km以内ならその1駅だけ行ったにする", () => {
+  const rows = [["大阪", 34.70252, 135.49466, 27, 2, []], ["梅田", 34.70313, 135.49768, 27, 8, []], ["姫路", 34.82667, 134.69060, 28, 3, []]];
+  const vs = [
+    { lat: 34.7026, lng: 135.4950, date: "2026-09-02" }, // 大阪のすぐそば(梅田も0.5km以内だが、近い大阪だけ)
+    { lat: 34.7030, lng: 135.4975, date: "2026-08-01" }, // 梅田
+    { lat: 34.7027, lng: 135.4949, date: "2026-07-01" }, // 大阪をもう一度(初めての日が早まる)
+    { lat: 34.80, lng: 134.69, date: "2026-09-03" },     // 姫路から約3km: どこにも入らない
+    { lat: NaN, lng: NaN, date: "2026-09-04" },
+  ];
+  const got = stationVisits(vs, rows);
+  assert.equal(STATION_KM, 0.5);
+  assert.deepEqual([...got.keys()].sort(), [0, 1]);
+  assert.deepEqual(got.get(0), { i: 0, count: 2, first: "2026-07-01" });
+  assert.equal(got.get(1).count, 1);
 });

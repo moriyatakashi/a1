@@ -14,10 +14,12 @@
 // 訪問が城から1km以内に入ったら「行った」。まだの城は、いちばん近づいた距離を出す。
 // 同日(ab-84 の1、Takashi「すすめたい、ルールも」): 願望マップ。行きたい場所を地図をタップして置く(Firestore の wishes、
 // 置く・外すは Takashi 本人だけ、wish-store.js)。訪問が1km以内に入ったら「かなった」(名城と同じ決め方、書かない)。
+// 10/07(ab-48、Takashi「やって」): 駅。表は stations.json(国土数値情報の鉄道データから scripts/build-m6-stations.mjs で作る、約9000駅)。
+// 訪問ごとに、いちばん近い駅が0.5km以内ならその駅に行った(geo.js)。地図には行った駅だけ描き、新幹線の駅はスタンプ帳にする。
 
 import { fetchWishes, addWish, removeWish } from "./wish-store.js?v=202610041800";
 import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031800";
-import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM, wishVisits, WISH_KM, prefAt } from "./geo.js?v=202610041800";
+import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM, wishVisits, WISH_KM, stationVisits, STATION_KM, STATION_KINDS, prefAt } from "./geo.js?v=202610071200";
 
 const RAD = Math.PI / 180;
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2));
@@ -88,6 +90,11 @@ let selectedCity = null;
 let selectedCastle = null;
 let castleState = [];
 const castlesReady = fetch("castles.json").then((r) => (r.ok ? r.json() : [])).catch(() => []);
+// 駅(ab-48)。stationAgg は rows の番号 → {i, count, first}(行った駅だけ)。
+let stations = null;
+let stationAgg = new Map();
+let selectedStation = null;
+const stationsReady = fetch("stations.json?v=202610071200").then((r) => (r.ok ? r.json() : null)).catch(() => null);
 let adj = new Map();
 let centerOf = new Map();
 let names = [];
@@ -118,6 +125,7 @@ function drawMap() {
     <rect class="fog-rect" id="fog" width="760" height="760" filter="url(#fogTex)" mask="url(#fogMask)"/>
     <g id="front"></g>
     <g id="dots"></g>
+    <g id="stations"></g>
     <g id="castles"></g>
     <g id="wishes"></g>
     <g id="walk"></g>`;
@@ -126,6 +134,7 @@ function drawMap() {
     if (wishMode) { pickWishAt(e.clientX, e.clientY); return; }
     if (d.w) selectWish(d.w);
     else if (d.k) selectCastle(Number(d.k));
+    else if (d.s) selectStation(Number(d.s));
     else if (d.c) selectCity(d.c);
     else if (d.p) select(d.p);
   });
@@ -196,6 +205,13 @@ function paint() {
   svg.querySelector("#dots").innerHTML = $("dotsOn").checked
     ? visits.filter(hasXY).map((v) => { const [x, y] = projPoint(v); return `<circle class="dot" data-rk="1" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${dotR()}"/>`; }).join("")
     : "";
+  // 駅: 行った駅だけ緑の小さな丸(9000駅ぜんぶは描かない)。選んだ駅は、まだでも白抜きで出す。
+  const sts = !stations ? [] : [...($("stationsOn").checked ? stationAgg.keys() : []),
+    ...(selectedStation !== null && !($("stationsOn").checked && stationAgg.has(selectedStation)) ? [selectedStation] : [])];
+  svg.querySelector("#stations").innerHTML = sts.map((i) => {
+    const r = stations.rows[i], [x, y] = projPoint({ lat: r[1], lng: r[2], pref: prefName(r[3]) });
+    return `<circle class="station${stationAgg.has(i) ? " done" : ""}${i === selectedStation ? " sel" : ""}" data-s="${i}" data-rk="1.3" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * 1.3).toFixed(2)}"><title>${esc(r[0])}駅</title></circle>`;
+  }).join("");
   // 100名城: 行った城は朱の丸、まだの城は白抜き。霧の上に出す(目標として見えるように)。
   svg.querySelector("#castles").innerHTML = $("castlesOn").checked
     ? castleState.map((c) => {
@@ -327,6 +343,7 @@ function select(n) {
   selectedCity = null;
   selectedCastle = null;
   selectedWish = null;
+  selectedStation = null;
   paint();
   const a = agg.get(n);
   const ns = [...(adj.get(n) || [])];
@@ -354,6 +371,7 @@ function selectCity(c) {
   selectedCity = c;
   selectedCastle = null;
   selectedWish = null;
+  selectedStation = null;
   paint();
   const a = cityAgg.get(c);
   const head = `<b>${esc(f.properties.n)}</b>(<button type="button" class="linkish" data-p="${esc(f.pref)}">${esc(f.pref)}</button>、${cityProgressText(f.pref)})`;
@@ -611,6 +629,7 @@ function selectCastle(num) {
   selected = null;
   selectedCity = null;
   selectedWish = null;
+  selectedStation = null;
   paint();
   const head = `<b>${c.num} ${esc(c.name)}</b>(<button type="button" class="linkish" data-p="${esc(c.pref)}">${esc(c.pref)}</button>、日本100名城)`;
   const wished = wishState.some((w) => distKm(w, c) <= WISH_KM);
@@ -641,6 +660,63 @@ function drawCastles() {
       `<button type="button" class="castle-stamp${c.done ? " done" : c.near <= 10 ? " near" : ""}" data-k="${c.num}"><span>${c.num}</span>${esc(c.name)}</button>`).join("");
   }).join("");
 }
+// ---- 駅(ab-48) ----
+const PREF_NAMES = REGIONS.flatMap(([, ps]) => ps); // 県コード順(prefCode と同じ並び)
+const prefName = (code) => PREF_NAMES[code - 1] || "";
+const kindText = (bits) => STATION_KINDS.filter(([b]) => bits & b).map(([, t]) => t).join("・");
+function selectStation(i) {
+  const r = stations && stations.rows[i];
+  if (!r) return;
+  selectedStation = i;
+  selected = null;
+  selectedCity = null;
+  selectedCastle = null;
+  selectedWish = null;
+  paint();
+  const pref = prefName(r[3]);
+  // 路線は事業者ごとにまとめる(東日本旅客鉄道: 山手線・中央線 / 京王電鉄: 京王線)。
+  const byOp = new Map();
+  for (const li of r[5]) { const [o, n] = stations.lines[li]; byOp.set(o, [...(byOp.get(o) || []), n]); }
+  const lines = [...byOp].map(([o, ns]) => `${esc(stations.ops[o])}: ${ns.map(esc).join("・")}`).join(" / ");
+  const a = stationAgg.get(i);
+  $("info").innerHTML = `<b>${esc(r[0])}駅</b>(<button type="button" class="linkish" data-p="${esc(pref)}">${esc(pref)}</button>、${esc(kindText(r[4]))}) — `
+    + (a ? `行った(いちばん近い駅として${a.count}回、初めて ${esc(a.first || "?")})` : "まだ")
+    + `<div class="facts">${lines}</div>`;
+}
+function drawStations() {
+  const rows = stations ? stations.rows : [];
+  $("statStations").textContent = rows.length ? stationAgg.size.toLocaleString() : "—";
+  if (!rows.length) { $("stationSummary").textContent = "駅の表が読めなかった"; return; }
+  const done = (bits) => [...stationAgg.keys()].filter((i) => rows[i][4] & bits).length;
+  const all = (bits) => rows.filter((r) => r[4] & bits).length;
+  $("stationSummary").textContent = `行った ${stationAgg.size.toLocaleString()} / ${rows.length.toLocaleString()}駅`
+    + `(訪問ごとに、いちばん近い駅が${STATION_KM * 1000}m以内ならその駅)`;
+  $("stationKinds").textContent = STATION_KINDS.map(([b, t]) => `${t} ${done(b).toLocaleString()}/${all(b).toLocaleString()}`).join("・");
+  // 地方ごと: 行った駅 / 駅の数。
+  $("stationRegions").textContent = REGIONS.map(([rname, ps]) => {
+    const codes = new Set(ps.map((p) => PREF_NAMES.indexOf(p) + 1));
+    const n = rows.filter((r) => codes.has(r[3])).length;
+    const d = [...stationAgg.keys()].filter((i) => codes.has(rows[i][3])).length;
+    return `${rname} ${d.toLocaleString()}/${n.toLocaleString()}`;
+  }).join("・");
+  // 最近はじめて行った駅(初めての日が新しい順に10)。
+  const recent = [...stationAgg.values()].filter((a) => a.first).sort((x, y) => y.first.localeCompare(x.first)).slice(0, 10);
+  $("stationRecent").innerHTML = recent.length ? "最近はじめて行った駅: " + recent.map((a) =>
+    `<button type="button" class="linkish" data-s="${a.i}">${esc(rows[a.i][0])}</button>(${esc(a.first.slice(5))})`).join("・") : "";
+  // 新幹線の駅のスタンプ帳(地方ごと、北から)。
+  const sk = rows.map((r, i) => [r, i]).filter(([r]) => r[4] & 1);
+  $("shinkansenBook").innerHTML = REGIONS.map(([rname, ps]) => {
+    const cs = sk.filter(([r]) => ps.includes(prefName(r[3])));
+    if (!cs.length) return "";
+    return `<div class="stamp-region">${esc(rname)} ${cs.filter(([, i]) => stationAgg.has(i)).length}/${cs.length}</div>` + cs.map(([r, i]) =>
+      `<button type="button" class="station-stamp${stationAgg.has(i) ? " done" : ""}" data-s="${i}"><span>${esc(shortName(prefName(r[3])))}</span>${esc(r[0])}</button>`).join("");
+  }).join("");
+}
+["stationRecent", "shinkansenBook"].forEach((id) => $(id).addEventListener("click", (e) => {
+  const b = e.target.closest("[data-s]");
+  if (b) { selectStation(Number(b.dataset.s)); $("map").scrollIntoView({ behavior: "smooth", block: "center" }); }
+}));
+
 // ---- 願望マップ(ab-84 の1) ----
 // 行きたい場所は Firestore(wishes)。「＋行きたい」を押してから地図をタップすると、そこに置く(名前を付けて「置く」)。
 let wishes = [];        // Firestore から読んだもの
@@ -729,6 +805,7 @@ function selectWish(id) {
   selected = null;
   selectedCity = null;
   selectedCastle = null;
+  selectedStation = null;
   paint();
   const head = `<b>${esc(w.label)}</b>(${w.pref ? `<button type="button" class="linkish" data-p="${esc(w.pref)}">${esc(w.pref)}</button>、` : ""}行きたい場所、${esc(String(w.createdAt || "").slice(0, 10))}に置いた)`;
   $("info").innerHTML = (w.done
@@ -783,6 +860,9 @@ async function loadData() {
   }
   castleState = castleVisits(visits, await castlesReady);
   drawCastles();
+  stations = await stationsReady;
+  if (stations) stationAgg = stationVisits(visits, stations.rows);
+  drawStations();
   try {
     wishes = await fetchWishes();
   } catch (e) {
@@ -801,7 +881,7 @@ async function loadData() {
   stats();
 }
 
-["colorBy", "fogOn", "dotsOn", "frontOn", "castlesOn", "wishesOn"].forEach((id) => $(id).addEventListener("change", paint));
+["colorBy", "fogOn", "dotsOn", "frontOn", "stationsOn", "castlesOn", "wishesOn"].forEach((id) => $(id).addEventListener("change", paint));
 $("zoomIn").addEventListener("change", () => { userView = null; $("btnFit").hidden = true; paint(); });
 // 霧の細かさ(県/市区町村)はこの端末に覚える。既定は市区町村(行くと地図が変わる方)。
 try { const u = localStorage.getItem(FOG_UNIT_KEY); if (u === "pref" || u === "city") $("fogUnit").value = u; } catch { /* 覚えられなくても動く */ }

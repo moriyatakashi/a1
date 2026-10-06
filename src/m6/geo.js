@@ -186,6 +186,35 @@ export function wishVisits(visits, wishes, km = WISH_KM) {
   return rows.map((r, i) => ({ ...wishes[i], near: r.near, nearPlace: r.nearPlace, count: r.count, first: r.first, done: r.done }));
 }
 
+// ---- 駅(ab-48、2026-10-07) ----
+// stations.json(scripts/build-m6-stations.mjs)の rows [名前, 緯度, 経度, 県コード, 種類のビット, [路線の番号…]] に、訪問を割り当てる。
+// 駅は町なかでは数百mおきにあるので、名城と違い「訪問ごとに、いちばん近い駅が STATION_KM 以内なら、その1駅だけ」行ったにする。
+// 返り値: 行った駅の Map(rows の番号 → { i, count, first })。行っていない駅は入らない(9000駅を毎回並べないように)。
+export const STATION_KM = 0.5;
+export const STATION_KINDS = [[1, "新幹線"], [2, "JR"], [4 | 8 | 16, "地下鉄・私鉄など"]];
+export function stationVisits(visits, rows, km = STATION_KM) {
+  // 0.01度(約1km)のます目に駅を入れておき、訪問のまわり3×3だけ見る。
+  const cell = (lat, lng) => `${Math.floor(lat * 100)},${Math.floor(lng * 100)}`;
+  const grid = new Map();
+  rows.forEach((r, i) => { const k = cell(r[1], r[2]); grid.set(k, [...(grid.get(k) || []), i]); });
+  const out = new Map();
+  for (const v of visits) {
+    if (!Number.isFinite(v.lat) || !Number.isFinite(v.lng)) continue;
+    let best = -1, bd = km;
+    const y = Math.floor(v.lat * 100), x = Math.floor(v.lng * 100);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (const i of grid.get(`${y + dy},${x + dx}`) || []) {
+      const d = distKm(v, { lat: rows[i][1], lng: rows[i][2] });
+      if (d <= bd) { bd = d; best = i; }
+    }
+    if (best < 0) continue;
+    const a = out.get(best) || { i: best, count: 0, first: "" };
+    a.count++;
+    if (v.date && (!a.first || v.date < a.first)) a.first = v.date;
+    out.set(best, a);
+  }
+  return out;
+}
+
 // 点 [lng, lat] がどの県の中か(県の features から)。どこにも入らない(海の上など)なら ""。
 export function prefAt(pt, features) {
   const f = features.find((x) => inGeometry(pt, x.geometry));
