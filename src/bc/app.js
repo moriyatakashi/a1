@@ -34,13 +34,25 @@ const fsBool = (doc, key) => doc.fields?.[key]?.booleanValue === true;
 const fsInt = (doc, key) => Number(doc.fields?.[key]?.integerValue || 0);
 const fsStrList = (doc, key) => (doc.fields?.[key]?.arrayValue?.values || []).map((v) => v.stringValue || "");
 
+// ab-97(2026-10-07): aa-lane が note を書くたびに、スレッドの noteMeta に {by, createdAt, retitle} を足している。
+// あればそれを使い、notes を1スレッドずつ読まない(1回開くと約550件 → スレッドの数だけ)。
+// noteMeta の無い古いスレッド(埋める前のもの)だけ、今までどおり notes を読む。
+function fsNoteMeta(doc) {
+  const f = doc.fields?.noteMeta;
+  if (!f || !f.arrayValue) return null;
+  return (f.arrayValue.values || []).map((v) => {
+    const m = v.mapValue?.fields || {};
+    return { by: m.by?.stringValue || "", createdAt: m.createdAt?.stringValue || "", retitle: m.retitle?.booleanValue === true };
+  });
+}
+
 // ab のスレッドを groupThreads と同じ形({threadId, root, entries})にそろえる。source:"ab" で見分ける。
 async function fetchAbThreads() {
   const docs = await fsListDocs(AB_FS);
   return Promise.all(docs.map(async (d) => {
     const threadId = d.name.split("/").pop();
     const root = { id: threadId, by: fsStr(d, "by"), createdAt: fsStr(d, "createdAt"), seq: fsInt(d, "seq"), title: fsStr(d, "title") };
-    const notes = (await fsListDocs(`${AB_FS}/${threadId}/notes`))
+    const notes = fsNoteMeta(d) || (await fsListDocs(`${AB_FS}/${threadId}/notes`))
       .map((n) => ({ by: fsStr(n, "by"), createdAt: fsStr(n, "createdAt"), retitle: fsStr(n, "body").startsWith("タイトルを変えた(") }));
     const entries = [root, ...notes].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     // ab-45: 「今の状態」用に 済み・返事が要るか・宛先も持つ(レーダー・月次は従来どおり済みも含めて数える)

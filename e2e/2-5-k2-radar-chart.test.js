@@ -51,7 +51,23 @@ const AB_ROUTES = {
   [`${FS}/A2/notes`]: {},
 };
 
-test("bc: 投稿者別/分類別のスレッド集計が期待通りに出る", async () => {
+// ab-97: aa-lane が書く noteMeta(誰が・いつ)があれば、bc は notes を読まない。中身は上の AB_ROUTES と同じ
+const metaDoc = (name, by, createdAt, metas) => {
+  const d = fsDoc(name, by, createdAt);
+  d.fields.noteMeta = { arrayValue: metas.length ? { values: metas.map(([b, c]) => (
+    { mapValue: { fields: { by: { stringValue: b }, createdAt: { stringValue: c }, retitle: { booleanValue: false } } } })) } : {} };
+  return d;
+};
+const AB_ROUTES_META = {
+  [FS]: { documents: [metaDoc(`x/abThreads/A1`, "claude-pc", now, [["claude-teuri", now]]),
+                      metaDoc(`x/abThreads/A2`, "claude-mobile", now, [])] },
+};
+
+test("bc: 投稿者別/分類別のスレッド集計が期待通りに出る", () => checkBc(AB_ROUTES, 2));
+test("bc: noteMeta があれば notes を読まずに同じ集計になる(ab-97)", () => checkBc(AB_ROUTES_META, 0));
+
+async function checkBc(abRoutes, expectedNoteFetches) {
+  const notesFetched = [];
   const server = await serveStatic();
   const port = server.address().port;
   const browser = await chromium.launch();
@@ -65,7 +81,8 @@ test("bc: 投稿者別/分類別のスレッド集計が期待通りに出る", 
     );
     await page.route(/firestore\.googleapis\.com\//, (route) => {
       const url = route.request().url().split("?")[0];
-      route.fulfill({ contentType: "application/json", body: JSON.stringify(AB_ROUTES[url] || {}) });
+      if (url.endsWith("/notes")) notesFetched.push(url);
+      route.fulfill({ contentType: "application/json", body: JSON.stringify(abRoutes[url] || {}) });
     });
 
     await page.goto(`http://localhost:${port}/src/bc/`);
@@ -99,8 +116,9 @@ test("bc: 投稿者別/分類別のスレッド集計が期待通りに出る", 
     const monthRow = (await page.locator("#radarTableBody tr").allTextContents()).find((r) => r.startsWith(thisMonth));
     assert.ok(monthRow, "今月の行がある");
     assert.match(monthRow.replace(/\s+/g, ""), /22$/, "今月: ab(連絡)2・合計2(ba の fixture は7月なので今月の行には入らない)");
+    assert.equal(notesFetched.length, expectedNoteFetches, "notes を1スレッドずつ読んだ回数");
   } finally {
     await browser.close();
     server.close();
   }
-});
+}

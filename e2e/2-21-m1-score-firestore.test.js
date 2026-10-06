@@ -47,8 +47,12 @@ test("m1: 保存は Firestore の scores/{今日} へ直接書き、Azure の /a
     await page.waitForSelector("#scoreChartSection", { state: "visible", timeout: 5000 });
 
     await page.fill("#noteInput", "よく眠れた");
+    await page.$eval("#slider", (el) => { el.value = "33"; el.dispatchEvent(new Event("input")); });
     await page.click("#btnSaveScore");
     await page.waitForFunction(() => (window.__fsWrites || []).length === 1, null, { timeout: 5000 });
+    // 保存後は scores を読み直さず、手元の一覧に今日の分を入れて描き直す(ab-97)。最新が 33 になる
+    await page.waitForFunction(() => document.getElementById("statLatest").textContent === "33", null, { timeout: 5000 });
+    assert.equal(await page.evaluate(() => (window.__fsReads || []).filter((n) => n === "scores").length), 1);
     const [w] = await page.evaluate(() => window.__fsWrites);
     assert.match(w.id, /^\d{4}-\d{2}-\d{2}$/);
     assert.equal(w.note, "よく眠れた");

@@ -38,7 +38,8 @@ const VISITS = {
         pref: "大阪府", city: "大阪市", town: "北区", autoPointGranularity: "town", createdAt: "2026-09-20T01:00:00.000Z", by: "takashi" },
 };
 
-async function addVisitVia(rel, address) {
+// digest: digests/visits に置いておくまとめ(ab-97)。signedIn: 開いた時点で Firebase にログイン済みか。
+async function addVisitVia(rel, address, { digest = null, signedIn = false } = {}) {
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
@@ -58,7 +59,8 @@ async function addVisitVia(rel, address) {
     });
     await page.route("https://nominatim.openstreetmap.org/**", (route) =>
       route.fulfill({ contentType: "application/json", body: JSON.stringify({ address }) }));
-    await routeFirebaseStub(page, {}, { visits: VISITS });
+    await routeFirebaseStub(page, {}, { visits: VISITS, ...(digest ? { digests: { visits: digest } } : {}) });
+    if (signedIn) await page.addInitScript(() => { window.__fsSignedIn = true; });
 
     await page.goto(`http://localhost:${server.address().port}/src/${rel}`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
@@ -76,7 +78,8 @@ async function addVisitVia(rel, address) {
     // 保存後の描き直しが終わるまで待ってから数える(件数が1増えるのを見る)
     await page.waitForFunction(() => document.getElementById("statTotal").textContent === "2", null, { timeout: 5000 });
     const visitReads = await page.evaluate(() => (window.__fsReads || []).filter((n) => n === "visits").length);
-    return { writes, status, azureCalls, visitReads };
+    const digestWrites = writes.filter((w) => w.col === "digests");
+    return { writes, status, azureCalls, visitReads, digestWrites };
   } finally {
     await browser.close();
     server.close();
@@ -120,4 +123,29 @@ test("m2: 行ったことのある県・市・町なら加点は書かない", a
   assert.equal(writes.filter((w) => w.col === "visits").length, 1);
   assert.equal(writes.filter((w) => w.col === "pointEvents").length, 0);
   assert.equal(status, "✓ 追加しました");
+});
+
+// ab-97: まとめ文書(digests/visits)が visits の件数と合っていれば、visits は全件読まない
+test("m2: まとめ文書が合っていれば visits を全件読まず、保存でまとめに1件足す", async () => {
+  const digest = { items: [{ id: "v1", ...VISITS.v1 }], count: 1, at: "2026-10-07T00:00:00.000Z" };
+  const { writes, status, visitReads, digestWrites } = await addVisitVia("m2/",
+    { state: "大阪府", city: "大阪市", suburb: "中央区" }, { digest });
+  assert.equal(visitReads, 0);
+  assert.match(status, /初町で自動加点/); // 初訪問の判定もまとめの中身で正しくできている
+  const visit = writes.find((w) => w.col === "visits");
+  assert.equal(digestWrites.length, 1);
+  assert.deepEqual(digestWrites[0].items.values, [{ id: visit.id, ...Object.fromEntries(Object.entries(visit).filter(([k]) => k !== "col" && k !== "id")) }]);
+  assert.equal(digestWrites[0].count.n, 1);
+});
+
+test("m2: まとめ文書の件数がずれていたら全件読みに戻り、ログイン中なら作り直す", async () => {
+  const digest = { items: [], count: 0, at: "2026-10-01T00:00:00.000Z" }; // visits は1件あるのに0件のまとめ
+  const { visitReads, digestWrites, status } = await addVisitVia("m2/",
+    { state: "大阪府", city: "大阪市", suburb: "北区" }, { digest, signedIn: true });
+  assert.equal(visitReads, 1);
+  assert.equal(status, "✓ 追加しました"); // ずれたまとめ(0件)ではなく全件で判定したので、北区は初訪問にならない
+  const rebuilt = digestWrites.find((w) => Array.isArray(w.items));
+  assert.ok(rebuilt, "まとめを作り直していない");
+  assert.equal(rebuilt.count, 1);
+  assert.deepEqual(rebuilt.items.map((v) => v.id), ["v1"]);
 });

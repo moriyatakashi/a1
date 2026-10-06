@@ -144,18 +144,22 @@ function initScoreInput() {
       elBtnSaveScore.textContent = "更新";
       elScoreSaved.textContent = "✓ 保存しました";
       setTimeout(() => elScoreSaved.textContent = "", 2000);
-      load();
+      // 読み直さず、開いたときに読んだ一覧の今日の分だけ差し替えて描き直す(ab-97)
+      if (_scoreRows) _scoreRows = [..._scoreRows.filter((r) => r.date !== today), { date: today, score, note }];
+      load(_scoreRows);
     } catch (e) {
       elScoreSaved.textContent = saveErrorText(e);
     }
   });
   loadTodayScore();
 }
-async function load() {
+// 開いたときに読んだ scores(読めなかったら null)。保存後の描き直しに使い回す(ab-97)。
+let _scoreRows = null;
+async function load(cached = null) {
   const chartSection = document.getElementById("scoreChartSection");
   chartSection.style.display = "none";
   try {
-    const scoreRows = await fetchAllScores();
+    const scoreRows = cached || (_scoreRows = await fetchAllScores());
     const scoreMap = {};
     scoreRows.forEach(r => {
       if (DATE_RE.test(r.date) && typeof r.score === "number") {

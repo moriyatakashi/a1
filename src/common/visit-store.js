@@ -1,7 +1,9 @@
 // visit-store.js — 訪問(Firestore ab01-9f35a の visits/{id})と初訪問の加点(pointEvents/{id})の読み書き。m2 と a2/x5 で共用。
 // ab-53(2026-10-03): 正本は Firestore(Azure の /api/visits・/api/points は書き込み 410、読みは Firestore を返す)。
 // 読みは誰でも、書きは Takashi 本人のみ(Rules)。ログインは firebase.js の ensureFirebaseLogin。
-import { collection, doc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { collection, doc, getDoc, getDocs, getCountFromServer, setDoc, writeBatch, arrayUnion, increment }
+  from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
 import { db, ensureFirebaseLogin } from "./firebase.js";
 
 // ba-165②(2026-07-29確定、Takashi判断): 初めて行った県・市・町を自動で加点する。
@@ -13,9 +15,39 @@ import { db, ensureFirebaseLogin } from "./firebase.js";
 const GRANULARITY_DIFFICULTY = { pref: "high", city: "normal", town: "low" };
 const DIFFICULTY_POINTS = { low: 2, normal: 5, high: 10 };
 
-export async function fetchVisits() {
+// ab-97(2026-10-07): visits を開くたびに全件読まない。まとめ文書 digests/visits = {items, count, at} を1件読み、
+// visits の件数(COUNT 集計、1,000件ごとに読み取り1回分)と合っていればそれを使う(読み取り2回分で済む)。
+// 合わない・無い・読めないときは今までどおり全件読み、Takashi がログイン中ならまとめを作り直す。
+// まとめは保存のたびに saveVisit が1件足す。visits は作るだけで直さない・消さないので、件数が合えば中身も合う。
+const digestRef = () => doc(db, "digests", "visits");
+
+async function fetchAllVisitDocs() {
   const snap = await getDocs(collection(db, "visits"));
   return snap.docs.map((d) => ({ id: d.id, by: "takashi", ...d.data() }));
+}
+
+export async function fetchVisits() {
+  try {
+    const [snap, counted] = await Promise.all([getDoc(digestRef()), getCountFromServer(collection(db, "visits"))]);
+    const d = snap.exists() ? snap.data() : null;
+    const n = counted.data().count;
+    if (d && Array.isArray(d.items) && d.items.length === n && d.count === n) {
+      return d.items.map((v) => ({ by: "takashi", ...v }));
+    }
+  } catch (e) {
+    console.warn("訪問のまとめを読めなかったので全件読む", e);
+  }
+  const visits = await fetchAllVisitDocs();
+  rebuildDigest(visits);
+  return visits;
+}
+
+// 全件読んだついでに、ログイン済み(書けるのは Takashi だけ)ならまとめを作り直す。失敗しても読みは止めない。
+function rebuildDigest(visits) {
+  if (!getAuth().currentUser) return; // ポップアップは出さない。ログイン済みのときだけ(firebase.js が初期化した既定のアプリ)
+  // 写しを渡す(呼び出し側が並べ替えたり保存した分を足したりするため)
+  setDoc(digestRef(), { items: visits.slice(), count: visits.length, at: new Date().toISOString() })
+    .catch((e) => console.warn("訪問のまとめを作り直せなかった", e));
 }
 
 // 今までの訪問(visits)に照らして、この訪問で初めて出てきた一番粗い粒度("pref"/"city"/"town")。無ければ null。
@@ -54,5 +86,8 @@ export async function saveVisit({ place, date, time, lat, lng, pref, city, town 
     });
   }
   await batch.commit();
+  // まとめにも1件足す。訪問とは別に書き、失敗しても保存は止めない(ずれたら読む側が件数で気づいて作り直す)
+  await setDoc(digestRef(), { items: arrayUnion({ id, ...visit }), count: increment(1), at: now }, { merge: true })
+    .catch((e) => console.warn("訪問のまとめに足せなかった", e));
   return { id, ...visit };
 }

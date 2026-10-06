@@ -17,6 +17,23 @@ function modules(scores, others) {
       export const collection = (db, name) => ({ name });
       export const doc = (db, name, id) => ({ name, id });
       export async function getDoc(ref) { const d = col_(ref.name)[ref.id]; return { exists: () => !!d, data: () => d }; }
+      // COUNT 集計(ab-97 のまとめ文書の照合)。数えたコレクション名を window.__fsCounts に積む
+      export async function getCountFromServer(col) {
+        window.__fsCounts = (window.__fsCounts || []).concat([col.name]);
+        return { data: () => ({ count: Object.keys(col_(col.name)).length }) };
+      }
+      // arrayUnion / increment は setDoc(merge)のときだけ効かせる(ab-97 のまとめ文書に1件足す形)
+      export const arrayUnion = (...values) => ({ __op: "arrayUnion", values });
+      export const increment = (n) => ({ __op: "increment", n });
+      function applyOps(old, data) {
+        const out = { ...(old || {}) };
+        for (const [k, v] of Object.entries(data)) {
+          if (v && v.__op === "arrayUnion") out[k] = [...(out[k] || []), ...v.values];
+          else if (v && v.__op === "increment") out[k] = (out[k] || 0) + v.n;
+          else out[k] = v;
+        }
+        return out;
+      }
       // query(collection, where(...)) は == だけ(読む件数を絞る形を確かめる用)。
       export const where = (field, op, value) => ({ field, op, value });
       export const query = (col, ...conds) => ({ name: col.name, conds });
@@ -32,7 +49,7 @@ function modules(scores, others) {
       }
       export async function setDoc(ref, data, opts) {
         const S = col_(ref.name);
-        S[ref.id] = opts && opts.merge ? { ...(S[ref.id] || {}), ...data } : data;
+        S[ref.id] = opts && opts.merge ? applyOps(S[ref.id], data) : data;
         record(ref.name, ref.id, data);
       }
       // deleteDoc(ab-84 の願望マップ、2026-10-04)は window.__fsDeletes に { col, id } で積む。
@@ -51,7 +68,8 @@ function modules(scores, others) {
         return { id };
       }`,
     "firebase-auth.js": `
-      const auth = { currentUser: null, authStateReady: async () => {} };
+      // window.__fsSignedIn(addInitScript で立てる)なら、開いた時点でログイン済みにする(ab-97 のまとめの作り直し)
+      const auth = { currentUser: window.__fsSignedIn ? { uid: "test" } : null, authStateReady: async () => {} };
       export const getAuth = () => auth;
       export class GoogleAuthProvider { static credential(t) { return { t }; } }
       export async function signInWithCredential(a, c) { auth.currentUser = { uid: "test" }; return { user: auth.currentUser }; }
