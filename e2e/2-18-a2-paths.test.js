@@ -13,6 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as yaml from "js-yaml";
+import { listenSafe } from "./listen-safe.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = {
@@ -31,7 +32,7 @@ function serveStatic() {
         res.end(data);
       });
     });
-    server.listen(0, () => resolve(server));
+    listenSafe(server).then(resolve);
   });
 }
 
@@ -60,7 +61,8 @@ test("a2: 目次と全アプリがローカルの404・スクリプトエラー�
         return route.abort();
       });
       await page.goto(`${origin}/src/a2/${rel}`);
-      await page.waitForTimeout(400);
+      // 決め打ちで待たず、通信が落ち着く(500ms 何も出ない)まで待ってから見る(ab-106)。重いときに見落とさない
+      await page.waitForLoadState("networkidle");
       assert.deepEqual(localFailures, [], `src/a2/${rel}: ローカルファイルが404: ${localFailures.join(", ")}`);
       assert.deepEqual(pageErrors, [], `src/a2/${rel}: スクリプトエラー: ${pageErrors.join(" | ")}`);
       await page.close();

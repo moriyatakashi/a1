@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as yaml from "js-yaml";
+import { listenSafe } from "./listen-safe.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = {
@@ -36,7 +37,7 @@ function serveStatic() {
         res.end(data);
       });
     });
-    server.listen(0, () => resolve(server));
+    listenSafe(server).then(resolve);
   });
 }
 
@@ -72,7 +73,8 @@ test("nav.ymlの全ページがローカルの404・スクリプトエラーな�
         return route.abort();
       });
       await page.goto(`${origin}/${rel}`);
-      await page.waitForTimeout(400);
+      // 決め打ちで待たず、通信が落ち着く(500ms 何も出ない)まで待ってから見る(ab-106)。重いときに見落とさない
+      await page.waitForLoadState("networkidle");
       const allowed = ALLOW_PAGE_ERRORS[rel];
       const errs = allowed ? pageErrors.filter((m) => !m.includes(allowed)) : pageErrors;
       if (localFailures.length) problems.push(`${rel}: ローカル404: ${localFailures.join(", ")}`);

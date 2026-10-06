@@ -11,6 +11,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { listenSafe } from "./listen-safe.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".geojson": "application/json" };
@@ -26,7 +27,7 @@ function serveStatic() {
         res.end(data);
       });
     });
-    server.listen(0, () => resolve(server));
+    listenSafe(server).then(resolve);
   });
 }
 

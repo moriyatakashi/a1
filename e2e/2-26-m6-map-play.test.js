@@ -8,6 +8,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { listenSafe } from "./listen-safe.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = {
@@ -26,7 +27,7 @@ function serveStatic() {
         res.end(data);
       });
     });
-    server.listen(0, () => resolve(server));
+    listenSafe(server).then(resolve);
   });
 }
 
@@ -64,7 +65,9 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.match(await page.textContent("#info"), /^大阪市北区\(大阪府、市区町村 2\/\d+\) — 1回、初訪問 2026-09-20/);
     await page.locator('#cities [data-c="27128"]').dispatchEvent("click"); // 中央区は行っていない
     assert.match(await page.textContent("#info"), /大阪市中央区.*まだ行っていない/);
-    await page.click("#info button"); // 県名を押すと県の詳細
+    // 県名を押すと県の詳細。上の地図と同じく dispatchEvent で押す(市区町村を描く処理が重いと、
+    // page.click は押したあとの待ちで固まることがある、ab-106)
+    await page.locator("#info button").dispatchEvent("click");
     assert.match(await page.textContent("#info"), /大阪府 — 2回・2日.*市区町村 2\/\d+/);
     await page.click("#btnReveal");
     await page.waitForFunction(() => document.querySelectorAll("#fogHoles path").length === 3);
@@ -76,7 +79,16 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.match(await page.textContent("#castleClose"), /^あと少し: 大坂城\(約\d\.\dkmまで近づいた\)/);
     assert.match(await page.textContent("#castleNext"), /^次の名城: \S+\(最後の訪問地 大津市 から約/);
     await page.click('.castle-stamp[data-k="54"]');
-    await page.waitForTimeout(800); // 地図へのなめらかなスクロールが終わるのを待つ
+    await page.waitForFunction(() => document.getElementById("info").textContent.startsWith("54 大坂城"));
+    // 押すと地図が画面のまん中へなめらかにスクロールする(scrollIntoView block:center)。スクロールの途中で
+    // ドラッグすると、下の「ドラッグで動く」の確かめがずれる。決め打ちで待たず、行き先に着くまで待つ(ab-106)。
+    // 行き先は「地図のまん中が画面のまん中」。ページの端で届かないときは、その端が行き先
+    await page.waitForFunction(() => {
+      const r = document.getElementById("map").getBoundingClientRect();
+      const off = (r.top + r.height / 2) - innerHeight / 2; // +なら地図はまん中より下
+      const maxY = document.scrollingElement.scrollHeight - innerHeight;
+      return Math.abs(off) <= 2 || (off < 0 && scrollY <= 0) || (off > 0 && scrollY >= maxY - 1);
+    });
     assert.match(await page.textContent("#info"), /^54 大坂城\(大阪府、日本100名城\) — まだ。いちばん近づいたのは約\d\.\dkm\(大阪市 /);
     assert.equal(await page.locator("#castles circle.sel").getAttribute("data-k"), "54");
     await page.uncheck("#castlesOn");
@@ -164,7 +176,14 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     // 歩く・霧を晴らすでエラーが出ない
     await page.click("#btnWalk");
     await page.click("#btnReveal");
-    await page.waitForTimeout(300);
+    // 決め打ちで待たず、最後まで動き切るのを待つ(ab-106)。歩くは見出しに「おしまい」が付く。
+    // 霧は 450ms ごとに1つずつ開くので、開いた数が 600ms 変わらなくなったら終わり
+    await page.waitForFunction(() => {
+      const n = document.querySelectorAll("#fogHoles path").length;
+      const still = n > 0 && window.__lastHoles === n;
+      window.__lastHoles = n;
+      return still && document.getElementById("walkCaption").textContent.includes("おしまい");
+    }, null, { polling: 600 });
 
     assert.deepEqual(errors, []);
     const writes = await page.evaluate(() => [...(window.__fsWrites || []), ...(window.__fsOtherWrites || [])]);

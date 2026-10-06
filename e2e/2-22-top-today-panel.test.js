@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { jstDate, isoWeekKey } from "../src/common/today-panel.js";
+import { listenSafe } from "./listen-safe.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".yml": "text/plain" };
@@ -26,7 +27,7 @@ function serveStatic() {
         res.end(data);
       });
     });
-    server.listen(0, () => resolve(server));
+    listenSafe(server).then(resolve);
   });
 }
 
@@ -60,7 +61,8 @@ test("トップ: 開いただけでは取りに行かず、押したら運勢・
     });
 
     await page.goto(`${origin}/`);
-    await page.waitForTimeout(500);
+    // 決め打ちで待たず、通信が落ち着くまで待ってから「取りに行っていない」を見る(ab-106)
+    await page.waitForLoadState("networkidle");
     assert.deepEqual(apiCalls, [], "開いただけで API を叩いている");
     assert.deepEqual(localJs, [], "開いただけで today-panel.js を読み込んでいる");
 
