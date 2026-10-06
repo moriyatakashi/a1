@@ -65,7 +65,12 @@ test("トップ: 開いただけでは取りに行かず、押したら運勢・
     assert.deepEqual(localJs, [], "開いただけで today-panel.js を読み込んでいる");
 
     await page.click("#todayBtn");
-    await page.waitForFunction(() => !document.getElementById("todayBody").textContent.includes("取得中"));
+    // 押した直後は today-panel.js の読み込み待ちで枠が空なので、「取得中が無い」だけだと
+    // 重いときに空のまま通ってしまう(ab-106)。3項目が出て、取得中が消えるまで待つ
+    await page.waitForFunction(() => {
+      const t = document.getElementById("todayBody").textContent;
+      return t.includes("今日の得点") && t.includes("今週") && !t.includes("取得中");
+    });
     const text = await page.textContent("#todayBody");
     assert.match(text, /運勢(大吉|中吉|小吉|吉|末吉|凶)/);
     assert.match(text, /今日の得点86点/);

@@ -67,9 +67,12 @@ async function addVisitVia(rel, address) {
     await page.click("#btnGps");
     await page.waitForFunction(() => document.getElementById("placeInput").value !== "", null, { timeout: 5000 });
     await page.click("#btnAddVisit");
-    await page.waitForFunction(() => (document.getElementById("visitInputStatus").textContent || "").startsWith("✓"), null, { timeout: 5000 });
+    // m2 は「✓」を3秒で消すので、後から読むと重いときに空になる(ab-106)。待つのと同時に拾う
+    const status = await (await page.waitForFunction(() => {
+      const t = document.getElementById("visitInputStatus").textContent || "";
+      return t.startsWith("✓") && t;
+    }, null, { timeout: 5000 })).jsonValue();
     const writes = await page.evaluate(() => window.__fsOtherWrites || []);
-    const status = await page.evaluate(() => document.getElementById("visitInputStatus").textContent);
     return { writes, status, azureCalls };
   } finally {
     await browser.close();
