@@ -64,19 +64,19 @@ async function addVisitVia(rel, address, { digest = null, signedIn = false } = {
 
     await page.goto(`http://localhost:${server.address().port}/src/${rel}`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
-    await page.waitForFunction(() => document.getElementById("statTotal").textContent === "1", null, { timeout: 5000 });
+    await page.waitForFunction(() => document.getElementById("statTotal").textContent === "1");
 
     await page.click("#btnGps");
-    await page.waitForFunction(() => document.getElementById("placeInput").value !== "", null, { timeout: 5000 });
+    await page.waitForFunction(() => document.getElementById("placeInput").value !== "");
     await page.click("#btnAddVisit");
     // m2 は「✓」を3秒で消すので、後から読むと重いときに空になる(ab-106)。待つのと同時に拾う
     const status = await (await page.waitForFunction(() => {
       const t = document.getElementById("visitInputStatus").textContent || "";
       return t.startsWith("✓") && t;
-    }, null, { timeout: 5000 })).jsonValue();
+    })).jsonValue();
     const writes = await page.evaluate(() => window.__fsOtherWrites || []);
     // 保存後の描き直しが終わるまで待ってから数える(件数が1増えるのを見る)
-    await page.waitForFunction(() => document.getElementById("statTotal").textContent === "2", null, { timeout: 5000 });
+    await page.waitForFunction(() => document.getElementById("statTotal").textContent === "2");
     const visitReads = await page.evaluate(() => (window.__fsReads || []).filter((n) => n === "visits").length);
     const digestWrites = writes.filter((w) => w.col === "digests");
     return { writes, status, azureCalls, visitReads, digestWrites };

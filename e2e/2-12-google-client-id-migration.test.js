@@ -74,7 +74,7 @@ for (const pageName of PAGES) {
       );
 
       await page.goto(`http://localhost:${port}/src/${pageName}/`);
-      await page.waitForFunction(() => window.__observedClientId !== undefined, null, { timeout: 5000 });
+      await page.waitForFunction(() => window.__observedClientId !== undefined);
 
       const observed = await page.evaluate(() => window.__observedClientId);
       assert.equal(observed, EXPECTED_CLIENT_ID, "GSI(スタブ)実行時点でdata-client_idが正しく設定されていない");

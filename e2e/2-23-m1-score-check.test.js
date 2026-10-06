@@ -46,14 +46,14 @@ test("m1: チェック項目を押して保存すると check が残り、項目
 
     await page.goto(`http://localhost:${server.address().port}/src/m1/`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
-    await page.waitForSelector("#checkBox", { state: "visible", timeout: 5000 });
+    await page.waitForSelector("#checkBox", { state: "visible" });
     assert.deepEqual(await page.locator(".check-item").allTextContents(), ["3食", "散歩"]);
 
     // 1つ押す → 50点。保存すると scores/{今日}.check に文面ごと入る
     await page.locator(".check-item input").first().check();
     assert.equal(await page.textContent("#checkScoreNum"), "50");
     await page.click("#btnSaveScore");
-    await page.waitForFunction(() => (window.__fsWrites || []).length === 1, null, { timeout: 5000 });
+    await page.waitForFunction(() => (window.__fsWrites || []).length === 1);
     const [w] = await page.evaluate(() => window.__fsWrites);
     assert.equal(w.check.score, 50);
     assert.deepEqual(w.check.items, [{ id: "a", text: "3食", done: true }, { id: "b", text: "散歩", done: false }]);
@@ -65,7 +65,7 @@ test("m1: チェック項目を押して保存すると check が残り、項目
     await inputs.nth(1).fill("読書");
     await inputs.nth(2).fill("");
     await page.click("#btnSaveItems");
-    await page.waitForFunction(() => (window.__fsOtherWrites || []).some((x) => x.col === "scoreConfig"), null, { timeout: 5000 });
+    await page.waitForFunction(() => (window.__fsOtherWrites || []).some((x) => x.col === "scoreConfig"));
     const others = await page.evaluate(() => window.__fsOtherWrites);
     assert.deepEqual(others.filter((x) => x.col === "scoreItems").map((x) => x.text), ["読書"], "棚に足すのは新しい文面だけ");
     const cur = others.find((x) => x.col === "scoreConfig");

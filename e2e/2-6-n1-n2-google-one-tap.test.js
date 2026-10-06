@@ -59,7 +59,10 @@ for (const pageName of ["m1"]) {
 
       await page.goto(`http://localhost:${port}/src/${pageName}/`);
       await page.waitForFunction(() => window.google !== undefined);
-      await page.waitForTimeout(300);
+      // 300ms 決め打ちで待ってから確かめると、重いときに間に合わない(ab-106)。両方そろうまで待つ。
+      // 来なければ下の assert で何が足りないかを出すので、待ちの失敗はここでは握りつぶす
+      await page.waitForFunction(() => (window.__disableAutoSelectCalled || 0) > 0
+        && getComputedStyle(document.getElementById("content")).display !== "none", null, { timeout: 10000 }).catch(() => {});
 
       const contentVisible = await page.isVisible("#content");
       assert.equal(contentVisible, true, "アプリ自前のセッション復元(localStorage)自体は機能しているはず");

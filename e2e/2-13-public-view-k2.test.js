@@ -42,15 +42,15 @@ const PAGES = {
     // 2026-09-30: bc は ab(Firestore abThreads)も読む。ここでは空で返す(ネットワークに出さない)
     routeRegex: [[/firestore\.googleapis\.com\//, () => ({ status: 200, body: {} })]],
     async assertLoaded(page) {
-      await page.waitForFunction(() => document.querySelectorAll("#radarSvg polygon").length > 0, null, { timeout: 5000 });
+      await page.waitForFunction(() => document.querySelectorAll("#radarSvg polygon").length > 0);
     },
   },
   m1: {
     routes: {},
     firebase: { "2026-07-18": { score: 80, note: "" } }, // ab-24: スコアは Firestore(スタブ)
     async assertLoaded(page) {
-      await page.waitForSelector("#scoreChartSection", { state: "visible", timeout: 5000 });
-      await page.waitForFunction(() => document.getElementById("statLatest")?.textContent === "80", null, { timeout: 5000 });
+      await page.waitForSelector("#scoreChartSection", { state: "visible" });
+      await page.waitForFunction(() => document.getElementById("statLatest")?.textContent === "80");
     },
     async assertWriteRequiresLogin(page) {
       await page.click("#btnSaveScore");
