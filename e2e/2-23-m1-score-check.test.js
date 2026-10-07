@@ -48,18 +48,23 @@ test("m1: チェック項目を押して保存すると check が残り、項目
     await page.goto(`http://localhost:${server.address().port}/src/m1/`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
     await page.waitForSelector("#checkBox", { state: "visible" });
-    assert.deepEqual(await page.locator(".check-item").allTextContents(), ["3食", "散歩"]);
+    assert.deepEqual(await page.locator(".check-text").allTextContents(), ["3食", "散歩"]);
+    // 押していない項目は ×(ab-129)
+    assert.deepEqual(await page.locator('.mark[aria-pressed="true"]').allTextContents(), ["×", "×"]);
+    assert.equal(await page.textContent("#checkScoreNum"), "0");
 
-    // 1つ押す → 50点。保存すると scores/{今日}.check に文面ごと入る
-    await page.locator(".check-item input").first().check();
+    // ○ と △ → (1 + 0.5) / 2 = 75点(△は半分、ab-129)。保存すると scores/{今日}.check に文面と印が入る
+    await page.getByRole("button", { name: "3食: ○" }).click();
     assert.equal(await page.textContent("#checkScoreNum"), "50");
+    await page.getByRole("button", { name: "散歩: △" }).click();
+    assert.equal(await page.textContent("#checkScoreNum"), "75");
     await page.click("#btnSaveScore");
     await page.waitForFunction(() => (window.__fsWrites || []).length === 1);
     const [w] = await page.evaluate(() => window.__fsWrites);
-    assert.equal(w.check.score, 50);
-    assert.deepEqual(w.check.items, [{ id: "a", text: "3食", done: true }, { id: "b", text: "散歩", done: false }]);
+    assert.equal(w.check.score, 75);
+    assert.deepEqual(w.check.items, [{ id: "a", text: "3食", done: true, mark: "○" }, { id: "b", text: "散歩", done: false, mark: "△" }]);
 
-    // 項目を入れ替える: 3食(棚にある)+読書(新しい)。3食の今日の✓は残る
+    // 項目を入れ替える: 3食(棚にある)+読書(新しい)。3食の今日の○は残り、読書は×から
     await page.click("#btnEditItems");
     const inputs = page.locator("#itemInputs input");
     await inputs.nth(0).fill("3食");
@@ -73,7 +78,31 @@ test("m1: チェック項目を押して保存すると check が残り、項目
     assert.equal(cur.id, "current");
     assert.deepEqual(cur.items.map((i) => i.text), ["3食", "読書"]);
     assert.equal(cur.items[0].id, "a", "3食は棚の id を使い回す");
-    assert.deepEqual(await page.locator(".check-item").allTextContents(), ["3食", "読書"]);
+    assert.deepEqual(await page.locator(".check-text").allTextContents(), ["3食", "読書"]);
+    assert.deepEqual(await page.locator('.mark[aria-pressed="true"]').allTextContents(), ["○", "×"]);
+    assert.equal(await page.textContent("#checkScoreNum"), "50");
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test("m1: 前の記録(done だけ)は ○/× として読む(ab-129)", async () => {
+  const server = await serveStatic();
+  const browser = await chromium.launch();
+  try {
+    const page = await (await browser.newContext()).newPage();
+    await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
+    const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    await routeFirebaseStub(page, {
+      [today]: { score: 80, note: "", check: { items: [{ id: "a", text: "3食", done: true }, { id: "b", text: "散歩", done: false }], score: 50 } },
+    }, {
+      scoreItems: { a: { text: "3食" }, b: { text: "散歩" } },
+      scoreConfig: { current: { items: [{ id: "a", text: "3食" }, { id: "b", text: "散歩" }] } },
+    });
+    await page.goto(`http://localhost:${server.address().port}/src/m1/`);
+    await page.waitForSelector("#checkBox", { state: "visible" });
+    assert.deepEqual(await page.locator('.mark[aria-pressed="true"]').allTextContents(), ["○", "×"]);
     assert.equal(await page.textContent("#checkScoreNum"), "50");
   } finally {
     await browser.close();

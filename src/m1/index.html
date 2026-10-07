@@ -29,7 +29,9 @@
   .check-box { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; }
   .check-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 0.9rem; }
   .check-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 0.95rem; }
-  .check-item input { width: 20px; height: 20px; }
+  .check-marks { display: inline-flex; gap: 4px; }
+  .check-marks .mark { width: 34px; height: 34px; border: 1px solid #c8c8c8; border-radius: 8px; background: #fff; font-size: 1.05rem; color: #999; cursor: pointer; }
+  .check-marks .mark[aria-pressed="true"] { background: #1f6feb; border-color: #1f6feb; color: #fff; font-weight: 700; }
   .check-edit-btn { background: none; border: 1px solid var(--line); color: inherit; border-radius: 6px; padding: 3px 10px; font-size: 0.78rem; cursor: pointer; }
   .check-empty { color: var(--ink-soft); font-size: 0.85rem; padding: 4px 0; }
   .check-line { fill: none; stroke: #e0a040; stroke-width: 2; stroke-dasharray: 5 4; }

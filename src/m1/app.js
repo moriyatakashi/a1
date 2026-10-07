@@ -7,7 +7,7 @@ import { todayStr } from "../common/utils.js";
 // ab-24(2026-09-29、方式B): 毎日スコアの正本は Firestore ab01-9f35a の scores/{日付}。
 // 読み書きとログインは common/score-store.js(a2/x4 と共用、2026-10-02 に切り出し)。
 import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX,
-  fetchCheckItems, fetchItemShelf, saveCheckItems, checkScore } from "../common/score-store.js";
+  fetchCheckItems, fetchItemShelf, saveCheckItems, checkScore, MARKS, markOf } from "../common/score-store.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -158,7 +158,8 @@ function initScoreInput() {
     elScoreNum.textContent = elSlider.value;
   });
 
-  // ab-43: チェック項目。checkItems = [{id, text, done}](今日の分)。読めなければ(Rules未デプロイなど)欄ごと出さない。
+  // ab-43: チェック項目。checkItems = [{id, text, done, mark}](今日の分)。読めなければ(Rules未デプロイなど)欄ごと出さない。
+  // ab-129(2026-10-07): できた/できない の2択を ○・△・× の3段階にした。押していない項目は ×。
   const elCheckBox = document.getElementById("checkBox");
   const elCheckList = document.getElementById("checkList");
   const elCheckScoreNum = document.getElementById("checkScoreNum");
@@ -174,22 +175,36 @@ function initScoreInput() {
       elCheckList.innerHTML = '<div class="check-empty">項目がありません(「項目を変える」から入れる)</div>';
     }
     checkItems.forEach((it) => {
-      const label = document.createElement("label");
-      label.className = "check-item";
-      const box = document.createElement("input");
-      box.type = "checkbox";
-      box.checked = !!it.done;
-      box.addEventListener("change", () => { it.done = box.checked; elCheckScoreNum.textContent = checkScore(checkItems); });
-      label.append(box, document.createTextNode(it.text));
-      elCheckList.appendChild(label);
+      const row = document.createElement("div");
+      row.className = "check-item";
+      const marks = document.createElement("span");
+      marks.className = "check-marks";
+      for (const m of MARKS) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "mark";
+        b.textContent = m;
+        b.setAttribute("aria-pressed", String(markOf(it) === m));
+        b.setAttribute("aria-label", `${it.text}: ${m}`);
+        b.addEventListener("click", () => { it.mark = m; it.done = m === "○"; renderChecks(); });
+        marks.appendChild(b);
+      }
+      const text = document.createElement("span");
+      text.className = "check-text";
+      text.textContent = it.text;
+      row.append(marks, text);
+      elCheckList.appendChild(row);
     });
     elCheckScoreNum.textContent = checkItems.length ? checkScore(checkItems) : "—";
   }
 
-  // 今の項目に、今日すでに押した分(同じ id)を重ねる。
+  // 今の項目に、今日すでに付けた印(同じ id)を重ねる。古い記録(done だけ)は ○/× として読む。
   function mergeDone(items, saved) {
-    const done = new Set(((saved && saved.items) || []).filter((i) => i.done).map((i) => i.id));
-    return items.map((i) => ({ id: i.id, text: i.text, done: done.has(i.id) }));
+    const marks = new Map(((saved && saved.items) || []).map((i) => [i.id, markOf(i)]));
+    return items.map((i) => {
+      const mark = marks.get(i.id) || "×";
+      return { id: i.id, text: i.text, done: mark === "○", mark };
+    });
   }
 
   async function openItemEdit() {
@@ -272,7 +287,7 @@ function initScoreInput() {
     const note = elNoteInput.value.trim();
     try {
       const check = checkItems.length
-        ? { items: checkItems.map((i) => ({ id: i.id, text: i.text, done: !!i.done })), score: checkScore(checkItems), at: new Date().toISOString() }
+        ? { items: checkItems.map((i) => ({ id: i.id, text: i.text, done: markOf(i) === "○", mark: markOf(i) })), score: checkScore(checkItems), at: new Date().toISOString() }
         : null;
       await saveScore(today, score, note, check);
       elBtnSaveScore.textContent = "更新";

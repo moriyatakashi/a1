@@ -21,7 +21,8 @@ export async function fetchAllScores() {
   return snap.docs.map((d) => ({ date: d.id, ...d.data() }));
 }
 
-// check(任意、ab-43)= { items: [{id, text, done}], score(0〜100), at }。merge で書くので、
+// check(任意、ab-43)= { items: [{id, text, done, mark}], score(0〜100), at }。mark は ○・△・×(ab-129、2026-10-07)。
+// done は ○ のときだけ true(mark が無かったころの読み手のため残す)。merge で書くので、
 // check を渡さない保存(x4 など)でも同じ日の check は消えない。
 export async function saveScore(date, score, note, check) {
   await ensureFirebaseLogin();
@@ -58,7 +59,12 @@ export async function saveCheckItems(texts) {
   return items;
 }
 
-// 押した数から点を出す(全部押せば100)。
+// ○・△・×(ab-129)。mark が無い古い記録は done から ○/× と読む(Takashi 2026-10-07)。
+export const MARKS = ["○", "△", "×"];
+export const markOf = (i) => (MARKS.includes(i.mark) ? i.mark : i.done ? "○" : "×");
+const MARK_VALUE = { "○": 1, "△": 0.5, "×": 0 };
+
+// 印から点を出す(全部○なら100)。△は半分と数える(Takashi 2026-10-07、ab-129)。得点(0〜120)とは別で、印だけ。
 export function checkScore(items) {
-  return items.length ? Math.round((items.filter((i) => i.done).length / items.length) * 100) : 0;
+  return items.length ? Math.round((items.reduce((s, i) => s + MARK_VALUE[markOf(i)], 0) / items.length) * 100) : 0;
 }
