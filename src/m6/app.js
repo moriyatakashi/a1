@@ -21,7 +21,7 @@
 
 import { fetchWishes, addWish, removeWish } from "./wish-store.js?v=202610041800";
 import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031800";
-import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM, wishVisits, WISH_KM, stationVisits, STATION_KM, STATION_KINDS, officeVisits, OFFICE_KM, OFFICE_KINDS, domeVisits, DOME_KM, prefAt } from "./geo.js?v=202610071500";
+import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM, wishVisits, WISH_KM, stationVisits, STATION_KM, STATION_KINDS, officeVisits, OFFICE_KM, OFFICE_KINDS, domeVisits, DOME_KM, prefAt } from "./geo.js?v=202610072200";
 
 const RAD = Math.PI / 180;
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2));
@@ -623,6 +623,7 @@ const summaryLine = (q) => ({
   neighbor: `${q.pref}のとなり: ${q.answer}`,
   area: `${q.choices.join("と")}、広いのは ${q.answer}`,
   capital: `${q.pref}の県庁所在地: ${q.answer}`,
+  region: `${q.pref}は${q.answer}`,
 }[q.kind] || q.answer);
 
 // 回の終わりの振り返り: 5問を ○× で並べる(まちがえた問は答えも)。

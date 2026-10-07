@@ -69,6 +69,11 @@ test("クイズ: どの種類でも、答えが選択肢にあり、選択肢は
         assert.ok(capitalAskable(q.pref), q.pref);
         assert.equal(q.answer, CAPITALS[q.pref]);
       }
+      if (kind === "region") {
+        assert.notEqual(q.pref, "北海道"); // 地方の名前と同じなので出さない
+        assert.equal(q.answer, REGIONS.find(([, ps]) => ps.includes(q.pref))[0]);
+        for (const c of q.choices) assert.ok(REGIONS.some(([r]) => r === c), c);
+      }
     }
   }
   assert.ok(!capitalAskable("青森県") && capitalAskable("岩手県") && capitalAskable("愛知県"));

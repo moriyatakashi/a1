@@ -258,6 +258,7 @@ export const QUIZ_KINDS = [
   ["neighbor", "となりの県"],
   ["area", "広いのはどっち"],
   ["capital", "県庁所在地"],
+  ["region", "どの地方"], // 2026-10-07 礼文(ab-84 の3、豆知識クイズの形あてではない方。データは REGIONS をそのまま使う)
 ];
 const pick = (arr, rng) => arr[Math.floor(rng() * arr.length)];
 const shuffle = (arr, rng) => {
@@ -316,6 +317,17 @@ export function makeQuiz(kind, ctx, rng = Math.random, focus = null) {
     const wrong = shuffle(names.filter((n) => n !== t).map((n) => CAPITALS[n]), rng).slice(0, 3);
     return { kind, pref: t, prompt: `${t}の県庁所在地は?`, marks: { [t]: "target" }, choices: shuffle([right, ...wrong], rng), answer: right,
       after: `${t} → ${right}`, show: [] };
+  }
+  if (kind === "region") {
+    // 地方が1県だけ(北海道)だと答えが見えるので出さない。はずれは、なるべくとなりの県の地方から(近くて紛らわしい)。
+    const t = from((n) => regionOf(n) !== n);
+    const right = regionOf(t);
+    const near = [...new Set([...(adj.get(t) || [])].map(regionOf))].filter((r) => r !== right);
+    const rest = REGIONS.map(([r]) => r).filter((r) => r !== right && !near.includes(r));
+    const wrong = shuffle(near, rng).concat(shuffle(rest, rng)).slice(0, 3);
+    const same = REGIONS.find(([r]) => r === right)[1];
+    return { kind, pref: t, prompt: `${t}はどの地方?`, marks: { [t]: "target" }, choices: shuffle([right, ...wrong], rng), answer: right,
+      after: `${t} → ${right}(${same.map(short).join("・")})`, show: same };
   }
   return null;
 }
