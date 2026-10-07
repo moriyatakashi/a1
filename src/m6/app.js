@@ -448,7 +448,11 @@ $("info").addEventListener("click", (e) => {
 });
 $("info").addEventListener("keydown", (e) => { if (e.target.id === "wishLabel" && e.key === "Enter") saveWish(); });
 
-// 地方ごとの制覇(バー)と、次の一県(最後の訪問地からいちばん近い、まだ行っていない県)。
+// 地方ごとの制覇(バー)と、次の一県(最後の訪問地から近い、まだ行っていない県)。
+// 10/08(Takashi): いちばん近い県だけだと毎回同じ(和歌山ばかり)になるので、近い順の上位 NEXT_PICK 県からランダムに選ぶ。
+// 「別の県」で引き直せる。選んだ県は引き直すか訪問が増えるまで変えない(描き直しのたびに変わらないように)。
+const NEXT_PICK = 5;
+let nextPick = null;
 function drawRegions() {
   const visited = new Set(agg.keys());
   $("regions").innerHTML = regionProgress(visited).map((r) =>
@@ -459,13 +463,25 @@ function drawRegions() {
   if (!last || !rest.length) { $("nextPref").textContent = ""; return; }
   const front = frontier(visited, adj);
   const d = (n) => distKm(last, centerOf.get(n));
-  const best = rest.sort((x, y) => d(x) - d(y))[0];
+  const near = rest.sort((x, y) => d(x) - d(y)).slice(0, NEXT_PICK);
+  if (!near.includes(nextPick)) nextPick = near[Math.floor(Math.random() * near.length)];
+  const best = nextPick;
   $("nextPref").innerHTML = `次の一県: <button type="button" class="linkish" data-p="${esc(best)}">${esc(best)}</button>`
-    + `(最後の訪問地 ${esc(last.place || last.pref || "")} から約${Math.round(d(best))}km${front.has(best) ? "、となりなので地続き" : ""})`;
+    + `(最後の訪問地 ${esc(last.place || last.pref || "")} から約${Math.round(d(best))}km${front.has(best) ? "、となりなので地続き" : ""})`
+    + (near.length > 1 ? ` <button type="button" class="linkish" data-again="1">別の県</button>` : "");
 }
 $("nextPref").addEventListener("click", (e) => {
-  const n = e.target.dataset && e.target.dataset.p;
-  if (n) { select(n); $("map").scrollIntoView({ behavior: "smooth", block: "center" }); }
+  const t = e.target.dataset || {};
+  if (t.again) {
+    const prev = nextPick;
+    nextPick = null;
+    for (let i = 0; i < 10 && (nextPick === null || nextPick === prev); i++) {
+      nextPick = null;
+      drawRegions();
+    }
+    return;
+  }
+  if (t.p) { select(t.p); $("map").scrollIntoView({ behavior: "smooth", block: "center" }); }
 });
 
 // 霧を晴らす: 初訪問の早い順に、1県ずつ(市区町村で見ているときは1市区町村ずつ)穴を開ける(スクラッチくじの開封感)。

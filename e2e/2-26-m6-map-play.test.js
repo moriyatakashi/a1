@@ -59,6 +59,7 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     // 10/04(ab-107): 霧は既定で市区町村。行った県の市区町村を読み、訪問の緯度経度から 北区・西区・大津市 の3つが晴れる
     await page.waitForFunction(() => document.getElementById("statCities").textContent === "3");
     assert.equal(await page.inputValue("#fogUnit"), "city");
+    assert.equal(await page.isChecked("#fogOn"), false, "霧は最初オフ(10/08)");
     assert.equal(await page.locator("#fogHoles path").count(), 3);
     assert.ok(await page.locator('#cities [data-p="京都府"]').count() === 0, "行っていない県の市区町村は読まない");
     await page.locator('#cities [data-c="27127"]').dispatchEvent("click");
@@ -166,6 +167,9 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
 
     // 10/03 2回目: 地方ごとの制覇・次の一県・次に晴らせる県・県の詳細
     assert.match(await page.textContent("#regions"), /近畿2\/7/);
+    assert.match(await page.textContent("#nextPref"), /^次の一県: \S+\(最後の訪問地 大津市 から約\d+km/);
+    // 10/08: 次の一県は近い県からランダムで、「別の県」で引き直せる
+    await page.click('#nextPref [data-again]');
     assert.match(await page.textContent("#nextPref"), /^次の一県: \S+\(最後の訪問地 大津市 から約\d+km/);
     assert.ok(await page.locator('#front [data-p="京都府"]').count() > 0, "京都府は次に晴らせる");
     assert.equal(await page.locator('#front [data-p="大阪府"]').count(), 0);
