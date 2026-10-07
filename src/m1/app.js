@@ -6,7 +6,7 @@ import "../common/config.js";
 import { todayStr } from "../common/utils.js";
 // ab-24(2026-09-29、方式B): 毎日スコアの正本は Firestore ab01-9f35a の scores/{日付}。
 // 読み書きとログインは common/score-store.js(a2/x4 と共用、2026-10-02 に切り出し)。
-import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX,
+import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX, SCORE_SOFT_MAX,
   fetchCheckItems, fetchItemShelf, saveCheckItems, checkScore, MARKS, markOf } from "../common/score-store.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -148,8 +148,18 @@ function initScoreInput() {
 
   elScoreDate.textContent = today;
 
+  // 普段は 100 まで。「120まで」で広げる(もう一度押すと戻す)。100 を超えた日を開いたときは広げておく
+  const elBtnWide = document.getElementById("btnWide");
+  function setWide(on) {
+    elSlider.max = on ? SCORE_MAX : SCORE_SOFT_MAX;
+    elBtnWide.setAttribute("aria-pressed", String(on));
+    elScoreNum.textContent = elSlider.value; // 狭めたとき 100 を超えていた値は 100 に丸まる
+  }
+  elBtnWide.addEventListener("click", () => setWide(Number(elSlider.max) !== SCORE_MAX));
+
   function setScore(val) {
     const v = Math.min(SCORE_MAX, Math.max(SCORE_MIN, Number(val)));
+    setWide(v > SCORE_SOFT_MAX);
     elSlider.value = v;
     elScoreNum.textContent = v;
   }
@@ -159,7 +169,7 @@ function initScoreInput() {
   });
 
   // ab-43: チェック項目。checkItems = [{id, text, done, mark}](今日の分)。読めなければ(Rules未デプロイなど)欄ごと出さない。
-  // ab-129(2026-10-07): できた/できない の2択を ○・△・× の3段階にした。押していない項目は ×。
+  // ab-129(2026-10-07): できた/できない の2択を ○・△・× の3段階にした。押していない項目は △(Takashi 2026-10-08、前は ×)。
   const elCheckBox = document.getElementById("checkBox");
   const elCheckList = document.getElementById("checkList");
   const elCheckScoreNum = document.getElementById("checkScoreNum");
@@ -198,11 +208,11 @@ function initScoreInput() {
     elCheckScoreNum.textContent = checkItems.length ? checkScore(checkItems) : "—";
   }
 
-  // 今の項目に、今日すでに付けた印(同じ id)を重ねる。古い記録(done だけ)は ○/× として読む。
+  // 今の項目に、今日すでに付けた印(同じ id)を重ねる。印の無い項目は △ から。古い記録(done だけ)は ○/× として読む。
   function mergeDone(items, saved) {
     const marks = new Map(((saved && saved.items) || []).map((i) => [i.id, markOf(i)]));
     return items.map((i) => {
-      const mark = marks.get(i.id) || "×";
+      const mark = marks.get(i.id) || "△";
       return { id: i.id, text: i.text, done: mark === "○", mark };
     });
   }

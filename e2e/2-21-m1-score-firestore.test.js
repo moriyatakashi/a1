@@ -66,3 +66,35 @@ test("m1: 保存は Firestore の scores/{今日} へ直接書き、Azure の /a
     server.close();
   }
 });
+
+test("m1: スライダーは普段 100 まで、「120まで」で広げる。100 超えの日を開くと広がっている(Takashi 2026-10-08)", async () => {
+  const server = await serveStatic();
+  const browser = await chromium.launch();
+  try {
+    const page = await (await browser.newContext()).newPage();
+    await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
+    const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+
+    await routeFirebaseStub(page, {});
+    await page.goto(`http://localhost:${server.address().port}/src/m1/`);
+    await page.waitForFunction(() => document.getElementById("scoreNum").textContent === "80");
+    assert.equal(await page.getAttribute("#slider", "max"), "100");
+    await page.click("#btnWide");
+    assert.equal(await page.getAttribute("#slider", "max"), "120");
+    await page.$eval("#slider", (el) => { el.value = "115"; el.dispatchEvent(new Event("input")); });
+    await page.click("#btnWide"); // 戻すと 100 に丸まる
+    assert.equal(await page.getAttribute("#slider", "max"), "100");
+    assert.equal(await page.textContent("#scoreNum"), "100");
+
+    const page2 = await (await browser.newContext()).newPage();
+    await page2.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
+    await routeFirebaseStub(page2, { [today]: { score: 110, note: "" } });
+    await page2.goto(`http://localhost:${server.address().port}/src/m1/`);
+    await page2.waitForFunction(() => document.getElementById("scoreNum").textContent === "110");
+    assert.equal(await page2.getAttribute("#slider", "max"), "120");
+    assert.equal(await page2.getAttribute("#btnWide", "aria-pressed"), "true");
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});

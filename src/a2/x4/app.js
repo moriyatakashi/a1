@@ -2,7 +2,7 @@ import "../../common/config.js";
 import { todayStr } from "../../common/utils.js";
 // 2026-10-02: 毎日スコアの正本は ab-24 から Firestore。ここは Azure の /api/scores に PUT していて
 // 410 で「保存に失敗しました」になっていたので、m1 と同じ common/score-store.js 経由に切り替えた。
-import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX } from "../../common/score-store.js";
+import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX, SCORE_SOFT_MAX } from "../../common/score-store.js";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const Y_MIN = 60;
 const Y_MAX = 120; // ab-43: 0〜120
@@ -108,8 +108,18 @@ function initScoreInput() {
   const elBtnSaveScore = document.getElementById("btnSaveScore");
   const elScoreSaved = document.getElementById("scoreSaved");
   elScoreDate.textContent = today;
+  // 普段は 100 まで。「120まで」で広げる(もう一度押すと戻す)。100 を超えた日を開いたときは広げておく
+  const elBtnWide = document.getElementById("btnWide");
+  function setWide(on) {
+    elSlider.max = on ? SCORE_MAX : SCORE_SOFT_MAX;
+    elBtnWide.setAttribute("aria-pressed", String(on));
+    elScoreNum.textContent = elSlider.value; // 狭めたとき 100 を超えていた値は 100 に丸まる
+  }
+  elBtnWide.addEventListener("click", () => setWide(Number(elSlider.max) !== SCORE_MAX));
+
   function setScore(val) {
     const v = Math.min(SCORE_MAX, Math.max(SCORE_MIN, Number(val)));
+    setWide(v > SCORE_SOFT_MAX);
     elSlider.value = v;
     elScoreNum.textContent = v;
   }

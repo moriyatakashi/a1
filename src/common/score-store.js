@@ -10,6 +10,8 @@ export { saveErrorText };
 
 export const SCORE_MIN = 0;
 export const SCORE_MAX = 120; // ab-43: 100=感覚の満点、超えた分はそれ以上やった分(Rules も 120)
+// 入力のスライダーは普段 100 まで。「120まで」を押したときだけ 120 まで広げる(Takashi 2026-10-08)
+export const SCORE_SOFT_MAX = 100;
 
 export async function fetchScore(date) {
   const snap = await getDoc(doc(db, "scores", date));

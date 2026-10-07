@@ -49,13 +49,13 @@ test("m1: チェック項目を押して保存すると check が残り、項目
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
     await page.waitForSelector("#checkBox", { state: "visible" });
     assert.deepEqual(await page.locator(".check-text").allTextContents(), ["3食", "散歩"]);
-    // 押していない項目は ×(ab-129)
-    assert.deepEqual(await page.locator('.mark[aria-pressed="true"]').allTextContents(), ["×", "×"]);
-    assert.equal(await page.textContent("#checkScoreNum"), "0");
+    // 押していない項目は △(Takashi 2026-10-08、前は ×)
+    assert.deepEqual(await page.locator('.mark[aria-pressed="true"]').allTextContents(), ["△", "△"]);
+    assert.equal(await page.textContent("#checkScoreNum"), "50");
 
     // ○ と △ → (1 + 0.5) / 2 = 75点(△は半分、ab-129)。保存すると scores/{今日}.check に文面と印が入る
     await page.getByRole("button", { name: "3食: ○" }).click();
-    assert.equal(await page.textContent("#checkScoreNum"), "50");
+    assert.equal(await page.textContent("#checkScoreNum"), "75");
     await page.getByRole("button", { name: "散歩: △" }).click();
     assert.equal(await page.textContent("#checkScoreNum"), "75");
     await page.click("#btnSaveScore");
@@ -64,7 +64,7 @@ test("m1: チェック項目を押して保存すると check が残り、項目
     assert.equal(w.check.score, 75);
     assert.deepEqual(w.check.items, [{ id: "a", text: "3食", done: true, mark: "○" }, { id: "b", text: "散歩", done: false, mark: "△" }]);
 
-    // 項目を入れ替える: 3食(棚にある)+読書(新しい)。3食の今日の○は残り、読書は×から
+    // 項目を入れ替える: 3食(棚にある)+読書(新しい)。3食の今日の○は残り、読書は△から
     await page.click("#btnEditItems");
     const inputs = page.locator("#itemInputs input");
     await inputs.nth(0).fill("3食");
@@ -79,8 +79,8 @@ test("m1: チェック項目を押して保存すると check が残り、項目
     assert.deepEqual(cur.items.map((i) => i.text), ["3食", "読書"]);
     assert.equal(cur.items[0].id, "a", "3食は棚の id を使い回す");
     assert.deepEqual(await page.locator(".check-text").allTextContents(), ["3食", "読書"]);
-    assert.deepEqual(await page.locator('.mark[aria-pressed="true"]').allTextContents(), ["○", "×"]);
-    assert.equal(await page.textContent("#checkScoreNum"), "50");
+    assert.deepEqual(await page.locator('.mark[aria-pressed="true"]').allTextContents(), ["○", "△"]);
+    assert.equal(await page.textContent("#checkScoreNum"), "75");
   } finally {
     await browser.close();
     server.close();
