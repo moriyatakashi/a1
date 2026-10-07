@@ -1,4 +1,5 @@
-name: entropy-scan
+name: entropy-scan (鍵らしい文字列が入っていないか見る)
+# 2026-10-07(ab-56): 名前は「ファイル名 (説明)」にそろえる。Actions の一覧が名前順=ファイル名順で並ぶ。旧名: entropy-scan
 # 鍵様(高エントロピー)文字列の検出。rbook の `run scan` と同じ本体(scripts/ba_entropy_scan.py)を回す。
 # 新規検出があれば exit=1 でジョブが落ちる(=通知)。
 on:

@@ -1,4 +1,5 @@
-name: Run tests
+name: test (e2e テスト)
+# 2026-10-07(ab-56): 名前は「ファイル名 (説明)」にそろえる。Actions の一覧が名前順=ファイル名順で並ぶ。旧名: Run tests
 
 on:
   push:

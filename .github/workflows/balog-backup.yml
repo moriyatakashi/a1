@@ -1,4 +1,5 @@
-name: Backup BaLog/Scores/Visits to Google Drive
+name: balog-backup (BaLog・Scores・Visits を Google ドライブへ控える)
+# 2026-10-07(ab-56): 名前は「ファイル名 (説明)」にそろえる。Actions の一覧が名前順=ファイル名順で並ぶ。旧名: Backup BaLog/Scores/Visits to Google Drive
 
 on:
   # 2026-08-11: aaは今日ファイルを空にした(ba-273)ため、aa側の日次バックアップは
