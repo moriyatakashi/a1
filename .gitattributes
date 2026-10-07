@@ -1,0 +1,3 @@
+# 改行は LF にそろえる(2026-10-07、ab-104)。中身はもともと全部 LF で入っている。
+# Windows(core.autocrlf=true)で commit のたびに出ていた「LF will be replaced by CRLF」の警告を止める。
+* text=auto eol=lf
