@@ -221,15 +221,19 @@ export function stationVisits(visits, rows, km = STATION_KM) {
 // 返り値: 行った役所の Map(行の番号 → { i, count, first })。
 export const OFFICE_KM = 0.5;
 export const OFFICE_KINDS = [[1, "市役所"], [2, "区役所"], [3, "町役場"], [4, "村役場"]];
-export function officeVisits(visits, rows, km = OFFICE_KM) {
+export const officeVisits = (visits, rows, km = OFFICE_KM) => nearVisits(visits, rows.map((r) => ({ lat: r[2], lng: r[3] })), km);
+
+// 点 pts [{lat, lng}] ごとに、訪問が km(1km まで)以内に入った回数と最初の日。0.01度(約1km)のます目に点を入れ、訪問のまわり3×3だけ見る。
+// 返り値: 入った点の Map(pts の番号 → { i, count, first })。役所・コメダで使う。
+export function nearVisits(visits, pts, km) {
   const grid = new Map();
-  rows.forEach((r, i) => { const k = `${Math.floor(r[2] * 100)},${Math.floor(r[3] * 100)}`; grid.set(k, [...(grid.get(k) || []), i]); });
+  pts.forEach((p, i) => { const k = `${Math.floor(p.lat * 100)},${Math.floor(p.lng * 100)}`; grid.set(k, [...(grid.get(k) || []), i]); });
   const out = new Map();
   for (const v of visits) {
     if (!Number.isFinite(v.lat) || !Number.isFinite(v.lng)) continue;
     const y = Math.floor(v.lat * 100), x = Math.floor(v.lng * 100);
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (const i of grid.get(`${y + dy},${x + dx}`) || []) {
-      if (distKm(v, { lat: rows[i][2], lng: rows[i][3] }) > km) continue;
+      if (distKm(v, pts[i]) > km) continue;
       const a = out.get(i) || { i, count: 0, first: "" };
       a.count++;
       if (v.date && (!a.first || v.date < a.first)) a.first = v.date;
@@ -244,6 +248,16 @@ export function officeVisits(visits, rows, km = OFFICE_KM) {
 export const DOME_KM = 0.5;
 export const domeVisits = (visits, domes, km = DOME_KM) =>
   castleVisits(visits, domes.map(([name, lat, lng, pref, qid], i) => [i, name, lat, lng, pref, qid]), km);
+
+// ---- お店(ab-48、2026-10-07): イオンモールとコメダ ----
+// shops.json(scripts/build-m6-shops.mjs、OpenStreetMap)の行 [名前, 緯度, 経度, 県コード, OSM の id]。
+// イオンモールは表がほぼそろっているので名城と同じ「制覇」(いちばん近づいた距離も出す)。建物が大きいので0.5km。
+// コメダは表が4分の1ほど欠けているので「行った数」だけ。店は小さく町なかに多いので0.15km。
+export const AEON_KM = 0.5;
+export const KOMEDA_KM = 0.15;
+export const aeonVisits = (visits, rows, km = AEON_KM) =>
+  castleVisits(visits, rows.map(([name, lat, lng, pref, id], i) => [i, name, lat, lng, pref, id]), km);
+export const komedaVisits = (visits, rows, km = KOMEDA_KM) => nearVisits(visits, rows.map((r) => ({ lat: r[1], lng: r[2] })), km);
 
 // 点 [lng, lat] がどの県の中か(県の features から)。どこにも入らない(海の上など)なら ""。
 export function prefAt(pt, features) {

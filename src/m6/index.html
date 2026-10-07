@@ -62,6 +62,18 @@
   .dome-stamp span { display: block; font-size: 0.6rem; }
   .dome-stamp.done { border: 2px solid #2d4f8a; color: #2d4f8a; font-weight: 700; }
   @media (prefers-color-scheme: dark) { .dome.done { fill: #6f95d6; } .dome-stamp.done { border-color: #6f95d6; color: #6f95d6; } }
+  /* 同日(ab-48 の続き): お店。イオンモール(紫紅)・コメダ(こげ茶) */
+  .aeon { fill: var(--paper); stroke: #b0306a; stroke-width: 1.2; cursor: pointer; }
+  .aeon.done { fill: #b0306a; stroke: #fff; }
+  .komeda { fill: var(--paper); stroke: #7a4a22; stroke-width: 1; cursor: pointer; }
+  .komeda.done { fill: #7a4a22; stroke: #fff; stroke-width: 0.6; }
+  .aeon.sel, .komeda.sel { stroke: var(--ink); stroke-width: 2.2; }
+  .aeon-stamp { font: inherit; font-size: 0.7rem; text-align: left; padding: 5px 6px; border: 1px dashed var(--line); border-radius: 6px;
+    background: none; color: var(--ink-soft); cursor: pointer; }
+  .aeon-stamp span { display: block; font-size: 0.6rem; }
+  .aeon-stamp.near { border-color: #e8743b; color: var(--ink); }
+  .aeon-stamp.done { border: 2px solid #b0306a; color: #b0306a; font-weight: 700; }
+  @media (prefers-color-scheme: dark) { .komeda.done { fill: #c08a55; } .aeon-stamp.done { border-color: #e070a5; color: #e070a5; } }
   /* 同日(ab-84 の1): 行きたい場所。青い丸、かなったら塗りつぶし。置くあいだは地図のカーソルを十字に */
   .wish { fill: var(--paper); stroke: #3b7dd8; stroke-width: 2; cursor: pointer; }
   .wish.done { fill: #3b7dd8; stroke: #fff; }
@@ -180,6 +192,7 @@
       <label><input type="checkbox" id="stationsOn" checked> 駅</label>
       <label><input type="checkbox" id="officesOn" checked> 役所</label>
       <label><input type="checkbox" id="domesOn" checked> ドーム</label>
+      <label><input type="checkbox" id="shopsOn" checked> お店</label>
       <label><input type="checkbox" id="castlesOn" checked> 100名城</label>
       <label><input type="checkbox" id="wishesOn" checked> 行きたい</label>
       <button type="button" id="btnWish">＋行きたい</button>
@@ -239,6 +252,15 @@
   </div>
 
   <div class="section">
+    <div class="section-title">お店(イオンモール・コメダ)</div>
+    <div class="castle-line" id="aeonSummary"></div>
+    <div class="castle-line" id="aeonClose"></div>
+    <div class="castle-book" id="aeonBook"></div>
+    <div class="castle-line" id="komedaSummary" style="margin-top:10px"></div>
+    <div class="castle-line" id="komedaList"></div>
+  </div>
+
+  <div class="section">
     <div class="section-title">日本100名城</div>
     <div class="castle-line" id="castleSummary"></div>
     <div class="castle-line" id="castleClose"></div>
@@ -268,8 +290,8 @@
     <div class="quiz-bank" id="quizBank"></div>
   </div>
 
-  <p class="credit">市区町村の境界: 「国土数値情報(行政区域データ)」(国土交通省)を加工して作成(スマートニュース メディア研究所 japan-topography の簡略版をもとに、座標を丸めて県ごとに分けた)。2021年1月時点の市区町村。<br>日本100名城の番号・座標: Wikidata(CC0)。<br>駅: 「国土数値情報(鉄道データ)」(国土交通省、令和6年度)を加工して作成(路線ごとのホームを1駅にまとめた)。<br>市区町村役場・ドームの座標: Wikidata(CC0)。</p>
+  <p class="credit">市区町村の境界: 「国土数値情報(行政区域データ)」(国土交通省)を加工して作成(スマートニュース メディア研究所 japan-topography の簡略版をもとに、座標を丸めて県ごとに分けた)。2021年1月時点の市区町村。<br>日本100名城の番号・座標: Wikidata(CC0)。<br>駅: 「国土数値情報(鉄道データ)」(国土交通省、令和6年度)を加工して作成(路線ごとのホームを1駅にまとめた)。<br>市区町村役場・ドームの座標: Wikidata(CC0)。<br>イオンモール・コメダの店: © OpenStreetMap contributors(ODbL)。</p>
 
-  <script type="module" src="app.js?v=202610071500"></script>
+  <script type="module" src="app.js?v=202610071800"></script>
 </body>
 </html>

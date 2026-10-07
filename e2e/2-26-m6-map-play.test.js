@@ -84,6 +84,16 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.equal(await page.locator("#domes circle").count(), 6);
     await page.locator('.dome-stamp:has-text("京セラドーム大阪")').dispatchEvent("click");
     assert.match(await page.textContent("#info"), /^京セラドーム大阪\(大阪府、ドーム\) — まだ。いちばん近づいたのは約1\.2km\(大阪市 西区\)/);
+    // 同日(ab-48): お店。イオンモールは地図に全部(どれも0.5kmより遠い)、コメダは行った店がないので0
+    const shopsJson = JSON.parse(fs.readFileSync(path.join(ROOT, "src/m6/shops.json"), "utf8"));
+    assert.match(await page.textContent("#aeonSummary"), new RegExp(`^イオンモール 行った 0 / ${shopsJson.aeon.length}`));
+    assert.match(await page.textContent("#aeonClose"), /^あと少し: \S+\(約1\.\dkmまで近づいた\)/);
+    assert.equal(await page.locator("#shops circle.aeon").count(), shopsJson.aeon.length);
+    assert.equal(await page.locator(".aeon-stamp").count(), shopsJson.aeon.length);
+    assert.match(await page.textContent("#komedaSummary"), /^コメダ 行った 0店/);
+    assert.equal(await page.locator("#shops circle.komeda").count(), 0);
+    await page.locator("#aeonClose button").first().dispatchEvent("click");
+    assert.match(await page.textContent("#info"), /^イオンモール\S+\(大阪府\) — まだ。いちばん近づいたのは約1\.\dkm\(大阪市 西区\)/);
     await page.locator("#stations circle").dispatchEvent("click");
     assert.match(await page.textContent("#info"), /^東梅田駅\(大阪府、地下鉄・私鉄など\) — 行った.*谷町線/);
     await page.click("#btnReveal");

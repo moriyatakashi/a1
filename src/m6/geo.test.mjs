@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits, wishVisits, stationVisits, STATION_KM, officeVisits, OFFICE_KM, domeVisits, prefAt } from "./geo.js";
+import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits, wishVisits, stationVisits, STATION_KM, officeVisits, OFFICE_KM, domeVisits, aeonVisits, komedaVisits, KOMEDA_KM, prefAt } from "./geo.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const features = JSON.parse(fs.readFileSync(path.join(HERE, "../m5/prefectures.geojson"), "utf8")).features;
@@ -247,4 +247,22 @@ test("ドーム: 6つ、外から0.5km以内で行った", () => {
   const [tokyo] = domeVisits([{ lat: 35.7040, lng: 139.7510, date: "2026-09-02", place: "水道橋" }], domes.filter((d) => d[0] === "東京ドーム"));
   assert.ok(tokyo.done && tokyo.near < 0.5);
   assert.equal(tokyo.name, "東京ドーム");
+});
+
+// ---- お店(ab-48): イオンモールとコメダ ----
+test("お店: イオンモールは130以上・コメダは600以上、名前はそれぞれのチェーン、県は1〜47", () => {
+  const s = JSON.parse(fs.readFileSync(path.join(HERE, "shops.json"), "utf8"));
+  assert.ok(s.aeon.length >= 120 && s.aeon.every((r) => r[0].startsWith("イオンモール")), String(s.aeon.length));
+  assert.ok(s.komeda.length >= 600 && s.komeda.every((r) => !/駐車場/.test(r[0])), String(s.komeda.length));
+  assert.ok([...s.aeon, ...s.komeda].every((r) => r[3] >= 1 && r[3] <= 47));
+});
+
+test("お店: イオンモールは0.5km以内で行った(いちばん近づいた距離も)、コメダは0.15km以内の店だけ数える", () => {
+  const aeon = [["イオンモールA", 34.7000, 135.5000, 27, "w1"]];
+  const [a] = aeonVisits([{ lat: 34.7030, lng: 135.5000, date: "2026-09-02", place: "A" }], aeon); // 約0.33km
+  assert.ok(a.done && a.name === "イオンモールA");
+  const komeda = [["コメダ珈琲店 甲", 34.7000, 135.5000, 27, "n1"], ["コメダ珈琲店 乙", 34.7020, 135.5000, 27, "n2"]];
+  const got = komedaVisits([{ lat: 34.7005, lng: 135.5000, date: "2026-09-02" }], komeda); // 甲から約55m・乙から約170m
+  assert.equal(KOMEDA_KM, 0.15);
+  assert.deepEqual([...got.keys()], [0]);
 });
