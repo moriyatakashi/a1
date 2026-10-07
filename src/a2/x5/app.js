@@ -197,7 +197,8 @@ function initVisitInput() {
       elPlaceInput.value = "";
       _lat = null; _lng = null; _pref = null; _city = null; _town = null;
       const granLabel = { pref: "県", city: "市", town: "町" }[saved.autoPointGranularity];
-      elStatus.textContent = granLabel ? `✓ 追加しました(初${granLabel}で自動加点)` : "✓ 追加しました";
+      const notes = [granLabel && `初${granLabel}で自動加点`, saved.roundPoint && "今日あちこち回ったので1点"].filter(Boolean); // ab-153
+      elStatus.textContent = notes.length ? `✓ 追加しました(${notes.join("、")})` : "✓ 追加しました";
       setTimeout(() => elStatus.textContent = "", 3000);
       if (_visits) _visits.push(saved);
       load(_visits);

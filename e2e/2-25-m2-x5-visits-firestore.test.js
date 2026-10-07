@@ -40,7 +40,7 @@ const VISITS = {
 };
 
 // digest: digests/visits に置いておくまとめ(ab-97)。signedIn: 開いた時点で Firebase にログイン済みか。
-async function addVisitVia(rel, address, { digest = null, signedIn = false } = {}) {
+async function addVisitVia(rel, address, { digest = null, signedIn = false, visits = VISITS } = {}) {
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
@@ -60,12 +60,13 @@ async function addVisitVia(rel, address, { digest = null, signedIn = false } = {
     });
     await page.route("https://nominatim.openstreetmap.org/**", (route) =>
       route.fulfill({ contentType: "application/json", body: JSON.stringify({ address }) }));
-    await routeFirebaseStub(page, {}, { visits: VISITS, ...(digest ? { digests: { visits: digest } } : {}) });
+    await routeFirebaseStub(page, {}, { visits, ...(digest ? { digests: { visits: digest } } : {}) });
     if (signedIn) await page.addInitScript(() => { window.__fsSignedIn = true; });
 
     await page.goto(`http://localhost:${server.address().port}/src/${rel}`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
-    await page.waitForFunction(() => document.getElementById("statTotal").textContent === "1");
+    const n0 = Object.keys(visits).length;
+    await page.waitForFunction((n) => document.getElementById("statTotal").textContent === String(n), n0);
 
     await page.click("#btnGps");
     await page.waitForFunction(() => document.getElementById("placeInput").value !== "");
@@ -77,7 +78,7 @@ async function addVisitVia(rel, address, { digest = null, signedIn = false } = {
     })).jsonValue();
     const writes = await page.evaluate(() => window.__fsOtherWrites || []);
     // 保存後の描き直しが終わるまで待ってから数える(件数が1増えるのを見る)
-    await page.waitForFunction(() => document.getElementById("statTotal").textContent === "2");
+    await page.waitForFunction((n) => document.getElementById("statTotal").textContent === String(n + 1), n0);
     const visitReads = await page.evaluate(() => (window.__fsReads || []).filter((n) => n === "visits").length);
     const digestWrites = writes.filter((w) => w.col === "digests");
     return { writes, status, azureCalls, visitReads, digestWrites };
@@ -124,6 +125,26 @@ test("m2: 行ったことのある県・市・町なら加点は書かない", a
   assert.equal(writes.filter((w) => w.col === "visits").length, 1);
   assert.equal(writes.filter((w) => w.col === "pointEvents").length, 0);
   assert.equal(status, "✓ 追加しました");
+});
+
+// ab-153: 今日すでに2か所(約11km離れた2点)回っていて、3か所目を足すと合計10km以上 → 1点(visit_round)が付く。訪問には印を書かない(Rules)
+test("m2: 今日3か所目で合計10km以上回っていたら1点(何度も行く場所でも、ab-153)", async () => {
+  const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  const visits = {
+    ...VISITS,
+    t1: { ...VISITS.v1, date: today, time: "00:00", lat: 34.80, createdAt: `${today}T00:00:00.000Z` },
+    t2: { ...VISITS.v1, date: today, time: "00:01", lat: 34.70, createdAt: `${today}T00:01:00.000Z` },
+  };
+  const { writes, status } = await addVisitVia("m2/", { state: "大阪府", city: "大阪市", suburb: "北区" }, { visits });
+  const visit = writes.find((w) => w.col === "visits");
+  const points = writes.filter((w) => w.col === "pointEvents");
+  assert.equal(points.length, 1, "行ったことのある町なので初訪問の点は無く、回った分の1点だけ");
+  assert.equal(points[0].points, 1);
+  assert.equal(points[0].catalogId, "visit_round");
+  assert.match(points[0].note, new RegExp(`^${today} 3か所・約1\\dkm$`));
+  assert.equal(points[0].visitId, visit.id);
+  assert.equal("roundPoint" in visit, false, "visits に書ける欄は Rules で決まっているので足さない");
+  assert.match(status, /今日あちこち回ったので1点/);
 });
 
 // ab-97: まとめ文書(digests/visits)が visits の件数と合っていれば、visits は全件読まない
