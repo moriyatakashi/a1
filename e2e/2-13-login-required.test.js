@@ -30,7 +30,7 @@ function serveStatic() {
   });
 }
 
-const PAGES = ["m1", "m2", "bc", "cc", "a2/x3", "a2/x4", "a2/x5"];
+const PAGES = ["m1", "m2", "bc"]; // 2026-10-10: cc・旧a2 は消した(ab-161)
 
 for (const rel of PAGES) {
   test(`${rel}: ログインしていなければ中身を出さず、データも取りに行かない(ab-162)`, async () => {

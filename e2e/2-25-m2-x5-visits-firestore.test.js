@@ -1,4 +1,4 @@
-// ab-53(2026-10-03): 訪問(m2・a2/x5)は Firestore の visits/{id} を直接読み書きし、初訪問の加点も pointEvents/{id} へ
+// ab-53(2026-10-03): 訪問(m2。旧 a2/x5 は 2026-10-10 に消した)は Firestore の visits/{id} を直接読み書きし、初訪問の加点も pointEvents/{id} へ
 // 同じ batch で書く。Azure の /api/visits・/api/points には一切行かないことを確かめる(Firebase SDK はスタブ、ネットワークに出ない)。
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -109,17 +109,6 @@ test("m2: 新しい町への訪問は visits と pointEvents(町=2点)を Firest
   assert.match(status, /初町で自動加点/);
   assert.deepEqual(azureCalls, []);
   // visits の全件読みは開いたときの1回だけ。保存の判定・保存後の描き直しでは読み直さない(ab-97)
-  assert.equal(visitReads, 1);
-});
-
-test("a2/x5: 新しい県なら県=10点だけ(市・町も新しくても二重加点しない)", async () => {
-  const { writes, status, azureCalls, visitReads } = await addVisitVia("a2/x5/", { state: "京都府", city: "京都市", suburb: "山科区" });
-  const points = writes.filter((w) => w.col === "pointEvents");
-  assert.equal(points.length, 1);
-  assert.equal(points[0].points, 10);
-  assert.equal(points[0].note, "京都府(pref)");
-  assert.match(status, /初県で自動加点/);
-  assert.deepEqual(azureCalls, []);
   assert.equal(visitReads, 1);
 });
 

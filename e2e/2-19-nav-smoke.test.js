@@ -22,8 +22,6 @@ const MIME = {
 // 外部が空/abortで返る前提では、そもそもスクリプトエラーになるページを許容する場合はここに理由付きで書く。
 // (増やすときは「なぜ許容か」をコメントに残す。)
 const ALLOW_PAGE_ERRORS = {
-  // bfはLeaflet(cdnjs)をCDNから読む。外部遮断のこのテストではLが未定義になるのが正常。
-  "src/bd/bf/": "L is not defined",
 };
 
 function serveStatic() {
@@ -46,7 +44,8 @@ const HREFS = nav.categories.flatMap((c) => c.items.map((i) => i.href)).filter((
 
 test("nav.ymlの全リンク先が実在する", () => {
   // 2026-09-29(ab-32): g1〜g7・g9 を b1/g へ移したので下限を30→20に下げた(移設後は27件)
-  assert.ok(HREFS.length >= 20, `nav.ymlのsrc/リンクが少なすぎる: ${HREFS.length}`);
+  // 2026-10-10(ab-161): 別系統・旧a2 を消して14件になったので下限を12に下げた
+  assert.ok(HREFS.length >= 12, `nav.ymlのsrc/リンクが少なすぎる: ${HREFS.length}`);
   for (const h of HREFS) {
     assert.ok(fs.existsSync(path.join(ROOT, h, "index.html")), `${h} に index.html が無い`);
   }

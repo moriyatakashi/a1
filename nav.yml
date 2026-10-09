@@ -24,9 +24,6 @@ categories:
         desc: ここに来た(今の町名を見て、前回と違う・初めてなら保存)
         href: src/m8/
         stage: beta
-      - code: bf
-        desc: 訪問地図(別系統)
-        href: src/bd/bf/
   - label: 学ぶ
     items:
       - code: m7
@@ -44,12 +41,6 @@ categories:
       - code: bc
         desc: レーダーチャート
         href: src/bc/
-      - code: cb
-        desc: 現在形ビュー(別系統)
-        href: src/cb/
-      - code: cc
-        desc: レーダーチャート(別系統)
-        href: src/cc/
   - label: baのデータ
     items:
       - code: x1
@@ -58,34 +49,8 @@ categories:
       - code: x2
         desc: 生JSON
         href: src/x2/
-      - code: bg
-        desc: BaLog Index
-        href: src/bd/bg/
   - label: まとめ・文書・設計
     items:
       - code: bd
         desc: カタログ＋be文書/設計メモ(be・c群を収容)
         href: src/bd/
-      - code: cd
-        desc: カタログ(別系統)
-        href: src/bd/cd/
-  - label: 旧a2(アーカイブ・a2独立リポジトリ時代のアプリ)
-    items:
-      - code: a2
-        desc: 旧a2の目次
-        href: src/a2/
-      - code: a2-x2
-        desc: note
-        href: src/a2/x2/
-      - code: a2-x3
-        desc: radar
-        href: src/a2/x3/
-      - code: a2-x4
-        desc: daily
-        href: src/a2/x4/
-      - code: a2-x5
-        desc: visits
-        href: src/a2/x5/
-      - code: a2-x6
-        desc: post
-        href: src/a2/x6/
