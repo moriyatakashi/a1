@@ -61,6 +61,8 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.equal(await page.inputValue("#fogUnit"), "city");
     assert.equal(await page.isChecked("#fogOn"), false, "霧は最初オフ(10/08)");
     assert.equal(await page.locator("#fogHoles path").count(), 3);
+    // ab-158: 行った県(大阪府・滋賀県)は霧を薄く(二段)。行っていない県は薄くしない
+    assert.deepEqual((await page.locator("#fogHaze path").evaluateAll((els) => els.map((e) => e.getAttribute("fill")))).sort(), ["#4d4d4d", "#4d4d4d"]);
     assert.ok(await page.locator('#cities [data-p="京都府"]').count() === 0, "行っていない県の市区町村は読まない");
     await page.locator('#cities [data-c="27127"]').dispatchEvent("click");
     assert.match(await page.textContent("#info"), /^大阪市北区\(大阪府、市区町村 2\/\d+\) — 1回、初訪問 2026-09-20/);
@@ -150,6 +152,7 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     // 県で に切り替えると、霧の穴は県の形になり、市区町村の線は隠れる(選んだものはこの端末に覚える)
     await page.selectOption("#fogUnit", "pref");
     assert.ok(await page.locator("#fogHoles path").count() >= 2);
+    assert.equal(await page.locator("#fogHaze path").count(), 0, "県で見るときは行った県をまるごと晴らす(薄くする段は無い)");
     assert.equal(await page.locator("#cities").evaluate((g) => g.style.display), "none");
     assert.equal(await page.evaluate(() => localStorage.getItem("m6.fogUnit")), "pref");
 

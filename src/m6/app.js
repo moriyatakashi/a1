@@ -138,7 +138,7 @@ function drawMap() {
         <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="4" seed="7"/>
         <feColorMatrix values="0 0 0 0 0.62  0 0 0 0 0.66  0 0 0 0 0.70  0 0 0 -1.1 1.25"/>
       </filter>
-      <mask id="fogMask"><rect width="760" height="760" fill="white"/><g id="fogHoles"></g></mask>
+      <mask id="fogMask"><rect width="760" height="760" fill="white"/><g id="fogHaze"></g><g id="fogHoles"></g></mask>
     </defs>
     <path d="M30 60 H170 V200 H30 Z" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/>
     <g id="prefs">${paths}</g>
@@ -170,13 +170,20 @@ function drawMap() {
 }
 
 // 霧の穴: 県で/市区町村での切り替えに合わせて、県の形か市区町村の形をくり抜く。keys は県名か団体コード。
-function holePath(sel) {
-  return [...svg.querySelectorAll(sel)].map((el) => `<path d="${el.getAttribute("d")}" fill="black"/>`).join("");
+// 2026-10-10(ab-158、Takashi「一回でも行った都道府県は白」「行った県は白、行った市区町村はもっと白く(二段)」):
+// 市区町村で見るとき、行った県はまるごと霧を薄くし(#fogHaze、灰色のマスク)、行った市区町村は霧を取る(#fogHoles、黒)。
+const HAZE = "#4d4d4d"; // マスクの明るさ=霧の濃さ。行った県は霧が3割ほど残る
+function holePath(sel, fill = "black") {
+  return [...svg.querySelectorAll(sel)].map((el) => `<path d="${el.getAttribute("d")}" fill="${fill}"/>`).join("");
 }
-function setFogHoles(keys, unit = fogUnit()) {
-  svg.querySelector("#fogHoles").innerHTML = keys.map((k) => holePath(unit === "city" ? `#cities [data-c="${k}"]` : `#prefs [data-p="${k}"]`)).join("");
+function setFogHoles(keys, unit = fogUnit(), hazePrefs = null) {
+  const byCity = unit === "city";
+  svg.querySelector("#fogHoles").innerHTML = keys.map((k) => holePath(byCity ? `#cities [data-c="${k}"]` : `#prefs [data-p="${k}"]`)).join("");
+  // 薄くする県: 渡されなければ、開けた市区町村の県(霧を晴らす途中でも、開いた市区町村の県から薄くなる)
+  const prefs = !byCity ? [] : hazePrefs || [...new Set(keys.map((k) => svg.querySelector(`#cities [data-c="${k}"]`)?.dataset.p).filter(Boolean))];
+  svg.querySelector("#fogHaze").innerHTML = prefs.map((p) => holePath(`#prefs [data-p="${p}"]`, HAZE)).join("");
 }
-const openAllFog = () => setFogHoles(fogUnit() === "city" ? [...cityAgg.keys()] : [...agg.keys()]);
+const openAllFog = () => (fogUnit() === "city" ? setFogHoles([...cityAgg.keys()], "city", [...agg.keys()]) : setFogHoles([...agg.keys()], "pref"));
 
 // 行ったことのある県の市区町村を読み込んで描く(県ごとのファイル、読めなかった県は県単位のまま)。
 async function loadCities() {
