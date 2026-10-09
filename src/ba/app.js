@@ -5,7 +5,7 @@
 // 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
 import "../common/config.js";
 import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../common/utils.js";
-import { groupThreads, entryTypeLabel } from "../common/thread-logic.js";
+import { groupThreads, entryTypeLabel, summaryCounts } from "../common/thread-logic.js";
 
 const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
 const BA_API = `${API_BASE}/ba`;
@@ -13,14 +13,14 @@ const BA_API = `${API_BASE}/ba`;
 const HUMAN_TYPES = ["note", "void", "status"];
 
 function renderSummary(threads) {
-  const openCount = threads.filter((t) => t.status === "open").length;
-  const closedCount = threads.length - openCount;
+  // ab-155: 一覧に出るスレッドだけで数える(隠れた分は数に入れない)
+  const { total, open, closed } = summaryCounts(threads);
   const allEntries = threads.flatMap((t) => t.entries);
   const latest = allEntries.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
 
-  document.getElementById("statTotal").textContent = threads.length;
-  document.getElementById("statOpen").textContent = openCount;
-  document.getElementById("statClosed").textContent = closedCount;
+  document.getElementById("statTotal").textContent = total;
+  document.getElementById("statOpen").textContent = open;
+  document.getElementById("statClosed").textContent = closed;
   document.getElementById("statLatestBy").textContent = latest ? latest.by : "—";
 }
 

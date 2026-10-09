@@ -1,12 +1,13 @@
 import "../../common/config.js";
 import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../../common/utils.js";
-import { groupThreads, entryTypeLabel } from "../../common/thread-logic.js";
+import { groupThreads, entryTypeLabel, summaryCounts } from "../../common/thread-logic.js";
 const BA_API = `${window.AA_API_BASE}/ba`;
 function renderSummary(threads) {
-  const openCount = threads.filter((t) => t.status === "open").length;
-  document.getElementById("statTotal").textContent = threads.length;
-  document.getElementById("statOpen").textContent = openCount;
-  document.getElementById("statClosed").textContent = threads.length - openCount;
+  // ab-155: 一覧に出るスレッドだけで数える(隠れた分は数に入れない)
+  const { total, open, closed } = summaryCounts(threads);
+  document.getElementById("statTotal").textContent = total;
+  document.getElementById("statOpen").textContent = open;
+  document.getElementById("statClosed").textContent = closed;
 }
 function entryRowHtml(e) {
   const voidClass = e.type === "void" ? (e.value ? " entry--void-true" : " entry--void-false") : "";

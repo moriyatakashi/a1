@@ -165,3 +165,12 @@ export function entryTypeLabel(e) {
   if (e.type === "approval") return `approval`;
   return e.type;
 }
+
+// ab-155(2026-10-09): 画面上の件数は、一覧に出るスレッドだけで数える。
+// 最初の投稿(new)が無い「はぐれた」スレッドや両レーンで void されたもの(hiddenVoid)は一覧から隠れるので、
+// 数に入れると「9 オープンなのに一覧が空」に見える。隠れた分は hidden として別に返す。
+export function summaryCounts(threads) {
+  const shown = threads.filter((t) => !t.hiddenVoid);
+  const open = shown.filter((t) => t.status === "open").length;
+  return { total: shown.length, open, closed: shown.length - open, hidden: threads.length - shown.length };
+}
