@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits, wishVisits, stationVisits, STATION_KM, officeVisits, OFFICE_KM, domeVisits, aeonVisits, komedaVisits, KOMEDA_KM, prefAt } from "./geo.js";
+import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits, wishVisits, stationVisits, STATION_KM, officeVisits, OFFICE_KM, domeVisits, aeonVisits, komedaVisits, KOMEDA_KM, COUNT_SHOPS, shopCountVisits, BATH_KM, prefAt } from "./geo.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const features = JSON.parse(fs.readFileSync(path.join(HERE, "../m5/prefectures.geojson"), "utf8")).features;
@@ -255,6 +255,27 @@ test("お店: イオンモールは130以上・コメダは600以上、名前は
   assert.ok(s.aeon.length >= 120 && s.aeon.every((r) => r[0].startsWith("イオンモール")), String(s.aeon.length));
   assert.ok(s.komeda.length >= 600 && s.komeda.every((r) => !/駐車場/.test(r[0])), String(s.komeda.length));
   assert.ok([...s.aeon, ...s.komeda].every((r) => r[3] >= 1 && r[3] <= 47));
+});
+
+// 2026-10-09(礼文): 銭湯・温泉と東横イン・アパホテル
+test("お風呂・宿: 銭湯・温泉は3000以上で足湯・家族風呂は入らない、東横イン・アパホテルは名前がそのチェーン、県は1〜47", () => {
+  const s = JSON.parse(fs.readFileSync(path.join(HERE, "shops.json"), "utf8"));
+  assert.ok(s.bath.length >= 3000 && s.bath.every((r) => !/足湯|手湯|家族風呂/.test(r[0])), String(s.bath.length));
+  assert.ok(s.toyoko.length >= 200 && s.toyoko.every((r) => /東[横橫]|toyoko/i.test(r[0])), String(s.toyoko.length));
+  assert.ok(s.apa.length >= 150 && s.apa.every((r) => /アパ|APA/i.test(r[0])), String(s.apa.length));
+  assert.ok([...s.bath, ...s.toyoko, ...s.apa].every((r) => r[3] >= 1 && r[3] <= 47));
+  // 画面の並び(COUNT_SHOPS)の表はどれも shops.json にある
+  assert.ok(COUNT_SHOPS.every((c) => Array.isArray(s[c.key]) && s[c.key].length > 0));
+});
+
+test("お風呂・宿: 銭湯は0.2km以内、チェーン名は一覧で落とす", () => {
+  const bath = [["なにわの湯", 34.7000, 135.5000, 27, "w1"]];
+  assert.equal(BATH_KM, 0.2);
+  assert.deepEqual([...shopCountVisits([{ lat: 34.7015, lng: 135.5000, date: "2026-09-02" }], bath, BATH_KM).keys()], [0]); // 約170m
+  assert.equal(shopCountVisits([{ lat: 34.7025, lng: 135.5000 }], bath, BATH_KM).size, 0); // 約280m
+  const strip = Object.fromEntries(COUNT_SHOPS.map((c) => [c.key, c.strip]));
+  assert.equal("東横INN新大阪中央口本館".replace(strip.toyoko, ""), "新大阪中央口本館");
+  assert.equal("アパホテル〈なんば駅前〉".replace(strip.apa, ""), "〈なんば駅前〉");
 });
 
 test("お店: イオンモールは0.5km以内で行った(いちばん近づいた距離も)、コメダは0.15km以内の店だけ数える", () => {

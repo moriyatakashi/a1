@@ -20,10 +20,11 @@
 // どちらも訪問が0.5km以内なら行った。役所は市区町村の詳細にも出す(霧は晴れたが役所はまだ、が見えるように)。
 // 同日(ab-48 の続き): お店。shops.json(OpenStreetMap から scripts/build-m6-shops.mjs で作る)。イオンモールは名城と同じ制覇、
 // コメダは表が欠けているので行った数だけ。
+// 10/09(礼文、ab-48 の続き): 銭湯・温泉と東横イン・アパホテルも、コメダと同じ「行った数」で足した(COUNT_SHOPS)。
 
 import { fetchWishes, addWish, removeWish } from "./wish-store.js?v=202610041800";
 import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031800";
-import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM, wishVisits, WISH_KM, stationVisits, STATION_KM, STATION_KINDS, officeVisits, OFFICE_KM, OFFICE_KINDS, domeVisits, DOME_KM, aeonVisits, AEON_KM, komedaVisits, KOMEDA_KM, prefAt } from "./geo.js?v=202610072300";
+import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM, wishVisits, WISH_KM, stationVisits, STATION_KM, STATION_KINDS, officeVisits, OFFICE_KM, OFFICE_KINDS, domeVisits, DOME_KM, aeonVisits, AEON_KM, COUNT_SHOPS, shopCountVisits, prefAt } from "./geo.js?v=202610092300";
 
 const RAD = Math.PI / 180;
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2));
@@ -108,13 +109,14 @@ let domeState = [];
 let selectedDome = null;
 const officesReady = fetch("offices.json?v=202610071500").then((r) => (r.ok ? r.json() : [])).catch(() => []);
 const domesReady = fetch("domes.json?v=202610071500").then((r) => (r.ok ? r.json() : [])).catch(() => []);
-// お店(ab-48)。aeonState は aeonVisits の結果、komedaAgg は行の番号 → {i, count, first}(行った店だけ)。
-let shops = { aeon: [], komeda: [] };
+// お店(ab-48)。aeonState は aeonVisits の結果、countAgg[コメダ・銭湯…の key] は行の番号 → {i, count, first}(行ったところだけ)。
+// selectedCount は選んだ行った数のお店 { key, i }。
+let shops = { aeon: [] };
 let aeonState = [];
-let komedaAgg = new Map();
+let countAgg = Object.fromEntries(COUNT_SHOPS.map((c) => [c.key, new Map()]));
 let selectedAeon = null;
-let selectedKomeda = null;
-const shopsReady = fetch("shops.json?v=202610071800").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+let selectedCount = null;
+const shopsReady = fetch("shops.json?v=202610092300").then((r) => (r.ok ? r.json() : null)).catch(() => null);
 let adj = new Map();
 let centerOf = new Map();
 let names = [];
@@ -161,7 +163,7 @@ function drawMap() {
     else if (d.o) selectOffice(Number(d.o));
     else if (d.d) selectDome(Number(d.d));
     else if (d.a) selectAeon(Number(d.a));
-    else if (d.m) selectKomeda(Number(d.m));
+    else if (d.m) selectCount(d.m);
     else if (d.c) selectCity(d.c);
     else if (d.p) select(d.p);
   });
@@ -250,15 +252,17 @@ function paint() {
     const [x, y] = projPoint(d);
     return `<circle class="dome${d.done ? " done" : ""}${d.num === selectedDome ? " sel" : ""}" data-d="${d.num}" data-rk="2.4" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * 2.4).toFixed(2)}"><title>${esc(d.name)}</title></circle>`;
   }).join("") : "";
-  // お店: イオンモールは全部(行ったら塗りつぶし)、コメダは行った店だけ(選んだ店は、まだでも出す)。
-  const kms = [...($("shopsOn").checked ? komedaAgg.keys() : []),
-    ...(selectedKomeda !== null && !($("shopsOn").checked && komedaAgg.has(selectedKomeda)) ? [selectedKomeda] : [])];
+  // お店: イオンモールは全部(行ったら塗りつぶし)、コメダ・銭湯・ホテルは行ったところだけ(選んだところは、まだでも出す)。
+  const sel = selectedCount;
+  const kms = COUNT_SHOPS.flatMap(({ key }) => [...($("shopsOn").checked ? countAgg[key].keys() : []),
+    ...(sel && sel.key === key && !($("shopsOn").checked && countAgg[key].has(sel.i)) ? [sel.i] : [])].map((i) => [key, i]));
   svg.querySelector("#shops").innerHTML = ($("shopsOn").checked ? aeonState : aeonState.filter((a) => a.num === selectedAeon)).map((a) => {
     const [x, y] = projPoint(a);
     return `<circle class="aeon${a.done ? " done" : ""}${a.num === selectedAeon ? " sel" : ""}" data-a="${a.num}" data-rk="1.6" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * 1.6).toFixed(2)}"><title>${esc(a.name)}</title></circle>`;
-  }).join("") + kms.map((i) => {
-    const r = shops.komeda[i], [x, y] = projPoint({ lat: r[1], lng: r[2], pref: prefName(r[3]) });
-    return `<circle class="komeda${komedaAgg.has(i) ? " done" : ""}${i === selectedKomeda ? " sel" : ""}" data-m="${i}" data-rk="1.4" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * 1.4).toFixed(2)}"><title>${esc(r[0])}</title></circle>`;
+  }).join("") + kms.map(([key, i]) => {
+    const r = shops[key][i], [x, y] = projPoint({ lat: r[1], lng: r[2], pref: prefName(r[3]) });
+    const on = sel && sel.key === key && sel.i === i;
+    return `<circle class="${key}${countAgg[key].has(i) ? " done" : ""}${on ? " sel" : ""}" data-m="${key}:${i}" data-rk="1.4" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(dotR() * 1.4).toFixed(2)}"><title>${esc(r[0])}</title></circle>`;
   }).join("");
   // 100名城: 行った城は朱の丸、まだの城は白抜き。霧の上に出す(目標として見えるように)。
   svg.querySelector("#castles").innerHTML = $("castlesOn").checked
@@ -395,7 +399,7 @@ function select(n) {
   selectedOffice = null;
   selectedDome = null;
   selectedAeon = null;
-  selectedKomeda = null;
+  selectedCount = null;
   paint();
   const a = agg.get(n);
   const ns = [...(adj.get(n) || [])];
@@ -427,7 +431,7 @@ function selectCity(c) {
   selectedOffice = null;
   selectedDome = null;
   selectedAeon = null;
-  selectedKomeda = null;
+  selectedCount = null;
   paint();
   const a = cityAgg.get(c);
   const head = `<b>${esc(f.properties.n)}</b>(<button type="button" class="linkish" data-p="${esc(f.pref)}">${esc(f.pref)}</button>、${cityProgressText(f.pref)})`;
@@ -707,7 +711,7 @@ function selectCastle(num) {
   selectedOffice = null;
   selectedDome = null;
   selectedAeon = null;
-  selectedKomeda = null;
+  selectedCount = null;
   paint();
   const head = `<b>${c.num} ${esc(c.name)}</b>(<button type="button" class="linkish" data-p="${esc(c.pref)}">${esc(c.pref)}</button>、日本100名城)`;
   const wished = wishState.some((w) => distKm(w, c) <= WISH_KM);
@@ -753,7 +757,7 @@ function selectStation(i) {
   selectedOffice = null;
   selectedDome = null;
   selectedAeon = null;
-  selectedKomeda = null;
+  selectedCount = null;
   paint();
   const pref = prefName(r[3]);
   // 路線は事業者ごとにまとめる(東日本旅客鉄道: 山手線・中央線 / 京王電鉄: 京王線)。
@@ -818,7 +822,7 @@ function selectOffice(i) {
   selectedStation = null;
   selectedDome = null;
   selectedAeon = null;
-  selectedKomeda = null;
+  selectedCount = null;
   selectedOffice = i;
   paint();
   const pref = prefName(r[4]);
@@ -853,7 +857,7 @@ function selectDome(num) {
   selectedOffice = null;
   selectedDome = num;
   selectedAeon = null;
-  selectedKomeda = null;
+  selectedCount = null;
   paint();
   $("info").innerHTML = `<b>${esc(d.name)}</b>(<button type="button" class="linkish" data-p="${esc(d.pref)}">${esc(d.pref)}</button>、ドーム) — `
     + (d.done ? `行った(外から${DOME_KM * 1000}m以内に${d.count}回、初めて ${esc(d.first || "?")})`
@@ -882,7 +886,7 @@ function clearPicksForShop() {
   selectedOffice = null;
   selectedDome = null;
   selectedAeon = null;
-  selectedKomeda = null;
+  selectedCount = null;
 }
 function selectAeon(num) {
   const a = aeonState.find((x) => x.num === num);
@@ -895,16 +899,18 @@ function selectAeon(num) {
     + (a.done ? `行った(${AEON_KM * 1000}m以内に${a.count}回、初めて ${esc(a.first || "?")})`
       : "まだ。" + (Number.isFinite(a.near) ? `いちばん近づいたのは約${kmText(a.near)}(${esc(a.nearPlace)})` : ""));
 }
-function selectKomeda(i) {
-  const r = shops.komeda[i];
+// m は "key:行の番号"(data-m)。
+function selectCount(m) {
+  const [key, n] = String(m).split(":"), i = Number(n);
+  const kind = COUNT_SHOPS.find((c) => c.key === key), r = kind && (shops[key] || [])[i];
   if (!r) return;
   clearPicksForShop();
-  selectedKomeda = i;
+  selectedCount = { key, i };
   paint();
   const pref = prefName(r[3]);
-  const a = komedaAgg.get(i);
+  const a = countAgg[key].get(i);
   $("info").innerHTML = `<b>${esc(r[0])}</b>(<button type="button" class="linkish" data-p="${esc(pref)}">${esc(pref)}</button>) — `
-    + (a ? `行った(${KOMEDA_KM * 1000}m以内に${a.count}回、初めて ${esc(a.first || "?")})` : "まだ");
+    + (a ? `行った(${kind.km * 1000}m以内に${a.count}回、初めて ${esc(a.first || "?")})` : "まだ");
 }
 function drawShops() {
   if (!shops.aeon.length) { $("aeonSummary").textContent = "お店の表が読めなかった"; return; }
@@ -919,18 +925,23 @@ function drawShops() {
     return `<div class="stamp-region">${esc(rname)} ${as.filter((a) => a.done).length}/${as.length}</div>` + as.map((a) =>
       `<button type="button" class="aeon-stamp${a.done ? " done" : a.near <= 10 ? " near" : ""}" data-a="${a.num}"><span>${esc(shortName(prefName(a.pref)))}</span>${esc(a.name.replace(/^イオンモール/, "") || a.name)}</button>`).join("");
   }).join("");
-  // コメダ: 表が全店ではないので「何店のうち」とは言わない。最近はじめて行った店を10。
-  $("komedaSummary").textContent = `コメダ 行った ${komedaAgg.size}店(訪問が店から${KOMEDA_KM * 1000}m以内。表は OpenStreetMap に載っている${shops.komeda.length}店で、全店ではない)`;
-  const recent = [...komedaAgg.values()].sort((x, y) => (y.first || "").localeCompare(x.first || "")).slice(0, 10);
-  $("komedaList").innerHTML = recent.length ? "最近はじめて行った店: " + recent.map((a) => {
-    const r = shops.komeda[a.i];
-    return `<button type="button" class="linkish" data-m="${a.i}">${esc(r[0].replace(/^コメダ珈琲店\s*/, "") || prefName(r[3]))}</button>(${esc((a.first || "").slice(5))})`;
-  }).join("・") : "";
+  // コメダ・銭湯・ホテル: 表が全部ではないので「何店のうち」とは言わない。最近はじめて行ったところを10。
+  for (const { key, label, unit, km, strip } of COUNT_SHOPS) {
+    const rows = shops[key] || [], agg = countAgg[key];
+    $(key + "Summary").textContent = rows.length
+      ? `${label} 行った ${agg.size}${unit}(訪問が${km * 1000}m以内。表は OpenStreetMap に載っている${rows.length}${unit}で、全部ではない)`
+      : `${label}: 表が読めなかった`;
+    const recent = [...agg.values()].sort((x, y) => (y.first || "").localeCompare(x.first || "")).slice(0, 10);
+    $(key + "List").innerHTML = recent.length ? "最近はじめて行ったところ: " + recent.map((a) => {
+      const r = rows[a.i];
+      return `<button type="button" class="linkish" data-m="${key}:${a.i}">${esc((strip ? r[0].replace(strip, "") : r[0]) || prefName(r[3]))}</button>(${esc((a.first || "").slice(5))})`;
+    }).join("・") : "";
+  }
 }
-["aeonClose", "aeonBook", "komedaList"].forEach((id) => $(id).addEventListener("click", (e) => {
+["aeonClose", "aeonBook", ...COUNT_SHOPS.map((c) => c.key + "List")].forEach((id) => $(id).addEventListener("click", (e) => {
   const b = e.target.closest("[data-a],[data-m]");
   if (!b) return;
-  if (b.dataset.a) selectAeon(Number(b.dataset.a)); else selectKomeda(Number(b.dataset.m));
+  if (b.dataset.a) selectAeon(Number(b.dataset.a)); else selectCount(b.dataset.m);
   $("map").scrollIntoView({ behavior: "smooth", block: "center" });
 }));
 
@@ -1026,7 +1037,7 @@ function selectWish(id) {
   selectedOffice = null;
   selectedDome = null;
   selectedAeon = null;
-  selectedKomeda = null;
+  selectedCount = null;
   paint();
   const head = `<b>${esc(w.label)}</b>(${w.pref ? `<button type="button" class="linkish" data-p="${esc(w.pref)}">${esc(w.pref)}</button>、` : ""}行きたい場所、${esc(String(w.createdAt || "").slice(0, 10))}に置いた)`;
   $("info").innerHTML = (w.done
@@ -1091,7 +1102,7 @@ async function loadData() {
   drawDomes();
   shops = (await shopsReady) || shops;
   aeonState = aeonVisits(visits, shops.aeon);
-  komedaAgg = komedaVisits(visits, shops.komeda);
+  for (const { key, km } of COUNT_SHOPS) countAgg[key] = shopCountVisits(visits, shops[key] || [], km);
   drawShops();
   try {
     wishes = await fetchWishes();

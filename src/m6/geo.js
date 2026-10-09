@@ -258,6 +258,18 @@ export const KOMEDA_KM = 0.15;
 export const aeonVisits = (visits, rows, km = AEON_KM) =>
   castleVisits(visits, rows.map(([name, lat, lng, pref, id], i) => [i, name, lat, lng, pref, id]), km);
 export const komedaVisits = (visits, rows, km = KOMEDA_KM) => nearVisits(visits, rows.map((r) => ({ lat: r[1], lng: r[2] })), km);
+// 2026-10-09(礼文): 銭湯・温泉と東横イン・アパホテルも、コメダと同じ「行った数」(表が全部ではないので)。
+// 銭湯・温泉はスーパー銭湯のように敷地が広いものがあるので0.2km、ホテルは駅前に固まるので0.15km。
+// COUNT_SHOPS は画面の並び順。strip は一覧で店名から落とすチェーン名。
+export const BATH_KM = 0.2;
+export const HOTEL_KM = 0.15;
+export const COUNT_SHOPS = [
+  { key: "komeda", label: "コメダ", unit: "店", km: KOMEDA_KM, strip: /^コメダ珈琲店\s*/ },
+  { key: "bath", label: "銭湯・温泉", unit: "か所", km: BATH_KM, strip: null },
+  { key: "toyoko", label: "東横イン", unit: "軒", km: HOTEL_KM, strip: /^東横(イン|INN?|ＩＮＮ?)\s*/i },
+  { key: "apa", label: "アパホテル", unit: "軒", km: HOTEL_KM, strip: /^(アパホテル|APA\s*HOTEL)\s*/i },
+];
+export const shopCountVisits = (visits, rows, km) => nearVisits(visits, rows.map((r) => ({ lat: r[1], lng: r[2] })), km);
 
 // 点 [lng, lat] がどの県の中か(県の features から)。どこにも入らない(海の上など)なら ""。
 export function prefAt(pt, features) {

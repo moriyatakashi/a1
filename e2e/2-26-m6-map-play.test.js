@@ -93,6 +93,10 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.equal(await page.locator(".aeon-stamp").count(), shopsJson.aeon.length);
     assert.match(await page.textContent("#komedaSummary"), /^コメダ 行った 0店/);
     assert.equal(await page.locator("#shops circle.komeda").count(), 0);
+    // 10/09(礼文): 銭湯・温泉と東横イン・アパホテルも行った数で出る(テストの訪問の近くにあるかは表しだいなので数は見ない)
+    assert.match(await page.textContent("#bathSummary"), new RegExp(`^銭湯・温泉 行った \\d+か所\\(訪問が200m以内。表は OpenStreetMap に載っている${shopsJson.bath.length}か所`));
+    assert.match(await page.textContent("#toyokoSummary"), /^東横イン 行った \d+軒/);
+    assert.match(await page.textContent("#apaSummary"), /^アパホテル 行った \d+軒/);
     await page.locator("#aeonClose button").first().dispatchEvent("click");
     assert.match(await page.textContent("#info"), /^イオンモール\S+\(大阪府\) — まだ。いちばん近づいたのは約1\.\dkm\(大阪市 西区\)/);
     await page.locator("#stations circle").dispatchEvent("click");
