@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listenSafe } from "./listen-safe.js";
+import { routeFirebaseStub } from "./firebase-stub.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
@@ -71,7 +72,12 @@ test("bc: 今の状態(開いている件数・返事待ち・最後の動きが
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     await page.route("https://ab-board-api.azurewebsites.net/api/ba", (route) =>
       route.fulfill({ contentType: "application/json", body: JSON.stringify(BA) }));
+    // ab-162: Firebase にログインしていれば ab を ID トークン付きで読む(Rules を本人だけに絞る準備)
+    await routeFirebaseStub(page, {}, {});
+    await page.addInitScript(() => { window.__fsSignedIn = true; });
+    const abAuth = [];
     await page.route(/firestore\.googleapis\.com\//, (route) => {
+      abAuth.push(route.request().headers()["authorization"] || "");
       const url = route.request().url().split("?")[0];
       route.fulfill({ contentType: "application/json", body: JSON.stringify(AB_ROUTES[url] || {}) });
     });
@@ -84,6 +90,7 @@ test("bc: 今の状態(開いている件数・返事待ち・最後の動きが
     });
     await page.waitForSelector("#nowPanel .now-stale li");
 
+    assert.ok(abAuth.length > 0 && abAuth.every((h) => h === "Bearer test-id-token"), "ab を ID トークン付きで読んでいない");
     const text = (await page.textContent("#nowPanel")).replace(/\s+/g, "");
     assert.match(text, /ab開いている3件/, "A1・A2・A4(A3は済み)");
     assert.match(text, /ba開いている1件/, "B1だけ(B2は閉じた、B3は無効)");

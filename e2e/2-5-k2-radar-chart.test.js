@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listenSafe } from "./listen-safe.js";
+import { routeFirebaseStub } from "./firebase-stub.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
@@ -80,6 +81,7 @@ async function checkBc(abRoutes, expectedNoteFetches) {
     await page.route("https://ab-board-api.azurewebsites.net/api/ba", (route) =>
       route.fulfill({ contentType: "application/json", body: JSON.stringify(FIXTURE) })
     );
+    await routeFirebaseStub(page, {}, {}); // ab-162: bc は ab を読む前に Firebase にログインする(ネットワークに出さない)
     await page.route(/firestore\.googleapis\.com\//, (route) => {
       const url = route.request().url().split("?")[0];
       if (url.endsWith("/notes")) notesFetched.push(url);

@@ -69,11 +69,12 @@ function modules(scores, others) {
       }`,
     "firebase-auth.js": `
       // window.__fsSignedIn(addInitScript で立てる)なら、開いた時点でログイン済みにする(ab-97 のまとめの作り直し)
-      const auth = { currentUser: window.__fsSignedIn ? { uid: "test" } : null, authStateReady: async () => {} };
+      const testUser = () => ({ uid: "test", getIdToken: async () => "test-id-token" }); // ab-162: bc が読むときに付ける
+      const auth = { currentUser: window.__fsSignedIn ? testUser() : null, authStateReady: async () => {} };
       export const getAuth = () => auth;
       export class GoogleAuthProvider { static credential(t) { return { t }; } }
-      export async function signInWithCredential(a, c) { auth.currentUser = { uid: "test" }; return { user: auth.currentUser }; }
-      export async function signInWithPopup(a, p) { auth.currentUser = { uid: "test" }; return { user: auth.currentUser }; }`,
+      export async function signInWithCredential(a, c) { auth.currentUser = testUser(); return { user: auth.currentUser }; }
+      export async function signInWithPopup(a, p) { auth.currentUser = testUser(); return { user: auth.currentUser }; }`,
   };
 }
 

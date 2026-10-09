@@ -16,11 +16,28 @@ const AB_FS = "https://firestore.googleapis.com/v1/projects/ab01-9f35a/databases
 const AB_LABEL = "ab(連絡)";
 const CATEGORIES = [...CLASSIFICATIONS, AB_LABEL]; // 分類別・月別の軸(ba の分類 + ab)
 
+// ab-162(2026-10-10): いずれ Rules の ab の読みを本人だけに絞るので、Firebase にログインしていれば
+// その ID トークンを付けて読む(Rules は request.auth で本人と分かる)。ログインしていなければ今までどおり匿名。
+let _abAuthHeaders = null;
+async function abAuthHeaders() {
+  if (_abAuthHeaders) return _abAuthHeaders;
+  _abAuthHeaders = {};
+  try {
+    const { ensureReadLogin } = await import("../common/firebase.js");
+    const user = await ensureReadLogin();
+    if (user && typeof user.getIdToken === "function") _abAuthHeaders = { Authorization: `Bearer ${await user.getIdToken()}` };
+  } catch (e) {
+    console.warn("ab を読むための Firebase ログインに失敗(匿名で読む)", e);
+  }
+  return _abAuthHeaders;
+}
+
 async function fsListDocs(url) {
   const docs = [];
+  const headers = await abAuthHeaders();
   let token = "";
   do {
-    const res = await fetch(`${url}?pageSize=300${token ? `&pageToken=${token}` : ""}`, { cache: "no-store" });
+    const res = await fetch(`${url}?pageSize=300${token ? `&pageToken=${token}` : ""}`, { cache: "no-store", headers });
     if (!res.ok) throw new Error(`Firestore ${res.status}`);
     const page = await res.json();
     docs.push(...(page.documents || []));

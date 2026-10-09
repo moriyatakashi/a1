@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listenSafe } from "./listen-safe.js";
+import { routeFirebaseStub } from "./firebase-stub.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
@@ -80,6 +81,7 @@ test("bc: 待ち・最近の動き・流れ・投稿者の名前(ab-45)", async 
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     await page.route("https://ab-board-api.azurewebsites.net/api/ba", (route) =>
       route.fulfill({ contentType: "application/json", body: JSON.stringify(BA) }));
+    await routeFirebaseStub(page, {}, {}); // ab-162: bc は ab を読む前に Firebase にログインする(ネットワークに出さない)
     await page.route(/firestore\.googleapis\.com\//, (route) => {
       const url = route.request().url().split("?")[0];
       route.fulfill({ contentType: "application/json", body: JSON.stringify(AB_ROUTES[url] || {}) });
