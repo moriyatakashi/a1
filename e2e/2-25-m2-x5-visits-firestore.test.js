@@ -141,7 +141,7 @@ test("m2: 今日3か所目で合計10km以上回っていたら1点(何度も行
   assert.equal(points.length, 1, "行ったことのある町なので初訪問の点は無く、回った分の1点だけ");
   assert.equal(points[0].points, 1);
   assert.equal(points[0].catalogId, "visit_round");
-  assert.match(points[0].note, new RegExp(`^${today} 3か所・約1\\dkm$`));
+  assert.match(points[0].note, new RegExp(`^${today} 3か所・約1\\dkm・約\\d+km²$`)); // 面積も付く(2026-10-09)
   assert.equal(points[0].visitId, visit.id);
   assert.equal("roundPoint" in visit, false, "visits に書ける欄は Rules で決まっているので足さない");
   assert.match(status, /今日あちこち回ったので1点/);
