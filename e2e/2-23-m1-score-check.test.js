@@ -17,6 +17,14 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
 const API_BASE = "https://ab-board-api.azurewebsites.net/api";
 const FAKE_GOOGLE_CREDENTIAL = "header." + Buffer.from(JSON.stringify({ name: "Test User" })).toString("base64") + ".sig";
 
+// ab-162: 公開の閲覧モードをやめたので、開いたらログインする(セッション交換はスタブ)
+async function openLoggedIn(page, url) {
+  await page.route(`${API_BASE}/session`, (route) =>
+    route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) }));
+  await page.goto(url);
+  await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
+}
+
 function serveStatic() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
@@ -100,7 +108,7 @@ test("m1: 前の記録(done だけ)は ○/× として読む(ab-129)", async ()
       scoreItems: { a: { text: "3食" }, b: { text: "散歩" } },
       scoreConfig: { current: { items: [{ id: "a", text: "3食" }, { id: "b", text: "散歩" }] } },
     });
-    await page.goto(`http://localhost:${server.address().port}/src/m1/`);
+    await openLoggedIn(page, `http://localhost:${server.address().port}/src/m1/`);
     await page.waitForSelector("#checkBox", { state: "visible" });
     assert.deepEqual(await page.locator('.mark[aria-pressed="true"]').allTextContents(), ["○", "×"]);
     assert.equal(await page.textContent("#checkScoreNum"), "50");

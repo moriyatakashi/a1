@@ -38,6 +38,22 @@ export async function ensureFirebaseLogin() {
   return (await signInWithPopup(fbAuth, new GoogleAuthProvider())).user;
 }
 
+// ab-162(2026-10-10): 読む前のログイン。いずれ Rules の読みを Takashi 本人だけに絞るので、読む側も先にログインしておく。
+// 書くときと違い、ポップアップは出さない(ページを開いただけで出すとブロックされるうえ煩わしい)。
+// ログイン済みならそのまま、GSI のIDトークンがあればそれで入る。どちらも無ければ null(今の Rules では匿名でも読める)。
+export async function ensureReadLogin() {
+  try {
+    if (!authReady) await fbAuth.authStateReady();
+    if (fbAuth.currentUser) return fbAuth.currentUser;
+    if (window.__googleIdToken) {
+      return (await signInWithCredential(fbAuth, GoogleAuthProvider.credential(window.__googleIdToken))).user;
+    }
+  } catch (e) {
+    console.warn("読むための Firebase ログインに失敗(匿名で読む)", e);
+  }
+  return null;
+}
+
 // 失敗したときに画面に出す文。Firebase のエラーコードを人が読める形にする。
 export function saveErrorText(e) {
   const code = (e && e.code) || "";

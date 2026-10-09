@@ -17,9 +17,10 @@ export function saveBank(n) {
 // pointEvents を全件読まず、catalogId で絞って地図クイズの分だけ読む(ab-95 の「全件読みを増やさない」)。
 export async function fetchQuizPoints() {
   try {
-    const [{ collection, getDocs, query, where }, { db }] = await Promise.all([
+    const [{ collection, getDocs, query, where }, { db, ensureReadLogin }] = await Promise.all([
       import("https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js"), import("../common/firebase.js"),
     ]);
+    await ensureReadLogin(); // ab-162
     const snap = await getDocs(query(collection(db, "pointEvents"), where("catalogId", "==", "map_quiz")));
     return snap.docs.reduce((s, d) => s + (Number(d.data().points) || 0), 0);
   } catch {

@@ -65,7 +65,8 @@ async function pressHere(address, { waitBeforePress = 0 } = {}) {
     await page.waitForFunction(() => !document.getElementById("btnSave").disabled);
     const shown = (await page.textContent("#herePlace")).trim();
     const judge = (await page.textContent("#hereJudge")).trim();
-    const before = await page.evaluate(() => (window.__fsOtherWrites || []).length);
+    // 押す前に訪問・加点は書かない(まとめ文書 digests の作り直しは読みの手入れなので数えない)
+    const before = await page.evaluate(() => (window.__fsOtherWrites || []).filter((w) => w.col !== "digests").length);
     if (waitBeforePress) await page.clock.fastForward(waitBeforePress);
     await page.click("#btnSave");
     await page.waitForFunction(() => /保存しました|エラー/.test(document.getElementById("hereSaved").textContent));

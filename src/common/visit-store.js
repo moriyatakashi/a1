@@ -4,7 +4,7 @@
 import { collection, doc, getDoc, getDocs, getCountFromServer, setDoc, writeBatch, arrayUnion, increment }
   from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
-import { db, ensureFirebaseLogin } from "./firebase.js";
+import { db, ensureFirebaseLogin, ensureReadLogin } from "./firebase.js";
 import { roundPointFor, ROUND_RULE } from "./visit-round.js";
 
 // ba-165②(2026-07-29確定、Takashi判断): 初めて行った県・市・町を自動で加点する。
@@ -28,6 +28,7 @@ async function fetchAllVisitDocs() {
 }
 
 export async function fetchVisits() {
+  await ensureReadLogin(); // ab-162: いずれ読みも本人だけにするので、先にログインしておく(ポップアップは出さない)
   try {
     const [snap, counted] = await Promise.all([getDoc(digestRef()), getCountFromServer(collection(db, "visits"))]);
     const d = snap.exists() ? snap.data() : null;

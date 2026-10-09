@@ -7,7 +7,8 @@ const SDK = "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 const load = () => Promise.all([import(SDK), import("../common/firebase.js")]);
 
 export async function fetchWishes() {
-  const [{ collection, getDocs }, { db }] = await load();
+  const [{ collection, getDocs }, { db, ensureReadLogin }] = await load();
+  await ensureReadLogin(); // ab-162
   const snap = await getDocs(collection(db, "wishes"));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
     .filter((w) => Number.isFinite(w.lat) && Number.isFinite(w.lng))

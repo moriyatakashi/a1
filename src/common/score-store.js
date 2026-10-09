@@ -4,7 +4,7 @@
 // 読みは誰でも(Rules)。書きは Takashi 本人のみ(Rules の isTakashi)で、Firebase Auth のログインが要る。
 // Firebase の初期化とログインは common/firebase.js(visit-store.js と共用、ab-53 で切り出し)。
 import { collection, doc, getDoc, getDocs, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
-import { db, ensureFirebaseLogin, saveErrorText } from "./firebase.js";
+import { db, ensureFirebaseLogin, ensureReadLogin, saveErrorText } from "./firebase.js";
 
 export { saveErrorText };
 
@@ -14,11 +14,13 @@ export const SCORE_MAX = 120; // ab-43: 100=感覚の満点、超えた分はそ
 export const SCORE_SOFT_MAX = 100;
 
 export async function fetchScore(date) {
+  await ensureReadLogin(); // ab-162
   const snap = await getDoc(doc(db, "scores", date));
   return snap.exists() ? snap.data() : null;
 }
 
 export async function fetchAllScores() {
+  await ensureReadLogin(); // ab-162
   const snap = await getDocs(collection(db, "scores"));
   return snap.docs.map((d) => ({ date: d.id, ...d.data() }));
 }
@@ -37,11 +39,13 @@ export async function saveScore(date, score, note, check) {
 // 棚 scoreItems/{id} = {text, createdAt, by}(消さずに貯めて使い回す)、今の項目 scoreConfig/current = {items: [{id, text}], at, by}。
 // 家人(利尻など)は b1/run score items set で、Takashi は m1 の画面から入れ替える。
 export async function fetchCheckItems() {
+  await ensureReadLogin(); // ab-162
   const snap = await getDoc(doc(db, "scoreConfig", "current"));
   return snap.exists() ? (snap.data().items || []) : [];
 }
 
 export async function fetchItemShelf() {
+  await ensureReadLogin(); // ab-162
   const snap = await getDocs(collection(db, "scoreItems"));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
