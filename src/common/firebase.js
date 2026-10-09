@@ -54,6 +54,47 @@ export async function ensureReadLogin() {
   return null;
 }
 
+// ab-162: Rules の読みを本人だけに絞ったあと、この端末で Firebase にログインしていないと読めない(permission-denied)。
+// そのときだけ、画面の上に「読むためにログイン」の帯を1回出す。押すとポップアップでログインし、読み直す(再読み込み)。
+let readLoginBannerShown = false;
+export function isReadDenied(e) {
+  return !!e && (e.code === "permission-denied" || e.status === 403 || /PERMISSION_DENIED|Missing or insufficient permissions/i.test(e.message || ""));
+}
+export function showReadLoginBanner() {
+  if (readLoginBannerShown || typeof document === "undefined" || !document.body) return;
+  readLoginBannerShown = true;
+  const bar = document.createElement("div");
+  bar.id = "aa-read-login";
+  bar.setAttribute("role", "alert");
+  bar.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:2000;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;"
+    + "padding:10px 16px calc(10px + env(safe-area-inset-top,0px));background:#1d2a3a;color:#fff;font-size:0.9rem;";
+  const msg = document.createElement("span");
+  msg.textContent = "データを読むには、この端末でもう一度ログインが要ります";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "ログインして読み直す";
+  btn.style.cssText = "padding:6px 14px;border-radius:6px;border:1px solid #fff;background:#fff;color:#1d2a3a;font-weight:700;cursor:pointer;";
+  btn.addEventListener("click", async () => {
+    try {
+      await signInWithPopup(fbAuth, new GoogleAuthProvider());
+      location.reload();
+    } catch (e) {
+      msg.textContent = saveErrorText(e);
+    }
+  });
+  bar.append(msg, btn);
+  document.body.appendChild(bar);
+}
+// 読む処理を包む: 読めなかった理由が「本人でない/ログインしていない」なら帯を出してから、そのまま投げ直す
+export async function guardRead(fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    if (isReadDenied(e)) showReadLoginBanner();
+    throw e;
+  }
+}
+
 // 失敗したときに画面に出す文。Firebase のエラーコードを人が読める形にする。
 export function saveErrorText(e) {
   const code = (e && e.code) || "";

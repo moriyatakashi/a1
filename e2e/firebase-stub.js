@@ -39,6 +39,10 @@ function modules(scores, others) {
       export const query = (col, ...conds) => ({ name: col.name, conds });
       // 読んだコレクション名を window.__fsReads に積む(全件読みの回数を確かめる用、ab-97)
       export async function getDocs(col) {
+        // ab-162: Rules で読めない(本人でない/ログインしていない)ときの形。window.__fsDenyRead に名前を入れると、そのコレクションは読めない
+        if ((window.__fsDenyRead || []).includes(col.name) && !window.__fsSignedIn) {
+          const e = new Error("Missing or insufficient permissions."); e.code = "permission-denied"; throw e;
+        }
         window.__fsReads = (window.__fsReads || []).concat([col.name]);
         const ok = (d) => (col.conds || []).every((c) => c.op === "==" && d[c.field] === c.value);
         return { docs: Object.entries(col_(col.name)).filter(([, d]) => ok(d)).map(([id, d]) => ({ id, data: () => d })) };
@@ -73,8 +77,8 @@ function modules(scores, others) {
       const auth = { currentUser: window.__fsSignedIn ? testUser() : null, authStateReady: async () => {} };
       export const getAuth = () => auth;
       export class GoogleAuthProvider { static credential(t) { return { t }; } }
-      export async function signInWithCredential(a, c) { auth.currentUser = testUser(); return { user: auth.currentUser }; }
-      export async function signInWithPopup(a, p) { auth.currentUser = testUser(); return { user: auth.currentUser }; }`,
+      export async function signInWithCredential(a, c) { if (window.__fsCredentialFails) throw new Error("credential"); auth.currentUser = testUser(); window.__fsSignedIn = true; return { user: auth.currentUser }; }
+      export async function signInWithPopup(a, p) { auth.currentUser = testUser(); window.__fsSignedIn = true; return { user: auth.currentUser }; }`,
   };
 }
 

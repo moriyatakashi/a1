@@ -4,7 +4,7 @@
 import { collection, doc, getDoc, getDocs, getCountFromServer, setDoc, writeBatch, arrayUnion, increment }
   from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
-import { db, ensureFirebaseLogin, ensureReadLogin } from "./firebase.js";
+import { db, ensureFirebaseLogin, ensureReadLogin, guardRead } from "./firebase.js";
 import { roundPointFor, ROUND_RULE } from "./visit-round.js";
 
 // ba-165②(2026-07-29確定、Takashi判断): 初めて行った県・市・町を自動で加点する。
@@ -39,7 +39,7 @@ export async function fetchVisits() {
   } catch (e) {
     console.warn("訪問のまとめを読めなかったので全件読む", e);
   }
-  const visits = await fetchAllVisitDocs();
+  const visits = await guardRead(fetchAllVisitDocs); // ab-162: 読めなければ「読むためにログイン」の帯
   rebuildDigest(visits);
   return visits;
 }

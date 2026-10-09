@@ -38,6 +38,10 @@ async function fsListDocs(url) {
   let token = "";
   do {
     const res = await fetch(`${url}?pageSize=300${token ? `&pageToken=${token}` : ""}`, { cache: "no-store", headers });
+    if (res.status === 403) {
+      // ab-162: Rules で読めない(この端末で Firebase にログインしていない)。帯を出す
+      import("../common/firebase.js").then((m) => m.showReadLoginBanner()).catch(() => {});
+    }
     if (!res.ok) throw new Error(`Firestore ${res.status}`);
     const page = await res.json();
     docs.push(...(page.documents || []));
