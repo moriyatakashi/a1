@@ -11,23 +11,32 @@
 <title>m8 / ここに来た</title>
 <link rel="stylesheet" href="../common/base.css?v=202607141905">
 <style>
-  /* ab-159(2026-10-10): 訪問の保存だけのページ。速さ優先で、地図は描かない */
-  .here-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 24px 0 8px; }
-  .btn-here {
-    width: min(78vw, 300px); aspect-ratio: 1; border-radius: 50%;
+  /* ab-159(2026-10-10): 訪問の保存だけのページ。①今の町名 ②前回と変わったか・初めてか ③押して保存。地図は描かない */
+  .here-wrap { display: flex; flex-direction: column; gap: 14px; padding: 12px 0 8px; }
+  .here-now { border: 1px solid var(--line); border-radius: 12px; padding: 16px; text-align: center; }
+  .here-label { font-size: 0.72rem; color: var(--ink-soft); }
+  .here-place { font-size: 1.8rem; font-weight: 800; margin: 4px 0 2px; word-break: break-all; }
+  .here-sub { font-size: 0.8rem; color: var(--ink-soft); min-height: 1.2em; }
+  .here-judge { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 10px; min-height: 1.2em; }
+  .here-judge .tag { font-size: 0.9rem; font-weight: 700; padding: 3px 12px; border-radius: 999px; border: 1px solid var(--line); }
+  .here-judge .tag.new { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .here-judge .last { font-size: 0.85rem; font-weight: 700; }
+  .here-judge .last span { font-weight: normal; color: var(--ink-soft); font-size: 0.78rem; }
+  /* 角を丸めた四角(2026-10-10 Takashi「円でなく角のない四角」) */
+  .btn-save {
+    width: 100%; padding: 22px 0; border-radius: 14px;
     border: 2px solid var(--accent); background: var(--accent); color: #fff;
-    font-size: 1.6rem; font-weight: 800; letter-spacing: 0.04em;
-    box-shadow: 0 6px 0 rgba(0,0,0,0.25);
+    font-size: 1.4rem; font-weight: 800; letter-spacing: 0.04em;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.25);
     cursor: pointer; touch-action: manipulation;
   }
-  .btn-here:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
-  .btn-here:disabled { opacity: 0.55; cursor: default; transform: none; }
-  .here-step { min-height: 1.4em; font-size: 0.85rem; color: var(--ink-soft); text-align: center; }
-  .here-result { min-height: 3.2em; text-align: center; }
-  .here-result .big { font-size: 1.5rem; font-weight: 800; }
-  .here-result .big.new { color: var(--accent); }
-  .here-result .place { font-size: 0.85rem; color: var(--ink-soft); margin-top: 4px; }
-  .here-result .err { color: #d9534f; font-size: 0.9rem; }
+  .btn-save:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+  .btn-save:disabled { opacity: 0.45; cursor: default; transform: none; box-shadow: none; }
+  .btn-relocate {
+    align-self: center; padding: 6px 16px; border-radius: 8px; border: 1px solid var(--line);
+    background: transparent; color: var(--ink); font-size: 0.85rem; cursor: pointer;
+  }
+  .here-saved { min-height: 1.4em; font-size: 0.9rem; text-align: center; }
   .here-note { font-size: 0.72rem; color: var(--ink-soft); text-align: center; }
 </style>
 </head>
@@ -51,16 +60,22 @@
 
   <div id="content" style="display:none;">
     <div class="here-wrap">
-      <button class="btn-here" id="btnHere" type="button">ここに来た</button>
-      <div class="here-step" id="hereStep"></div>
-      <div class="here-result" id="hereResult" aria-live="polite"></div>
+      <div class="here-now">
+        <div class="here-label">いまいる町</div>
+        <div class="here-place" id="herePlace">—</div>
+        <div class="here-sub" id="hereSub"></div>
+        <div class="here-judge" id="hereJudge"></div>
+      </div>
+      <button class="btn-save" id="btnSave" type="button" disabled>ここに来た(保存)</button>
+      <div class="here-saved" id="hereSaved" aria-live="polite"></div>
+      <button class="btn-relocate" id="btnRelocate" type="button">📍 現在地を取り直す</button>
     </div>
-    <p class="here-note">押した時刻と現在地で保存します。あとから入れる・場所を直すときは <a href="../m2/">m2</a> へ。</p>
+    <p class="here-note">上の町を、押した時刻で保存します。あとから入れる・場所を直すときは <a href="../m2/">m2</a> へ。</p>
   </div>
 
   <script>window.AA_AUTH_EVENT = "m8-login-success";</script>
   <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202610100730"></script>
+  <script type="module" src="app.js?v=202610100740"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/m8", "lastUpdated", "最終更新");

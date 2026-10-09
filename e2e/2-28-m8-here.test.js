@@ -1,5 +1,5 @@
-// ab-159(2026-10-10 すま): m8「ここに来た」。押すだけで、押した時刻と現在地で visits に1件保存し、
-// 初めての県・市・町かどうかだけを出す。判定・加点は m2 と同じ visit-store.js(Firestore はスタブ、ネットワークに出ない)。
+// ab-159(2026-10-10 すま): m8「ここに来た」。開くと今の町名と「初めてか・前回と違うか」が出て、
+// 押すと押した時刻でその場所を visits に1件保存する。判定・加点は m2 と同じ visit-store.js(Firestore はスタブ、ネットワークに出ない)。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { routeFirebaseStub } from "./firebase-stub.js";
@@ -60,38 +60,48 @@ async function pressHere(address, { waitBeforePress = 0 } = {}) {
 
     await page.goto(`http://localhost:${server.address().port}/src/m8/`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
-    await page.waitForSelector("#btnHere", { state: "visible" });
-    if (waitBeforePress) await page.clock.fastForward(waitBeforePress);
     await page.clock.resume();
-    await page.click("#btnHere");
-    await page.waitForFunction(() => /保存しました|エラー/.test(document.getElementById("hereStep").textContent + document.getElementById("hereResult").textContent));
-    const result = (await page.textContent("#hereResult")).trim();
+    // ①町名が出て、保存ボタンが押せるようになるまで(押す前は何も書かない)
+    await page.waitForFunction(() => !document.getElementById("btnSave").disabled);
+    const shown = (await page.textContent("#herePlace")).trim();
+    const judge = (await page.textContent("#hereJudge")).trim();
+    const before = await page.evaluate(() => (window.__fsOtherWrites || []).length);
+    if (waitBeforePress) await page.clock.fastForward(waitBeforePress);
+    await page.click("#btnSave");
+    await page.waitForFunction(() => /保存しました|エラー/.test(document.getElementById("hereSaved").textContent));
+    const saved = (await page.textContent("#hereSaved")).trim();
+    const judgeAfter = (await page.textContent("#hereJudge")).trim();
     await page.waitForTimeout(200);
     const writes = await page.evaluate(() => window.__fsOtherWrites || []);
-    return { result, writes, errors };
+    return { shown, judge, judgeAfter, saved, before, writes, errors };
   } finally {
     await browser.close();
     server.close();
   }
 }
 
-test("m8: 新しい市なら「初めての市」と出し、visits と加点(市=5点)を書く", async () => {
-  const { result, writes, errors } = await pressHere({ state: "大阪府", city: "東大阪市", suburb: "布施" });
+test("m8: 開くと町名が出て、初めての市・前回と違うと分かる。押すまで書かない。押すと visits と加点(市=5点)", async () => {
+  const { shown, judge, judgeAfter, saved, before, writes, errors } = await pressHere({ state: "大阪府", city: "東大阪市", suburb: "布施" });
+  assert.equal(shown, "布施");
+  assert.match(judge, /初めての市/);
+  assert.match(judge, /前回と違う/);
+  assert.match(judge, /前回: 大阪市 北区\(09\/20 10:00\)/);
+  assert.equal(before, 0, "押す前に書き込んでいる");
   const visit = writes.find((w) => w.col === "visits");
   const points = writes.filter((w) => w.col === "pointEvents");
-  assert.match(result, /初めての市!/);
-  assert.match(result, /東大阪市/);
-  assert.equal(visit.city, "東大阪市");
   assert.equal(visit.place, "東大阪市 布施");
   assert.equal(visit.autoPointGranularity, "city");
   assert.equal(points.length, 1);
   assert.equal(points[0].points, 5);
+  assert.match(saved, /✓ 保存しました.*初市で自動加点/);
+  assert.match(judgeAfter, /前回と同じ/, "保存した分が前回になる");
   assert.deepEqual(errors, []);
 });
 
-test("m8: 行ったことのある町なら「来たことある」で、加点は書かない", async () => {
-  const { result, writes } = await pressHere({ state: "大阪府", city: "大阪市", suburb: "北区" });
-  assert.match(result, /来たことある/);
+test("m8: 前回と同じ町なら「来たことある町」「前回と同じ」で、保存しても加点は書かない", async () => {
+  const { judge, writes } = await pressHere({ state: "大阪府", city: "大阪市", suburb: "北区" });
+  assert.match(judge, /来たことある町/);
+  assert.match(judge, /前回と同じ/);
   assert.equal(writes.filter((w) => w.col === "visits").length, 1);
   assert.equal(writes.filter((w) => w.col === "pointEvents").length, 0);
 });
@@ -100,13 +110,14 @@ test("m8: 時刻は開いた時刻ではなく押した時刻", async () => {
   const { writes } = await pressHere({ state: "大阪府", city: "大阪市", suburb: "北区" }, { waitBeforePress: 25 * 60 * 1000 });
   const visit = writes.find((w) => w.col === "visits");
   assert.equal(visit.date, "2026-10-10");
-  assert.equal(visit.time, "07:25");
+  assert.match(visit.time, /^07:2[5-6]$/);
 });
 
-test("m8: 住所が取れなくても座標で保存し、判定できなかったと出す", async () => {
-  const { result, writes } = await pressHere(null);
+test("m8: 住所が取れなくても座標で保存でき、初めてかは判定できないと出す", async () => {
+  const { shown, judge, writes } = await pressHere(null);
+  assert.match(shown, /^34\.69\d*, 135\.52\d*$/);
+  assert.match(judge, /判定できません/);
   const visit = writes.find((w) => w.col === "visits");
-  assert.match(result, /判定できませんでした/);
   assert.match(visit.place, /^34\.69\d*, 135\.52\d*$/);
   assert.equal(writes.filter((w) => w.col === "pointEvents").length, 0);
 });

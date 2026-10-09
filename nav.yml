@@ -21,7 +21,7 @@ categories:
         href: src/m6/
         stage: beta
       - code: m8
-        desc: ここに来た(押すだけで訪問を保存・初めての街か)
+        desc: ここに来た(今の町名を見て、前回と違う・初めてなら保存)
         href: src/m8/
         stage: beta
       - code: bf
