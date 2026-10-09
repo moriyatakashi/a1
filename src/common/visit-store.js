@@ -93,7 +93,7 @@ export async function saveVisit({ place, date, time, lat, lng, pref, city, town 
   if (round) {
     batch.set(doc(db, "pointEvents", crypto.randomUUID()), {
       axis: "訪問", points: ROUND_RULE.points,
-      note: `${visit.date} ${round.count}か所・約${Math.round(round.km)}km`, period: "week", catalogId: "visit_round",
+      note: `${visit.date} ${round.count}か所・約${Math.round(round.km)}km・約${Math.round(round.km2)}km²`, period: "week", catalogId: "visit_round",
       createdAt: now, by: "takashi", visitId: id,
     });
   }
