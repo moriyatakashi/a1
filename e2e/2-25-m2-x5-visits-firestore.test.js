@@ -77,9 +77,11 @@ async function addVisitVia(rel, address, { digest = null, signedIn = false, visi
       const t = document.getElementById("visitInputStatus").textContent || "";
       return t.startsWith("✓") && t;
     })).jsonValue();
-    const writes = await page.evaluate(() => window.__fsOtherWrites || []);
-    // 保存後の描き直しが終わるまで待ってから数える(件数が1増えるのを見る)
+    // 保存後の描き直しが終わるまで待ってから数える(件数が1増えるのを見る)。
+    // まとめ(digests)への追記は保存の後ろで流れる(ab-159)ので、書き込みはそのあとに拾う
     await page.waitForFunction((n) => document.getElementById("statTotal").textContent === String(n + 1), n0);
+    await page.waitForTimeout(200);
+    const writes = await page.evaluate(() => window.__fsOtherWrites || []);
     const visitReads = await page.evaluate(() => (window.__fsReads || []).filter((n) => n === "visits").length);
     const digestWrites = writes.filter((w) => w.col === "digests");
     return { writes, status, azureCalls, visitReads, digestWrites };

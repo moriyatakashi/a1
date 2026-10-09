@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../common/config.js?v=202607160712"></script>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>m8 / ここに来た</title>
+<link rel="stylesheet" href="../common/base.css?v=202607141905">
+<style>
+  /* ab-159(2026-10-10): 訪問の保存だけのページ。速さ優先で、地図は描かない */
+  .here-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 24px 0 8px; }
+  .btn-here {
+    width: min(78vw, 300px); aspect-ratio: 1; border-radius: 50%;
+    border: 2px solid var(--accent); background: var(--accent); color: #fff;
+    font-size: 1.6rem; font-weight: 800; letter-spacing: 0.04em;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.25);
+    cursor: pointer; touch-action: manipulation;
+  }
+  .btn-here:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+  .btn-here:disabled { opacity: 0.55; cursor: default; transform: none; }
+  .here-step { min-height: 1.4em; font-size: 0.85rem; color: var(--ink-soft); text-align: center; }
+  .here-result { min-height: 3.2em; text-align: center; }
+  .here-result .big { font-size: 1.5rem; font-weight: 800; }
+  .here-result .big.new { color: var(--accent); }
+  .here-result .place { font-size: 0.85rem; color: var(--ink-soft); margin-top: 4px; }
+  .here-result .err { color: #d9534f; font-size: 0.9rem; }
+  .here-note { font-size: 0.72rem; color: var(--ink-soft); text-align: center; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>路歴（m8） / ここに来た</h1>
+  <p id="lastUpdated" style="font-size:0.8rem;color:#aaa;">最終更新: 2026-10-10 07:30 JST</p>
+
+<!-- LOGIN_GATE:START -->
+  <div id="login-gate">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
+    <div class="g_id_signin"></div>
+    <p id="status">未ログイン(ログインすると保存ボタンが出ます)</p>
+  </div>
+<!-- LOGIN_GATE:END -->
+
+  <div id="content" style="display:none;">
+    <div class="here-wrap">
+      <button class="btn-here" id="btnHere" type="button">ここに来た</button>
+      <div class="here-step" id="hereStep"></div>
+      <div class="here-result" id="hereResult" aria-live="polite"></div>
+    </div>
+    <p class="here-note">押した時刻と現在地で保存します。あとから入れる・場所を直すときは <a href="../m2/">m2</a> へ。</p>
+  </div>
+
+  <script>window.AA_AUTH_EVENT = "m8-login-success";</script>
+  <script src="../common/auth.js?v=202607201000"></script>
+  <script type="module" src="app.js?v=202610100730"></script>
+  <script type="module">
+    import { applyLastUpdated } from "../common/last-updated.js";
+    applyLastUpdated("src/m8", "lastUpdated", "最終更新");
+  </script>
+</body>
+</html>

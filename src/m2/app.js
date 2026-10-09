@@ -193,10 +193,14 @@ function initVisitInput() {
   const elBtnAddVisit = document.getElementById("btnAddVisit");
   const elStatus = document.getElementById("visitInputStatus");
 
-  const today = todayStr();
-  elDateInput.value = today;
-  const now = new Date();
-  elTimeInput.value = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  // 日時は「追加」を押した時刻で記録する(ab-159、2026-10-10)。開いた時刻のままだと、開きっぱなしで押すとずれる。
+  // 自分で書き換えたとき(あとから入れる)だけ、その値を使う
+  const nowHHMM = () => { const n = new Date(); return String(n.getHours()).padStart(2, "0") + ":" + String(n.getMinutes()).padStart(2, "0"); };
+  let dateTouched = false, timeTouched = false;
+  elDateInput.value = todayStr();
+  elTimeInput.value = nowHHMM();
+  elDateInput.addEventListener("input", () => { dateTouched = true; });
+  elTimeInput.addEventListener("input", () => { timeTouched = true; });
 
   let _lat = null, _lng = null;
   // ba-165②(2026-07-29): 逆ジオコーディング結果のうち県/市/町の3階層を別フィールドとして
@@ -240,6 +244,8 @@ function initVisitInput() {
       return;
     }
     const place = elPlaceInput.value.trim();
+    if (!dateTouched) elDateInput.value = todayStr();
+    if (!timeTouched) elTimeInput.value = nowHHMM();
     const date = elDateInput.value;
     const time = elTimeInput.value;
     if (!place) { elPlaceInput.focus(); return; }

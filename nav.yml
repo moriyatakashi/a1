@@ -20,6 +20,10 @@ categories:
         desc: 地図あそび(制覇・霧・スタンプ・クイズ)
         href: src/m6/
         stage: beta
+      - code: m8
+        desc: ここに来た(押すだけで訪問を保存・初めての街か)
+        href: src/m8/
+        stage: beta
       - code: bf
         desc: 訪問地図(別系統)
         href: src/bd/bf/

@@ -98,8 +98,9 @@ export async function saveVisit({ place, date, time, lat, lng, pref, city, town 
     });
   }
   await batch.commit();
-  // まとめにも1件足す。訪問とは別に書き、失敗しても保存は止めない(ずれたら読む側が件数で気づいて作り直す)
-  await setDoc(digestRef(), { items: arrayUnion({ id, ...visit }), count: increment(1), at: now }, { merge: true })
+  // まとめにも1件足す。訪問とは別に書き、失敗しても保存は止めない(ずれたら読む側が件数で気づいて作り直す)。
+  // 待たない(ab-159、2026-10-10): 保存の待ち時間に入れない。大きな1文書の書き換えなので待つと遅く感じる
+  setDoc(digestRef(), { items: arrayUnion({ id, ...visit }), count: increment(1), at: now }, { merge: true })
     .catch((e) => console.warn("訪問のまとめに足せなかった", e));
   return round ? { id, ...visit, roundPoint: true } : { id, ...visit };
 }
