@@ -1,3 +1,5 @@
+# 注意: この robots.txt は /a1/robots.txt にあり、検索エンジンには読まれない(読むのはドメインの一番上だけ)。
+# 検索よけは各ページの <meta name="robots" content="noindex"> で行う(ab-154、src/common/noindex.test.mjs)。
 User-agent: *
 Disallow: /src/ba/
 Disallow: /src/bb/
