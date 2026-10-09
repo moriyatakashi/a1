@@ -44,7 +44,8 @@ async function addVisitVia(rel, address, { digest = null, signedIn = false, visi
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
-    const context = await browser.newContext({ geolocation: { latitude: 34.69, longitude: 135.52 }, permissions: ["geolocation"] });
+    // 「今日」は日本時間で作るので、ブラウザも日本時間にする(CI は UTC で、UTC 15〜24時は日付がずれて落ちていた、ab-153)
+    const context = await browser.newContext({ timezoneId: "Asia/Tokyo", geolocation: { latitude: 34.69, longitude: 135.52 }, permissions: ["geolocation"] });
     const page = await context.newPage();
     const azureCalls = [];
     page.on("request", (req) => {

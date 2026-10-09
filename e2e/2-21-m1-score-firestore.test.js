@@ -35,7 +35,7 @@ test("m1: 保存は Firestore の scores/{今日} へ直接書き、Azure の /a
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
-    const page = await (await browser.newContext()).newPage();
+    const page = await (await browser.newContext({ timezoneId: "Asia/Tokyo" })).newPage();
     const azureScoreCalls = [];
     page.on("request", (req) => { if (req.url().startsWith(`${API_BASE}/scores`)) azureScoreCalls.push(req.url()); });
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
@@ -71,7 +71,7 @@ test("m1: スライダーは普段 100 まで、「120まで」で広げる。10
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
-    const page = await (await browser.newContext()).newPage();
+    const page = await (await browser.newContext({ timezoneId: "Asia/Tokyo" })).newPage();
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 
@@ -86,7 +86,7 @@ test("m1: スライダーは普段 100 まで、「120まで」で広げる。10
     assert.equal(await page.getAttribute("#slider", "max"), "100");
     assert.equal(await page.textContent("#scoreNum"), "100");
 
-    const page2 = await (await browser.newContext()).newPage();
+    const page2 = await (await browser.newContext({ timezoneId: "Asia/Tokyo" })).newPage();
     await page2.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     await routeFirebaseStub(page2, { [today]: { score: 110, note: "" } });
     await page2.goto(`http://localhost:${server.address().port}/src/m1/`);

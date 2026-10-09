@@ -35,7 +35,7 @@ test("a2/x4: 保存は Firestore の scores/{今日} へ直接書き、Azure の
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
-    const page = await (await browser.newContext()).newPage();
+    const page = await (await browser.newContext({ timezoneId: "Asia/Tokyo" })).newPage();
     const azureScoreCalls = [];
     page.on("request", (req) => { if (req.url().startsWith(`${API_BASE}/scores`)) azureScoreCalls.push(req.url()); });
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));

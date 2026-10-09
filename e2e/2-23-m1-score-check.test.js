@@ -36,7 +36,7 @@ test("m1: チェック項目を押して保存すると check が残り、項目
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
-    const page = await (await browser.newContext()).newPage();
+    const page = await (await browser.newContext({ timezoneId: "Asia/Tokyo" })).newPage();
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     await page.route(`${API_BASE}/session`, (route) =>
       route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) }));
@@ -91,7 +91,7 @@ test("m1: 前の記録(done だけ)は ○/× として読む(ab-129)", async ()
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
-    const page = await (await browser.newContext()).newPage();
+    const page = await (await browser.newContext({ timezoneId: "Asia/Tokyo" })).newPage();
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
     await routeFirebaseStub(page, {
