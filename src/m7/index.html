@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>m7 / COBOL 入門</title>
+<link rel="stylesheet" href="../common/base.css?v=1">
+<style>
+  /* ab-147(2026-10-09 礼文): COBOL の学習ページ。例題+四択+ページの中で動く小さな解釈系(cobol.js)。
+     コードは固定形式なので等幅で、上に桁の目盛り(ルーラー)を出す。色は base.css の変数から。 */
+  :root { --ok: #3f9a5a; --ng: #c0793a; --code-bg: #0c0e09; --area-a: rgba(10, 108, 150, .14); }
+  @media (prefers-color-scheme: light) { :root { --ok: #2e7d45; --ng: #a8601f; --code-bg: #f0efe6; --area-a: rgba(10, 108, 150, .10); } }
+  .lede { font-size: 0.8rem; color: var(--ink-soft); }
+  .progress { font-size: 0.85rem; margin: 10px 0 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .progress .bar { flex: 1; min-width: 120px; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .progress .bar i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .3s; }
+  .progress button { font-size: 0.75rem; }
+  details.intro summary { cursor: pointer; font-weight: 700; font-size: 0.9rem; }
+  .intro p, .intro li { font-size: 0.85rem; line-height: 1.7; }
+  .intro dl { font-size: 0.85rem; display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; }
+  .intro dt { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; }
+  .intro dd { margin: 0; }
+  .lesson h2 { font-size: 1rem; margin: 0 0 6px; display: flex; gap: 8px; align-items: baseline; }
+  .lesson h2 .no { color: var(--ink-soft); font-size: 0.8rem; font-weight: 700; }
+  .lesson h2 .done-mark { margin-left: auto; font-size: 0.75rem; color: var(--ok); }
+  .point { font-size: 0.85rem; line-height: 1.7; margin: 0 0 10px; }
+  .code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.55; }
+  .code table { border-collapse: collapse; }
+  .code td { padding: 0; white-space: pre; vertical-align: top; }
+  .code td.n { color: var(--ink-soft); text-align: right; padding: 0 8px 0 6px; user-select: none; border-right: 1px solid var(--line); }
+  .code td.t { padding: 0 10px 0 0; }
+  .code tr.ruler td { color: var(--ink-soft); opacity: .8; }
+  .code tr.hl td.t { background: var(--area-a); }
+  .code .a { background: var(--area-a); }
+  .ask { font-size: 0.9rem; font-weight: 700; margin: 12px 0 8px; }
+  .choices { display: grid; gap: 6px; }
+  .choices button { font: inherit; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem; text-align: left; padding: 8px 10px;
+    border: 1.5px solid var(--line); border-radius: 8px; background: var(--input-bg); color: var(--ink); cursor: pointer; white-space: pre-wrap; }
+  .choices button:hover:not(:disabled) { border-color: var(--accent); }
+  .choices button.ok { border-color: var(--ok); color: var(--ok); font-weight: 700; }
+  .choices button.ng { border-color: var(--ng); color: var(--ng); text-decoration: line-through; opacity: .8; }
+  .choices button:disabled { cursor: default; }
+  .feedback { font-size: 0.85rem; margin-top: 8px; min-height: 1.2em; line-height: 1.6; }
+  .feedback.ok { color: var(--ok); font-weight: 700; }
+  .feedback.ng { color: var(--ng); }
+  .tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tools button, .play button { font-size: 0.8rem; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--input-bg); color: var(--ink); cursor: pointer; }
+  .tools button:hover, .play button:hover { border-color: var(--accent); }
+  .out { margin-top: 8px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; white-space: pre; overflow-x: auto;
+    background: var(--code-bg); border: 1px dashed var(--line); border-radius: 6px; padding: 6px 10px; }
+  .out .err { color: var(--ng); white-space: pre-wrap; }
+  .out .in { color: var(--ink-soft); }
+  .notes { font-size: 0.82rem; margin-top: 8px; }
+  .notes summary { cursor: pointer; color: var(--ink-soft); }
+  .notes ol { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; }
+  .notes li { display: grid; grid-template-columns: 3.2em 1fr; gap: 6px; line-height: 1.6; }
+  .notes li b { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--ink-soft); font-weight: 400; }
+  .play textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.55;
+    background: var(--code-bg); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+  .play label { display: block; font-size: 0.75rem; color: var(--ink-soft); margin: 8px 0 4px; }
+  .play .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  @media (prefers-reduced-motion: reduce) { .progress .bar i { transition: none; } }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>路歴（m7） / COBOL 入門</h1>
+  <p class="lede">ab-147。COBOL をはじめて読む人向けに、短いプログラムを読んで「何が出るか」を四択で当てる。まちがえてもヒントが出るだけで、何度でも選びなおせる。どの例題も「動かしてみる」で、このページの中で実際に動く(小さな COBOL を自前で書いたもので、使える語はまだ少ない)。正解した問いは、この端末に覚える。</p>
+
+  <div class="progress"><span id="progressText">正解 0 / 0</span><span class="bar"><i id="progressBar"></i></span><button type="button" id="btnReset">はじめから</button></div>
+
+  <details class="section intro" id="intro">
+    <summary>はじめに: COBOL の読み方(4つの部・桁のきまり・用語)</summary>
+    <p>COBOL(コボル)は 1959 年にできた、事務の計算(給料・在庫・銀行の口座など)のためのプログラムの言葉。英語の文に近い書き方をするのが特徴で、いまも銀行や役所の大きな仕組みで動いている。</p>
+    <p><b>4つの部(DIVISION)</b>。プログラムは上から順に、この4つに分かれる。</p>
+    <dl>
+      <dt>IDENTIFICATION</dt><dd>見出し。プログラムの名前(PROGRAM-ID)を書く。</dd>
+      <dt>ENVIRONMENT</dt><dd>動かす機械やファイルのこと。このページの例題では使わない。</dd>
+      <dt>DATA</dt><dd>使う箱(変数)を、名前と大きさ(PIC)で先に決めておく。</dd>
+      <dt>PROCEDURE</dt><dd>手順。ここに書いた命令が上から順に動く。</dd>
+    </dl>
+    <p><b>桁のきまり(固定形式)</b>。もとはパンチカード1枚=1行で、何桁目に何を書くかが決まっている。例題の上の目盛り(<code>----+----1</code>)が桁の番号。</p>
+    <dl>
+      <dt>1〜6 桁</dt><dd>行の番号(今は空白でよい)。</dd>
+      <dt>7 桁</dt><dd>印の欄。<code>*</code> を書くとその行は注釈(動かない)。</dd>
+      <dt>8〜11 桁</dt><dd>A 領域。部・節の見出しや、01 などの箱の番号はここから書く(例題では色を付けている)。</dd>
+      <dt>12〜72 桁</dt><dd>B 領域。命令(DISPLAY など)はここから書く。</dd>
+    </dl>
+    <p><b>用語メモ</b></p>
+    <dl>
+      <dt>PIC</dt><dd>箱の形。<code>X(5)</code> は文字5つ、<code>9(3)</code> は数字3けた、<code>9(3)V99</code> は小数2けたつき(V は見えない小数点)。</dd>
+      <dt>01・77</dt><dd>箱の段の番号。いちばん上の段が 01。</dd>
+      <dt>VALUE</dt><dd>箱にはじめから入れておく値。</dd>
+      <dt>.(ピリオド)</dt><dd>文の終わり。IF や PERFORM の途中に打つと、そこで全部おわってしまうので注意。</dd>
+    </dl>
+  </details>
+
+  <div id="lessons"></div>
+
+  <div class="section play" id="play">
+    <div class="section-title">自由に書いて動かす(Playground)</div>
+    <p class="lede">使える語: DISPLAY・ACCEPT・MOVE・COMPUTE・ADD・SUBTRACT・MULTIPLY・DIVIDE(GIVING も)・IF/ELSE/END-IF・PERFORM 回数 TIMES・PERFORM VARYING/UNTIL・STOP RUN。箱は PIC 9 と X(V・S も)。まだ使えない語は、行番号つきで「まだ使えない」と出て止まる。</p>
+    <label for="playCode">プログラム</label>
+    <textarea id="playCode" rows="16" spellcheck="false"></textarea>
+    <label for="playInput">入力(ACCEPT が1行ずつ読む)</label>
+    <textarea id="playInput" rows="2" spellcheck="false"></textarea>
+    <div class="row"><button type="button" id="btnPlay">動かす</button><button type="button" id="btnPlayReset">見本にもどす</button></div>
+    <div class="out" id="playOut" hidden></div>
+  </div>
+
+  <script type="module" src="app.js?v=202610100000"></script>
+</body>
+</html>

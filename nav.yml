@@ -23,6 +23,12 @@ categories:
       - code: bf
         desc: 訪問地図(別系統)
         href: src/bd/bf/
+  - label: 学ぶ
+    items:
+      - code: m7
+        desc: COBOL 入門(例題・四択・その場で動く)
+        href: src/m7/
+        stage: beta
   - label: baを見る
     items:
       - code: ba
