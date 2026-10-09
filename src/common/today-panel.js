@@ -72,7 +72,8 @@ export async function showTodayPanel(body, { apiBase = window.AA_API_BASE || DEF
   body.replaceChildren(row("運勢", fortuneOf(date)), row("今日の得点", "取得中…"), row("今週", "取得中…"));
 
   const [today, cur, prev] = await Promise.allSettled([
-    getJson(`${apiBase}/scores/${date}`),
+    // ab-162: 今日の得点は Firestore から(本人のログインで読む)。Azure の /api/scores は止める予定
+    import("./score-store.js").then((m) => m.fetchScore(date)),
     getJson(`${apiBase}/weekly-scores/${thisWeek}`),
     getJson(`${apiBase}/weekly-scores/${lastWeek}`),
   ]);

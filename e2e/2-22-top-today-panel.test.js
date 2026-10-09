@@ -12,6 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { jstDate, isoWeekKey } from "../src/common/today-panel.js";
 import { listenSafe } from "./listen-safe.js";
+import { routeFirebaseStub } from "./firebase-stub.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".yml": "text/plain" };
@@ -46,9 +47,8 @@ test("トップ: 開いただけでは取りに行かず、押したら運勢・
     });
     await page.route((u) => !u.href.startsWith(origin), (route) => {
       const url = route.request().url();
-      if (url.includes("/api/scores/")) {
-        apiCalls.push(url);
-        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ score: 86, note: "" }) });
+      if (url.includes("/api/session")) {
+        return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) });
       }
       if (url.includes("/api/weekly-scores/")) {
         apiCalls.push(url);
@@ -60,7 +60,14 @@ test("トップ: 開いただけでは取りに行かず、押したら運勢・
       return route.abort();
     });
 
+    // ab-162: 今日の得点は Firestore(スタブ)から。一覧はログインしてから出る
+    const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    await routeFirebaseStub(page, { [today]: { score: 86, note: "" } });
     await page.goto(`${origin}/`);
+    assert.equal(await page.isVisible("#todayBtn"), false, "ログイン前に中身が見えている");
+    await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }),
+      "header." + Buffer.from(JSON.stringify({ name: "Test User" })).toString("base64") + ".sig");
+    await page.waitForSelector("#todayBtn", { state: "visible" });
     // 決め打ちで待たず、通信が落ち着くまで待ってから「取りに行っていない」を見る(ab-106)
     await page.waitForLoadState("networkidle");
     assert.deepEqual(apiCalls, [], "開いただけで API を叩いている");
@@ -77,7 +84,7 @@ test("トップ: 開いただけでは取りに行かず、押したら運勢・
     assert.match(text, /運勢(大吉|中吉|小吉|吉|末吉|凶)/);
     assert.match(text, /今日の得点86点/);
     assert.match(text, /今週533点\(先週 1264点まで あと731点\)/);
-    assert.equal(apiCalls.length, 3);
+    assert.equal(apiCalls.length, 2, "今週・先週の2つ(今日の得点は Firestore から、ab-162)");
     assert.ok(apiCalls.some((u) => /\/weekly-scores\/\d{4}-W\d{2}$/.test(u)));
 
     await page.click("#todayClose");
