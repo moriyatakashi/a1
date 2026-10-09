@@ -32,6 +32,10 @@ function serveStatic() {
 
 // btoa()はASCII専用のため、日本語などマルチバイト文字を含む名前は使わない
 const FAKE_GOOGLE_CREDENTIAL = "header." + Buffer.from(JSON.stringify({ name: "Test User" })).toString("base64") + ".sig";
+// ab-162: サーバーが使えないときは、トークンのメールが持ち主か(sha256)を見てから入れる。テストでは持ち主を owner@example.com にする
+const OWNER_SHA256 = "c8cd3c6427301eaf6665bccacd65ddb614527acc843a15463e3faba57124c351"; // sha256("owner@example.com")
+const credFor = (email) => "header." + Buffer.from(JSON.stringify({ name: "Test User", email, email_verified: true })).toString("base64") + ".sig";
+const OWNER_CREDENTIAL = credFor("owner@example.com");
 
 async function triggerLogin(page) {
   await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
@@ -103,12 +107,14 @@ test("ba: /api/sessionが使えない場合は生のGoogleトークンにフォ�
       route.fulfill({ status: 503, body: "session feature not configured" })
     );
 
+    await page.addInitScript((h) => { window.AA_OWNER_EMAIL_SHA256 = h; }, OWNER_SHA256);
     await page.goto(`http://localhost:${port}/src/ba/`);
-    await triggerLogin(page);
+    await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), OWNER_CREDENTIAL);
+    await page.waitForSelector("#content", { state: "visible" });
 
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("aa_credential")));
     assert.equal(stored.kind, "google", "交換に失敗したら従来どおり生のGoogleトークンで保存されるはず");
-    assert.equal(stored.credential, FAKE_GOOGLE_CREDENTIAL);
+    assert.equal(stored.credential, OWNER_CREDENTIAL);
 
     const contentVisible = await page.isVisible("#content");
     assert.equal(contentVisible, true, "セッション交換に失敗してもログイン自体は成立するはず");
@@ -117,3 +123,29 @@ test("ba: /api/sessionが使えない場合は生のGoogleトークンにフォ�
     server.close();
   }
 });
+
+// ab-162: 持ち主でないアカウントは幕を通さない(サーバーが 401 を返す場合と、サーバーが使えずメールで見る場合)
+for (const [label, sessionStatus, email] of [
+  ["サーバーが持ち主でないと返した(401)", 401, "owner@example.com"],
+  ["サーバーが使えず、メールが持ち主でない", 503, "someone@example.com"],
+]) {
+  test(`ba: ${label}ときはログインさせない`, async () => {
+    const server = await serveStatic();
+    const port = server.address().port;
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
+      await page.route("https://ab-board-api.azurewebsites.net/api/session", (route) => route.fulfill({ status: sessionStatus, body: "" }));
+      await page.addInitScript((h) => { window.AA_OWNER_EMAIL_SHA256 = h; }, OWNER_SHA256);
+      await page.goto(`http://localhost:${port}/src/ba/`);
+      await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), credFor(email));
+      await page.waitForFunction(() => /このアカウントでは使えません/.test(document.getElementById("status").textContent));
+      assert.equal(await page.isVisible("#content"), false);
+      assert.equal(await page.evaluate(() => localStorage.getItem("aa_credential")), null);
+    } finally {
+      await browser.close();
+      server.close();
+    }
+  });
+}

@@ -16,6 +16,12 @@
 // Googleトークンを60分だけ保持するフォールバックに自動的に倒れる(段階移行を安全にするため)。
 // 無期限トークンはログアウト(window.aaLogout、またはサーバー側の失効)でのみ失効する。
 // m1/n2/n4で共通のキーを使うため、いずれか1つでログインすれば他も再ログイン不要になる。
+// ab-162(2026-10-10): ログインの幕を通すのは持ち主(Takashi)のアカウントだけ。
+// サーバー(/session)は持ち主のトークンにしかセッションを出さない(ALLOWED_EMAIL)。401/403 が返ったら持ち主ではないので入れない。
+// サーバーが使えないとき(フォールバック)は、Google のトークンのメールを sha256 で持ち主と比べる(公開レポなのでメールそのものは書かない)。
+// これは画面の幕で、本当の守りは Firestore の Rules とサーバー側(ab-162 段2〜4)。テストは window.AA_OWNER_EMAIL_SHA256 で差し替える。
+const OWNER_EMAIL_SHA256 = "53b299b790f73429d69af153213ea0a61e2ef6b4a61f03d36b9acb22510a5ca8";
+const NOT_OWNER_MESSAGE = "このアカウントでは使えません(持ち主のアカウントでログインしてください)";
 const STORAGE_KEY = "aa_credential";
 const GOOGLE_TOKEN_SESSION_MS = 60 * 60 * 1000; // フォールバック(生Googleトークン)のみに適用
 const LOGIN_EVENT = window.AA_AUTH_EVENT || "aa-login-success";
@@ -131,12 +137,26 @@ async function exchangeForPersistentSession(googleCredential) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ credential: googleCredential }),
     });
+    if (res.status === 401 || res.status === 403) return { denied: true };
     if (!res.ok) return null;
     const data = await res.json();
-    return data.sessionToken || null;
+    return data.sessionToken ? { token: data.sessionToken } : null;
   } catch (e) {
     return null;
   }
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Google のトークンの中身(payload)が持ち主のものか。メール確認済みであることも見る
+async function isOwnerPayload(payload) {
+  if (!payload || !payload.email) return false;
+  if (payload.email_verified !== true && payload.email_verified !== "true") return false;
+  const want = window.AA_OWNER_EMAIL_SHA256 || OWNER_EMAIL_SHA256;
+  return (await sha256Hex(String(payload.email).trim().toLowerCase())) === want;
 }
 
 window.handleCredentialResponse = async (response) => {
@@ -144,12 +164,22 @@ window.handleCredentialResponse = async (response) => {
     const payload = decodeJwtPayload(response.credential);
     const name = payload.name || "";
     // ab-24: m1 が Firebase にもログインするときに渡す生のIDトークン。メモリだけに置き、保存はしない(寿命1時間)。
-    window.__googleIdToken = response.credential;
-    const sessionToken = await exchangeForPersistentSession(response.credential);
-    if (sessionToken) {
-      persistSession(sessionToken, name, "session");
-      activateSession(sessionToken, name);
+    const exchanged = await exchangeForPersistentSession(response.credential);
+    if (exchanged && exchanged.denied) {
+      setText("status", NOT_OWNER_MESSAGE);
+      return;
+    }
+    if (exchanged && exchanged.token) {
+      window.__googleIdToken = response.credential;
+      persistSession(exchanged.token, name, "session");
+      activateSession(exchanged.token, name);
     } else {
+      // サーバーが使えないときは、トークンのメールで持ち主かを見てから入れる(ab-162)
+      if (!(await isOwnerPayload(payload))) {
+        setText("status", NOT_OWNER_MESSAGE);
+        return;
+      }
+      window.__googleIdToken = response.credential;
       persistSession(response.credential, name, "google");
       activateSession(response.credential, name);
     }
