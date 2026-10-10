@@ -1,6 +1,7 @@
 // react: 3レーン(takashi/claude-pc/claude-mobile)それぞれの軽い反応(参考程度、判断根拠にしない)。
 // レーンごとに反応チップが独立して表示され(voidと違い集約しない)、takashi自身の反応は
-// レーンフォームのボタンでトグルでき、クリックするとtype:"react"がPOSTされることを確認する。
+// レーンフォームのボタンでトグルでき、クリックするとtype:"react"がPOSTされることを確認していた。
+// 2026-10-10(ab-166 ②): ba への書き込みを止めたので、チップの表示だけ確かめ、反応ボタンは出ないこと。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
@@ -36,7 +37,7 @@ const FIXTURE = [
   { id: "F2", threadId: "F", by: "takashi", ref: "F", type: "react", seq: null, createdAt: `${T}3+00:00`, value: true },
 ];
 
-test("ba: レーン別の反応チップが独立して表示され、takashi自身の反応ボタンでtype:reactがPOSTされる", async () => {
+test("ba: レーン別の反応チップが独立して表示され、反応ボタンは出ない(読むだけ)", async () => {
   const server = await serveStatic();
   const port = server.address().port;
   const browser = await chromium.launch();
@@ -68,17 +69,7 @@ test("ba: レーン別の反応チップが独立して表示され、takashi自
     assert.equal(await chips.nth(2).innerText(), "takashi✓", "takashiは反応済み");
     assert.equal(await chips.nth(1).getAttribute("class"), "react-chip", "未反応のチップに--onは付かない");
 
-    assert.equal(await cardF.locator(".btn-toggle-react").innerText(), "反応を取り消す", "takashiは既に反応済みなので取り消す表記");
-
-    const [postRequest] = await Promise.all([
-      page.waitForRequest((req) => req.url().includes("/api/ba") && req.method() === "POST"),
-      cardF.locator(".btn-toggle-react").click(),
-    ]);
-    const sent = JSON.parse(postRequest.postData());
-    assert.equal(sent.type, "react");
-    assert.equal(sent.ref, "F");
-    assert.equal(sent.value, false, "既にtakashiが反応済みなのでクリックで取り消し(false)になる");
-    assert.equal(sent.credential, "test");
+    assert.equal(await cardF.locator(".btn-toggle-react").count(), 0, "読むだけなので反応ボタンは出ない");
   } finally {
     await browser.close();
     server.close();

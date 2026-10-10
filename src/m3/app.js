@@ -1,33 +1,19 @@
 // app.js — m3(たかし専用の記入面)。
 // 2026-10-10(ab-161、Takashi 決定): 書き先を ba(Azure)から af(「ほぼba」、Firestore の afThreads)に切り替えた。
 // 画面の場所はそのまま。できるのは「書く・読む(開いているもの)・閉じる・note を足す」だけ(要るものはあとで足す)。
-// af の Rules がまだ反映されていない(permission-denied)うちは、今までどおり ba に書く(ab-163 の反映待ちの間の逃げ道)。
+// 2026-10-10(ab-166 ②): Rules 第1段が出て m3 から af に書けるのを確かめたので、ba(Azure)への逃げ道は外した。
 import "../common/config.js";
-import { CLASSIFICATIONS, parseTags, withCredential } from "../common/utils.js";
+import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
 import { addAfNote, cleanAfTags, createAf, doneAf, fetchOpenAf, isDenied } from "./af-store.js";
 
-const API_BASE = window.AA_API_BASE; // common/config.js から
-const BA_API = `${API_BASE}/ba`;
-
-async function postBaEntry(body) {
-  const res = await fetch(BA_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(withCredential(body)),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-// af に書く。Rules がまだで書けなければ ba に書き、どちらに書いたかを返す
+// af に書く。書けなければ(この端末で Firebase に未ログインなど)そのまま失敗を出す
 async function writeEntry({ title, tags, body }) {
   try {
     const r = await createAf({ title, body, tags: cleanAfTags(tags) });
     return `追加しました: af-${r.seq}`;
   } catch (e) {
-    if (!isDenied(e)) throw e;
-    const r = await postBaEntry({ type: "new", title, tags, body });
-    return `af はまだ使えないので(Rules の反映待ち)、ba に書きました: ba-${r.seq}`;
+    if (isDenied(e)) throw new Error("af に書けませんでした(この端末でログインし直してください)");
+    throw e;
   }
 }
 
@@ -48,7 +34,7 @@ async function renderList() {
   try {
     items = await fetchOpenAf();
   } catch (e) {
-    box.textContent = isDenied(e) ? "まだ読めません(af の Rules の反映待ち、またはこの端末で未ログイン)" : "読めませんでした: " + (e.message || e);
+    box.textContent = isDenied(e) ? "まだ読めません(この端末で未ログイン)" : "読めませんでした: " + (e.message || e);
     return;
   }
   box.textContent = "";

@@ -3,14 +3,14 @@
 // 画面側ログインゲートを通過した後にのみデータを取得・表示する(GETもcredentialヘッダで認証)。
 // config.jsを自分でimportする(ba-9追補)。HTML側の<script>読込に依存しないため、
 // 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
+// 2026-10-10(ab-166 ②、Takashi): ba への書き込みを止めた。このページは読むだけ(書くのは m3 → af)。
+// Azure をやめるまでの読みも、いずれ礼文の写し(ab-165)へ移る。
 import "../common/config.js";
-import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags, withCredential } from "../common/utils.js";
+import { esc, fmtTs, CLASSIFICATIONS, CLS_KEY, BY_LABEL, filterFreeTags } from "../common/utils.js";
 import { groupThreads, entryTypeLabel, summaryCounts } from "../common/thread-logic.js";
 
 const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
 const BA_API = `${API_BASE}/ba`;
-
-const HUMAN_TYPES = ["note", "void", "status"];
 
 function renderSummary(threads) {
   // ab-155: 一覧に出るスレッドだけで数える(隠れた分は数に入れない)
@@ -31,9 +31,9 @@ function entryRowHtml(e) {
   // 元のタイトルと訂正の経緯がスレッドを開けば読めるようにするため。
   const titleLine = e.title && (e.type === "new" || e.type === "correction")
     ? `<div class="entry-title">${e.type === "correction" ? "タイトル → " : ""}${esc(e.title)}</div>` : "";
-  // ba-77: 承認キュー。proposeFor:"takashi"付きのエントリだけバッジ(+承認待ちならボタン)を出す。
+  // ba-77: 承認キュー。proposeFor:"takashi"付きのエントリだけバッジを出す(ab-166 で承認ボタンは外した)。
   const approvalHtml = e.pendingApproval
-    ? `<span class="approval-badge approval-badge--pending">takashi代筆・承認待ち</span><button type="button" class="btn-approve" data-approve-id="${esc(e.id)}">承認</button>`
+    ? `<span class="approval-badge approval-badge--pending">takashi代筆・承認待ち</span>`
     : e.approved
       ? `<span class="approval-badge approval-badge--approved">takashi代筆・承認済み</span>`
       : "";
@@ -96,8 +96,6 @@ function threadCardHtml(thread, seqTitle, autoExpand) {
   const isOpen = status === "open";
   // 表示件数が多いときはautoExpand=falseにして、openスレッドも既定でたたんでおく(手動で開ける)。
   const expand = isOpen && autoExpand;
-  const takashiVoid = thread.voidView.takashi;
-  const takashiReact = thread.reactByLane.takashi;
 
   return `
     <details class="thread-card${thread.hiddenVoid ? " thread-card--void" : ""}" data-thread-id="${threadId}" data-seq="${root.seq || ""}" ${expand ? "open" : ""}>
@@ -119,128 +117,9 @@ function threadCardHtml(thread, seqTitle, autoExpand) {
       <div class="thread-timeline">
         ${entryRowHtml(root)}
         ${children.map(entryRowHtml).join("")}
-        <div class="lane-form">
-          <span class="lane-form-label">人間レーンから追記</span>
-          <div class="lane-form-row">
-            <input type="text" class="note-input" placeholder="ひとこと">
-            <button type="button" class="btn-add-note">追加</button>
-          </div>
-          <div class="lane-form-row" style="margin-top:6px;">
-            <button type="button" class="btn-toggle-void">${takashiVoid ? "有効に戻す(T)" : "無効にする(T)"}</button>
-            <button type="button" class="btn-toggle-status">${isOpen ? "クローズ" : "再オープン"}</button>
-            <button type="button" class="btn-toggle-react">${takashiReact ? "反応を取り消す" : "反応する"}</button>
-          </div>
-          <div class="lane-form-row" style="margin-top:6px;">
-            <select class="reclass-select">
-              <option value="" selected disabled>分類を変更…</option>
-              ${CLASSIFICATIONS.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")}
-            </select>
-            <button type="button" class="btn-reclassify">変更</button>
-          </div>
-          <div class="lane-form-row" style="margin-top:6px;">
-            <input type="text" class="title-fix-input" value="${esc(title)}">
-            <button type="button" class="btn-fix-title">タイトルを直す</button>
-          </div>
-          <div class="lane-form-hint">使える種別: note / void / status / react / 分類変更 / タイトル訂正(id・時刻・by は自動)</div>
-        </div>
+        <div class="lane-form-hint">ba は読むだけ(2026-10-10 に書き込みを止めた。書くのは m3 → af)</div>
       </div>
     </details>`;
-}
-
-async function postEntry(body) {
-  const res = await fetch(BA_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(withCredential(body)),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-function attachThreadHandlers(container, thread) {
-  const card = container.querySelector(`[data-thread-id="${thread.threadId}"]`);
-  if (!card) return;
-
-  const noteInput = card.querySelector(".note-input");
-  card.querySelector(".btn-add-note").addEventListener("click", async () => {
-    const body = noteInput.value.trim();
-    if (!body) return;
-    try {
-      await postEntry({ ref: thread.threadId, type: "note", body });
-      noteInput.value = "";
-      load();
-    } catch (e) {
-      alert("追記に失敗しました: " + e.message);
-    }
-  });
-
-  card.querySelector(".btn-toggle-void").addEventListener("click", async () => {
-    try {
-      await postEntry({ ref: thread.threadId, type: "void", value: !thread.voidView.takashi });
-      load();
-    } catch (e) {
-      alert("無効フラグの切り替えに失敗しました: " + e.message);
-    }
-  });
-
-  card.querySelector(".btn-toggle-status").addEventListener("click", async () => {
-    try {
-      await postEntry({ ref: thread.threadId, type: "status", status: thread.status === "open" ? "closed" : "open" });
-      load();
-    } catch (e) {
-      alert("ステータス変更に失敗しました: " + e.message);
-    }
-  });
-
-  card.querySelector(".btn-toggle-react").addEventListener("click", async () => {
-    try {
-      await postEntry({ ref: thread.threadId, type: "react", value: !thread.reactByLane.takashi });
-      load();
-    } catch (e) {
-      alert("反応の切り替えに失敗しました: " + e.message);
-    }
-  });
-
-  // ba-130: 分類はnew投稿時にしか選べなかった問題への対応。noteにtagsを載せて追記し、
-  // thread-logic.jsのfindClassification(new/noteのtagsを時系列で見て最新優先)に乗せる。
-  const reclassSelect = card.querySelector(".reclass-select");
-  card.querySelector(".btn-reclassify").addEventListener("click", async () => {
-    const value = reclassSelect.value;
-    if (!value) return;
-    try {
-      await postEntry({ ref: thread.threadId, type: "note", tags: [value] });
-      load();
-    } catch (e) {
-      alert("分類の変更に失敗しました: " + e.message);
-    }
-  });
-
-  // タイトル訂正。追記オンリーの制約上、直接書き換えではなくtitle付きcorrectionを
-  // 積む(thread-logic.jsのdisplayTitle解決が最新のcorrectionを優先する)。
-  // 元のnewエントリのtitleは変わらず残るため、付け直しの履歴もタイムラインに残る。
-  const titleFixInput = card.querySelector(".title-fix-input");
-  card.querySelector(".btn-fix-title").addEventListener("click", async () => {
-    const newTitle = titleFixInput.value.trim();
-    if (!newTitle || newTitle === (thread.displayTitle || "")) return;
-    try {
-      await postEntry({ ref: thread.threadId, type: "correction", title: newTitle });
-      load();
-    } catch (e) {
-      alert("タイトルの訂正に失敗しました: " + e.message);
-    }
-  });
-
-  // ba-77: 承認キュー。1スレッドに承認待ちが複数あり得るため全ボタンに付ける。
-  card.querySelectorAll(".btn-approve").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      try {
-        await postEntry({ ref: thread.threadId, type: "approval", approvesId: btn.dataset.approveId });
-        load();
-      } catch (e) {
-        alert("承認に失敗しました: " + e.message);
-      }
-    });
-  });
 }
 
 // 両視点そろって無効のスレッドは既定で一覧から隠す。トグルONのときだけ薄色で表示する。
@@ -320,7 +199,6 @@ function render() {
   // 表示件数がAUTO_EXPAND_MAXを超えたら、openスレッドも既定でたたんで一覧を見渡しやすくする。
   const autoExpand = visible.length <= AUTO_EXPAND_MAX;
   listEl.innerHTML = visible.map((t) => threadCardHtml(t, cachedThreads.seqTitle, autoExpand)).join("") || emptyMsg;
-  visible.forEach((t) => attachThreadHandlers(listEl, t));
 }
 
 // ba-33: 分類フィルタのチップ(単一選択+件数)。分類なしスレッドは「すべて」でのみ表示される。

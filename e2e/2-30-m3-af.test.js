@@ -1,6 +1,6 @@
 // ab-161(2026-10-10 すま): m3 の書き先を af(「ほぼba」、Firestore の afThreads)に切り替えた。
 // 書く(番号は _meta/af_seq と同じトランザクション)・開いているものを読む・済みにする・note を足す。
-// af の Rules がまだ反映されていない(書けない)うちは、今までどおり ba(Azure)に書く。Firestore はスタブ。
+// 2026-10-10(ab-166 ②): ba への逃げ道は外した。af に書けないときは失敗を出し、ba には書かない。Firestore はスタブ。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { routeFirebaseStub } from "./firebase-stub.js";
@@ -43,8 +43,9 @@ async function openM3({ denyAf = false } = {}, act) {
     const page = await browser.newPage();
     const errors = [];
     const baPosts = [];
+    const dialogs = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    page.on("dialog", (d) => d.accept(d.type() === "prompt" ? "足したnote" : undefined));
+    page.on("dialog", (d) => { dialogs.push(d.message()); d.accept(d.type() === "prompt" ? "足したnote" : undefined); });
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     await page.route(`${API_BASE}/**`, (route) => {
       const req = route.request();
@@ -64,7 +65,7 @@ async function openM3({ denyAf = false } = {}, act) {
     await page.waitForFunction(() => !/読み込み中/.test(document.getElementById("afList").textContent));
     const out = await act(page);
     const writes = await page.evaluate(() => window.__fsOtherWrites || []);
-    return { ...out, writes, baPosts, errors };
+    return { ...out, writes, baPosts, errors, dialogs };
   } finally {
     await browser.close();
     server.close();
@@ -125,18 +126,17 @@ test("m3: note を足すと notes に1件と noteMeta に印", async () => {
   assert.ok(writes.some((x) => x.col === "afThreads" && x.id === "a1" && x.noteMeta));
 });
 
-test("m3: af の Rules がまだで書けないときは、今までどおり ba に書く", async () => {
-  const { result, list, baPosts, errors } = await openM3({ denyAf: true }, async (page) => {
+test("m3: af に書けないときは失敗を出し、ba には書かない(ab-166 ②)", async () => {
+  const { list, baPosts, errors, dialogs } = await openM3({ denyAf: true }, async (page) => {
     const list = await page.textContent("#afList");
-    await page.fill("#newTitle", "逃げ道のメモ");
+    await page.fill("#newTitle", "書けないメモ");
     await page.click("#btnAddThread");
-    await page.waitForFunction(() => /追加しました|ba に書きました/.test(document.getElementById("postResult").textContent));
-    return { result: await page.textContent("#postResult"), list };
+    await page.waitForFunction(() => !document.getElementById("btnAddThread").disabled);
+    await page.waitForTimeout(200);
+    return { list };
   });
-  assert.match(result, /ba に書きました: ba-999/);
-  assert.equal(baPosts.length, 1);
-  assert.equal(baPosts[0].type, "new");
-  assert.equal(baPosts[0].title, "逃げ道のメモ");
+  assert.equal(baPosts.length, 0);
+  assert.ok(dialogs.some((m) => /af に書けませんでした/.test(m)), dialogs.join(" / "));
   assert.match(list, /まだ読めません/);
   assert.deepEqual(errors, []);
 });

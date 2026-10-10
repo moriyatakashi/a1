@@ -1,6 +1,7 @@
 // ba-77: 承認キュー。claudeがproposeFor:"takashi"付きで投函した提案は「承認待ち」バッジ+ボタンで
 // 表示され、クリックするとtype:"approval"/approvesIdをそのエントリのidにしてPOSTされることを確認する。
 // 既にapprovalが存在するエントリは「承認済み」バッジのみでボタンは出ない。
+// 2026-10-10(ab-166 ②): ba への書き込みを止めたので、承認ボタンは出さない(バッジだけ)。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
@@ -36,7 +37,7 @@ const FIXTURE = [
   { id: "E1", threadId: "E", by: "takashi", ref: "E", type: "approval", seq: null, createdAt: `${T}3+00:00`, approvesId: "E" },
 ];
 
-test("ba: 承認待ち提案にはバッジ+ボタン、承認済みはバッジのみ、ボタンクリックでapprovalがPOSTされる", async () => {
+test("ba: 承認待ち・承認済みのバッジは出るが、承認ボタンは出ない(読むだけ)", async () => {
   const server = await serveStatic();
   const port = server.address().port;
   const browser = await chromium.launch();
@@ -62,21 +63,12 @@ test("ba: 承認待ち提案にはバッジ+ボタン、承認済みはバッジ
 
     const cardD = page.locator('[data-thread-id="D"]');
     assert.equal(await cardD.locator(".approval-badge--pending").count(), 1, "承認待ちバッジが出る");
-    assert.equal(await cardD.locator(".btn-approve").count(), 1, "承認待ちには承認ボタンが出る");
+    assert.equal(await cardD.locator(".btn-approve").count(), 0, "読むだけなので承認ボタンは出ない");
 
     const cardE = page.locator('[data-thread-id="E"]');
     assert.equal(await cardE.locator(".approval-badge--approved").count(), 1, "承認済みバッジが出る");
     assert.equal(await cardE.locator(".btn-approve").count(), 0, "承認済みにはボタンを出さない");
 
-    const [postRequest] = await Promise.all([
-      page.waitForRequest((req) => req.url().includes("/api/ba") && req.method() === "POST"),
-      cardD.locator(".btn-approve").click(),
-    ]);
-    const sent = JSON.parse(postRequest.postData());
-    assert.equal(sent.type, "approval");
-    assert.equal(sent.ref, "D");
-    assert.equal(sent.approvesId, "D");
-    assert.equal(sent.credential, "test");
   } finally {
     await browser.close();
     server.close();

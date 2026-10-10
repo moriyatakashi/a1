@@ -1,5 +1,6 @@
 // ba-130: 分類はnew投稿時にしか選べなかった問題への対応。レーンフォームに分類変更用の
-// セレクト+ボタンを追加し、選択してクリックするとtype:"note"にtagsを載せてPOSTされることを確認する。
+// セレクト+ボタンを追加し、選択してクリックするとtype:"note"にtagsを載せてPOSTされることを確認していた。
+// 2026-10-10(ab-166 ②): ba への書き込みを止めた。書き込みの部品(追記・無効・状態・分類・タイトル)が無く、POST しないこと。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
@@ -32,7 +33,7 @@ const FIXTURE = [
   { id: "G", threadId: "G", by: "takashi", ref: null, type: "new", seq: 1, createdAt: `${T}1+00:00`, title: "分類変更の検証用スレッド", tags: ["気づき"], body: "本文G" },
 ];
 
-test("ba: 分類変更セレクトで選んでボタンを押すと、tagsを載せたtype:noteがPOSTされる", async () => {
+test("ba: 読むだけ。書き込みの部品が出ず、POST もしない", async () => {
   const server = await serveStatic();
   const port = server.address().port;
   const browser = await chromium.launch();
@@ -48,6 +49,8 @@ test("ba: 分類変更セレクトで選んでボタンを押すと、tagsを載
       return route.fulfill({ contentType: "application/json", body: JSON.stringify(FIXTURE) });
     });
 
+    const posts = [];
+    page.on("request", (req) => { if (req.method() === "POST" && req.url().includes("/api/ba")) posts.push(req.url()); });
     await page.goto(`http://localhost:${port}/src/ba/`);
     await page.evaluate(() => {
       document.getElementById("content").style.display = "block";
@@ -57,17 +60,11 @@ test("ba: 分類変更セレクトで選んでボタンを押すと、tagsを載
     await page.waitForSelector('[data-thread-id="G"]');
 
     const cardG = page.locator('[data-thread-id="G"]');
-    await cardG.locator(".reclass-select").selectOption("確定仕様");
-
-    const [postRequest] = await Promise.all([
-      page.waitForRequest((req) => req.url().includes("/api/ba") && req.method() === "POST"),
-      cardG.locator(".btn-reclassify").click(),
-    ]);
-    const sent = JSON.parse(postRequest.postData());
-    assert.equal(sent.type, "note");
-    assert.equal(sent.ref, "G");
-    assert.deepEqual(sent.tags, ["確定仕様"]);
-    assert.equal(sent.credential, "test");
+    for (const sel of [".note-input", ".btn-add-note", ".btn-toggle-void", ".btn-toggle-status", ".reclass-select", ".btn-fix-title"]) {
+      assert.equal(await cardG.locator(sel).count(), 0, sel);
+    }
+    assert.match(await cardG.locator(".lane-form-hint").innerText(), /読むだけ/);
+    assert.deepEqual(posts, []);
   } finally {
     await browser.close();
     server.close();
