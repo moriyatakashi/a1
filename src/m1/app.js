@@ -231,7 +231,7 @@ function initScoreInput() {
     try {
       const shelf = await fetchItemShelf();
       elItemShelf.innerHTML = "";
-      shelf.forEach((s) => { const o = document.createElement("option"); o.value = s.text; elItemShelf.appendChild(o); });
+      [...new Map(shelf.map((s) => [s.text, s])).values()].forEach((s) => { const o = document.createElement("option"); o.value = s.text; elItemShelf.appendChild(o); });
     } catch (e) {
       console.warn("棚の読み込みに失敗", e);
     }
@@ -242,7 +242,10 @@ function initScoreInput() {
     else openItemEdit();
   });
 
-  document.getElementById("btnSaveItems").addEventListener("click", async () => {
+  // 保存中は押せなくする(10/3 に連打で同じ項目が棚に3つずつできた、ab-43)
+  const btnSaveItems = document.getElementById("btnSaveItems");
+  btnSaveItems.addEventListener("click", async () => {
+    if (btnSaveItems.disabled) return;
     const texts = [...new Set([...elItemInputs.querySelectorAll("input")].map((x) => x.value.trim()).filter(Boolean))];
     if (!texts.length) { elItemsSaved.textContent = "項目を1つ以上書いてください"; return; }
     if (!window.__credential) {
@@ -250,6 +253,7 @@ function initScoreInput() {
       if (window.aaShowLoginGate) window.aaShowLoginGate();
       return;
     }
+    btnSaveItems.disabled = true;
     try {
       const items = await saveCheckItems(texts);
       checkItems = mergeDone(items, { items: checkItems });
@@ -258,6 +262,8 @@ function initScoreInput() {
       elItemsSaved.textContent = "";
     } catch (e) {
       elItemsSaved.textContent = saveErrorText(e);
+    } finally {
+      btnSaveItems.disabled = false;
     }
   });
 
