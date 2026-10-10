@@ -61,6 +61,9 @@ jobs:
         run: npm ci
       - name: Build index.html from nav.yml
         run: npm run build
+      - name: Build last-updated.json
+        # ab-166 ⑤(2026-10-10): 各ページの「最終更新」を git の履歴から書き出す(Azure の /api/last-updated の代わり)
+        run: node scripts/build-last-updated.mjs
       - name: Apply cache-busters
         # ba-169: ?v= を参照先ファイルの内容ハッシュで自動生成する(手動更新を廃止)。
         # index生成の後・artifactアップロードの前に、作業ツリーのHTMLを書き換える。

@@ -63,7 +63,8 @@ test("nav.ymlの全ページがローカルの404・スクリプトエラーな�
       const localFailures = [];
       page.on("pageerror", (e) => pageErrors.push(e.message));
       page.on("response", (r) => {
-        if (r.url().startsWith(origin) && r.status() >= 400) localFailures.push(`${r.status()} ${r.url().slice(origin.length)}`);
+        // last-updated.json は Pages に公開するときに作る(ab-166 ⑤)。ローカルに無いのは正しい
+        if (r.url().startsWith(origin) && r.status() >= 400 && !r.url().endsWith("/last-updated.json")) localFailures.push(`${r.status()} ${r.url().slice(origin.length)}`);
       });
       await page.route((u) => !u.href.startsWith(origin), (route) => {
         if (route.request().url().includes("ab-board-api.azurewebsites.net")) {
