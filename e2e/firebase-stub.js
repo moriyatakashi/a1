@@ -14,8 +14,12 @@ function modules(scores, others) {
       const col_ = (name) => (C[name] = C[name] || {});
       let seq = 0;
       export const getFirestore = () => ({});
-      export const collection = (db, name) => ({ name });
-      export const doc = (db, name, id) => ({ name, id });
+      // パスは "afThreads/x/notes" のように "/" でつなぐ(サブコレクション、m3 の af の note、ab-161)。
+      // doc(collectionの参照) だけ渡すと自動の id(m3 の af の新規)
+      export const collection = (db, ...segs) => ({ name: segs.join("/") });
+      export const doc = (db, ...segs) => (db && db.name !== undefined && segs.length === 0)
+        ? { name: db.name, id: "auto" + (++seq) }
+        : { name: segs.slice(0, -1).join("/"), id: segs[segs.length - 1] };
       export async function getDoc(ref) { const d = col_(ref.name)[ref.id]; return { exists: () => !!d, data: () => d }; }
       // COUNT 集計(ab-97 のまとめ文書の照合)。数えたコレクション名を window.__fsCounts に積む
       export async function getCountFromServer(col) {
@@ -51,7 +55,10 @@ function modules(scores, others) {
         if (name === "scores") window.__fsWrites = (window.__fsWrites || []).concat([{ id, ...data }]);
         else window.__fsOtherWrites = (window.__fsOtherWrites || []).concat([{ col: name, id, ...data }]);
       }
+      // window.__fsDenyWrite に名前を入れると、そのコレクションには書けない(Rules がまだ反映されていない形、m3 の af)
+      const denyWrite = (name) => { if ((window.__fsDenyWrite || []).includes(name)) { const e = new Error("Missing or insufficient permissions."); e.code = "permission-denied"; throw e; } };
       export async function setDoc(ref, data, opts) {
+        denyWrite(ref.name);
         const S = col_(ref.name);
         S[ref.id] = opts && opts.merge ? applyOps(S[ref.id], data) : data;
         record(ref.name, ref.id, data);
@@ -61,11 +68,22 @@ function modules(scores, others) {
         delete col_(ref.name)[ref.id];
         window.__fsDeletes = (window.__fsDeletes || []).concat([{ col: ref.name, id: ref.id }]);
       }
+      // updateDoc は setDoc(merge)と同じに積む(m3 の af の済み・noteMeta)
+      export async function updateDoc(ref, data) { await setDoc(ref, data, { merge: true }); }
+      // runTransaction(m3 の af の新規。番号のカウンタと同じトランザクション)。中で set したものは最後にまとめて書く
+      export async function runTransaction(db, fn) {
+        const ops = [];
+        const tx = { get: (ref) => getDoc(ref), set: (ref, data) => { ops.push([ref, data]); }, update: (ref, data) => { ops.push([ref, data, true]); } };
+        const out = await fn(tx);
+        for (const [r, d, m] of ops) await setDoc(r, d, m ? { merge: true } : undefined);
+        return out;
+      }
       export function writeBatch(db) {
         const ops = [];
         return { set: (ref, data) => { ops.push([ref, data]); }, commit: async () => { for (const [r, d] of ops) await setDoc(r, d); } };
       }
       export async function addDoc(col, data) {
+        denyWrite(col.name);
         const id = "auto" + (++seq);
         col_(col.name)[id] = data;
         record(col.name, id, data);

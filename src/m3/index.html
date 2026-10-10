@@ -41,12 +41,23 @@
   .cls-radio input { display: none; }
   .cls-radio label:has(input:checked) { color: var(--ink); border-color: var(--ink-soft); background: var(--input-bg); }
   .post-result { font-size: 0.78rem; color: var(--ink-soft); margin-top: 8px; min-height: 1.2em; }
+  /* af の開いているもの(2026-10-10、ab-161) */
+  .af-head { font-weight: 700; font-size: 0.9rem; margin: 4px 0 8px; }
+  .af-item { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; background: var(--paper); }
+  .af-meta { font-size: 0.68rem; color: var(--ink-soft); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .af-title { font-weight: 600; font-size: 0.88rem; margin: 2px 0; }
+  .af-body { font-size: 0.8rem; white-space: pre-wrap; color: var(--ink); margin-top: 4px; }
+  .af-tags { font-size: 0.7rem; color: var(--ink-soft); margin-top: 4px; }
+  .af-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .af-btn { font-size: 0.74rem; padding: 5px 12px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; }
+  .af-msg { font-size: 0.72rem; color: var(--ink-soft); }
+  .af-empty, #afList { font-size: 0.8rem; color: var(--ink-soft); }
 </style>
 </head>
 <body>
   <p><a href="../../">← 戻る</a></p>
   <h1>路歴（m3） / 記入(仮)</h1>
-  <p class="lede" style="font-size:0.8rem;color:var(--ink-soft);">baの「新規スレッドを追加」フォームをコピーして独立させたページ(2026-08-16)。投稿先は引き続きba API(type=new)。一覧はba/bbなど既存ページを参照。名称はまだ仮のまま。</p>
+  <p class="lede" style="font-size:0.8rem;color:var(--ink-soft);">メモを書く・読む・閉じるページ。2026-10-10 から書き先は af(「ほぼba」、本人だけが読める Firestore)。af の準備が済むまでは今までどおり ba に書きます。名称はまだ仮のまま。</p>
   <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: —</p>
 
 <!-- LOGIN_GATE:START -->
@@ -65,7 +76,7 @@
   <div id="content" style="display:none;">
     <div class="new-entry-card">
       <div class="new-entry-title">新規スレッドを追加</div>
-      <div class="new-entry-sub">type=new / by=takashi に固定。id・ts は自動採番。</div>
+      <div class="new-entry-sub">by=takashi に固定。番号(af-N)は自動。</div>
 
       <label class="lane-form-label">分類(ba-32の規約・いずれか1つ)</label>
       <div class="cls-radio">
@@ -91,11 +102,14 @@
       <button class="new-entry-submit" type="button" id="btnAddThread">追加する</button>
       <div class="post-result" id="postResult"></div>
     </div>
+
+    <div class="af-head">開いているもの <span id="afCount"></span></div>
+    <div id="afList"></div>
   </div>
 
   <script>window.AA_AUTH_EVENT = "m3-login-success";</script>
   <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202608161200"></script>
+  <script type="module" src="app.js?v=202610101900"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/m3", "lastUpdated", "最終更新");

@@ -14,6 +14,7 @@
 | `2-15-ba-react.test.js` | `ba`(反応チップ) |
 | `2-16-ba-reclassify.test.js` | `ba`(分類変更) |
 | `2-18-a2-paths.test.js` | `a2`(旧a2アプリのパス・深さ) |
+| `2-30-m3-af.test.js` | `m3`(af に書く・読む・閉じる、ab-161) |
 | `2-19-nav-smoke.test.js` | nav.ymlの全ページ(開くだけ: ローカル404・スクリプトエラー無し) |
 
 ## 実行
