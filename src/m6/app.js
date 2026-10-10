@@ -41,9 +41,13 @@ function project(win, box) {
 }
 // m5 と同じ窓。本土と、沖縄だけの別枠。
 const MAIN = project([129.5, 30, 148.5, 46], [24, 20, 712, 716]);
-const OKI = project([127, 26, 128, 27], [42, 64, 156, 120]);
 const OKINAWA = "沖縄県";
-const OKI_BOX = [30, 60, 170, 200]; // 沖縄の別枠(地図の座標)
+const OKI_BOX = [30, 60, 170, 200]; // 沖縄の別枠(地図の座標)。点線の四角もここから描く
+// 2026-10-10(Takashi「沖縄の四角がずれていない？」): 窓が本島(東経127.63〜128.33・北緯26.07〜26.88)の東側を
+// 切っていて、本島の北半分が点線の四角の右へはみ出していた。窓を本島に合わせ、四角の内側(余白8)に収める。
+const OKI_PAD = 8;
+const OKI = project([127.55, 26.0, 128.4, 26.95],
+  [OKI_BOX[0] + OKI_PAD, OKI_BOX[1] + OKI_PAD, OKI_BOX[2] - OKI_BOX[0] - 2 * OKI_PAD, OKI_BOX[3] - OKI_BOX[1] - 2 * OKI_PAD]);
 const projFor = (pref) => (pref === OKINAWA ? OKI : MAIN);
 // 訪問点は県が空のこともあるので、座標が沖縄あたりなら別枠で描く。
 const projPoint = (v) => (v.pref === OKINAWA || (v.lng < 128.6 && v.lat < 27.6) ? OKI : MAIN)([v.lng, v.lat]);
@@ -140,7 +144,7 @@ function drawMap() {
       </filter>
       <mask id="fogMask"><rect width="760" height="760" fill="white"/><g id="fogHaze"></g><g id="fogHoles"></g></mask>
     </defs>
-    <path d="M30 60 H170 V200 H30 Z" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/>
+    <path d="M${OKI_BOX[0]} ${OKI_BOX[1]} H${OKI_BOX[2]} V${OKI_BOX[3]} H${OKI_BOX[0]} Z" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/>
     <g id="prefs">${paths}</g>
     <g id="cities"></g>
     <g id="lakes">${lakeFeatures.map((f) => `<path class="lake" d="${toPath(f.geometry, MAIN)}"/>`).join("")}</g>
