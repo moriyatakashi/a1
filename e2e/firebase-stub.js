@@ -101,6 +101,11 @@ function modules(scores, others) {
   };
 }
 
+// ab-166(2026-10-11): 旧 ba の写し(Firestore baArchive)。bc・週の得点は Azure でなくこれを読む
+export const baArchiveOf = (entries = [], closes = []) => ({
+  baArchive: { "entries-1": { items: entries, part: 1, of: 1 }, closes: { items: closes, count: closes.length } },
+});
+
 export async function routeFirebaseStub(page, scores, others = {}) {
   const mods = modules(scores, others);
   await page.route(new RegExp("^" + BASE.replace(/[./]/g, "\\$&") + "[^/]+/(firebase-[a-z]+\\.js)$"), (route) => {

@@ -6,7 +6,7 @@
 // そのパターンのリクエストが発生していないことも合わせて検証する。
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { routeFirebaseStub } from "./firebase-stub.js";
+import { routeFirebaseStub, baArchiveOf } from "./firebase-stub.js";
 import { chromium } from "playwright";
 import http from "node:http";
 import fs from "node:fs";
@@ -50,9 +50,10 @@ const PAGES = {
     },
   },
   bc: {
-    routes: {
-      [`${API_BASE}/ba`]: () => ({ status: 200, body: BA_FIXTURE }),
-    },
+    // ab-166(2026-10-11): 旧 ba は Firestore の写し(baArchive)から読む
+    routes: {},
+    firebase: {},
+    firebaseOthers: baArchiveOf(BA_FIXTURE),
     // 2026-09-30: bc は ab(Firestore abThreads)も読む。ここでは空で返す(ネットワークに出さない)
     routeRegex: [[/firestore\.googleapis\.com\//, () => ({ status: 200, body: {} })]],
     async assertLoaded(page) {
@@ -95,7 +96,7 @@ for (const [pageName, spec] of Object.entries(PAGES)) {
       await page.route(`${API_BASE}/session`, (route) =>
         route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) })
       );
-      if (spec.firebase) await routeFirebaseStub(page, spec.firebase);
+      if (spec.firebase) await routeFirebaseStub(page, spec.firebase, spec.firebaseOthers || {});
       for (const [url, handler] of Object.entries(spec.routes)) {
         await page.route(url, (route) => {
           const { status, body } = handler();

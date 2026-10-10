@@ -8,8 +8,6 @@
 // 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
 import "../common/config.js";
 import { CLASSIFICATIONS, findClassification } from "../common/utils.js";
-const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
-const BA_API = `${API_BASE}/ba`;
 // ab は Firestore(ab01-9f35a)の abThreads とサブコレクション notes。Rules で誰でも読めるので匿名の REST GET。
 const AB_FS = "https://firestore.googleapis.com/v1/projects/ab01-9f35a/databases/(default)/documents/abThreads";
 const AB_LABEL = "ab(連絡)";
@@ -227,7 +225,7 @@ async function fetchWeeklyScores() {
       const key = `${year}-W${String(week).padStart(2, "0")}`;
       // ab-166 ③(2026-10-10): Azure の /api/weekly-scores でなく、ページ側で数える(week-score.js、式は同じ)
       const { fetchWeekScore } = await import("../common/week-score.js");
-      return await fetchWeekScore(key, { apiBase: API_BASE });
+      return await fetchWeekScore(key);
     } catch (e) {
       return null;
     }
@@ -714,7 +712,8 @@ async function load() {
   try {
     // ba と ab を並べて取ってから1回だけ描く。ab が読めなくても ba だけで描く。
     const [items, abThreads] = await Promise.all([
-      fetch(BA_API, { cache: "no-store" }).then((res) => (res.ok ? res.json() : [])),
+      // ab-166(2026-10-11): 旧 ba は凍結した写し(Firestore baArchive)から読む。Azure は読まない
+      import("../common/ba-archive.js").then((m) => m.loadBaArchiveEntries()).catch((e) => { console.warn("旧 ba の写しを読めませんでした", e); return []; }),
       fetchAbThreads().catch((e) => { console.warn("ab を読めませんでした", e); return []; }),
     ]);
     currentThreads = [...groupThreads(items), ...abThreads];

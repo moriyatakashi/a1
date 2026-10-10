@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listenSafe } from "./listen-safe.js";
-import { routeFirebaseStub } from "./firebase-stub.js";
+import { routeFirebaseStub, baArchiveOf } from "./firebase-stub.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
@@ -70,10 +70,8 @@ test("bc: 今の状態(開いている件数・返事待ち・最後の動きが
   try {
     const page = await browser.newPage();
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
-    await page.route("https://ab-board-api.azurewebsites.net/api/ba", (route) =>
-      route.fulfill({ contentType: "application/json", body: JSON.stringify(BA) }));
     // ab-162: Firebase にログインしていれば ab を ID トークン付きで読む(Rules を本人だけに絞る準備)
-    await routeFirebaseStub(page, {}, {});
+    await routeFirebaseStub(page, {}, baArchiveOf(BA)); // ab-166: 旧 ba は Firestore の写しから
     await page.addInitScript(() => { window.__fsSignedIn = true; });
     const abAuth = [];
     await page.route(/firestore\.googleapis\.com\//, (route) => {

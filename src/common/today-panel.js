@@ -3,8 +3,6 @@
 // このファイル自体をボタンを押したときに import する。ページを開いただけでは何も取りに行かない。
 // 出すもの: 1. 今日の得点 / 2. 今週の週次得点が先週まであと何点か / 3. 運勢(日付で決まるおみくじ、スコアとは無関係)
 
-const DEFAULT_API_BASE = "https://ab-board-api.azurewebsites.net/api";
-
 // 日付は日本時間で数える(m1 の毎日スコアと同じ)
 export function jstDate(now = new Date()) {
   return new Date(now.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
@@ -59,7 +57,7 @@ function row(label, value) {
   return div;
 }
 
-export async function showTodayPanel(body, { apiBase = window.AA_API_BASE || DEFAULT_API_BASE, now = new Date() } = {}) {
+export async function showTodayPanel(body, { now = new Date() } = {}) {
   const date = jstDate(now);
   const thisWeek = isoWeekKey(date);
   const lastWeek = previousWeekKey(date);
@@ -70,8 +68,8 @@ export async function showTodayPanel(body, { apiBase = window.AA_API_BASE || DEF
   const [today, cur, prev] = await Promise.allSettled([
     // ab-162: 今日の得点は Firestore から(本人のログインで読む)
     import("./score-store.js").then((m) => m.fetchScore(date)),
-    week.then((m) => m.fetchWeekScore(thisWeek, { apiBase })),
-    week.then((m) => m.fetchWeekScore(lastWeek, { apiBase })),
+    week.then((m) => m.fetchWeekScore(thisWeek)),
+    week.then((m) => m.fetchWeekScore(lastWeek)),
   ]);
 
   let todayText = "取得できませんでした";

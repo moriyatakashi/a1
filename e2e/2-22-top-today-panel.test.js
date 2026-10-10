@@ -52,11 +52,7 @@ test("トップ: 開いただけでは取りに行かず、押したら運勢・
       if (url.includes("/api/session")) {
         return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) });
       }
-      if (url.includes("/api/ba?")) {
-        // ab-166 ③: 週の得点はページ側で数える。旧 ba の close は Azure から(ここでは無し)
-        apiCalls.push(url);
-        return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
-      }
+      if (url.includes("azurewebsites.net")) apiCalls.push(url); // ab-166: Azure には行かない
       return route.abort();
     });
 
@@ -85,7 +81,7 @@ test("トップ: 開いただけでは取りに行かず、押したら運勢・
     assert.match(text, /運勢(大吉|中吉|小吉|吉|末吉|凶)/);
     assert.match(text, /今日の得点86点/);
     assert.match(text, /今週86点\(先週 200点まで あと114点\)/);
-    assert.equal(apiCalls.length, 1, "旧 ba の close を1回だけ読む(週の得点はページ側、ab-166 ③)");
+    assert.deepEqual(apiCalls, [], "Azure には行かない(旧 ba の close は Firestore の写し、ab-166)");
 
     await page.click("#todayClose");
     assert.equal(await page.$eval("#todayDialog", (d) => d.open), false);

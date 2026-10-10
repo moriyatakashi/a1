@@ -6,8 +6,8 @@
 //    難易度(low/normal/high)ごとの配点は、その週の月曜に効いていた scoringRules の版で数える(ba-159)。
 //    難易度が無いものは normal。af には難易度が無いので normal
 //  - 加点イベント: pointEvents の createdAt がその週に入るもの
-// 読むのは Firestore の scores・pointEvents・scoringRules(と af)。旧 ba は今は Azure から読む。
-// ba の読みを止めるとき(ab-166 ⑥)に、旧 ba の close を写しにして読む形へ替える。
+// 読むのは Firestore の scores・pointEvents・scoringRules・af と、旧 ba の close の写し(baArchive/closes、ab-166 2026-10-11)。
+// 旧 ba は 10/10 に凍結したので、close は1回写したものを読む(Azure は読まない)。
 
 export const DIFFICULTY_POINTS = { low: 2, normal: 5, high: 10 };
 const DEFAULT_DIFFICULTY = "normal";
@@ -105,10 +105,9 @@ export function weekScore(weekKey, { scores = {}, pointEvents = [], rules = [], 
 
 // ---- 読み込み(ブラウザ)。1回読んだらこのページの間は使い回す ----
 const SDK = "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
-const DEFAULT_API_BASE = "https://ab-board-api.azurewebsites.net/api";
 let inputsPromise = null;
 
-async function loadInputs(apiBase) {
+async function loadInputs() {
   const [{ collection, getDocs, query, where }, { db, ensureReadLogin, guardRead }] =
     await Promise.all([import(SDK), import("./firebase.js")]);
   await ensureReadLogin();
@@ -117,10 +116,10 @@ async function loadInputs(apiBase) {
   const scores = Object.fromEntries(scoreDocs.map((d) => [d.id, d.score]));
   const rules = ruleDocs.map((d) => ({ effectiveFrom: d.id, difficultyPoints: d.difficultyPoints || {} }));
   const closes = [];
-  // 旧 ba の close(ab-166 ⑥ までは Azure から読む。読めなければ数えない)
+  // 旧 ba の close(凍結した写し baArchive/closes。読めなければ数えない)
   try {
-    const res = await fetch(`${apiBase}/ba?minimal=1`, { cache: "no-store" });
-    if (res.ok) closes.push(...baCloseEvents(await res.json()));
+    const { loadBaArchiveCloses } = await import("./ba-archive.js");
+    closes.push(...(await loadBaArchiveCloses()));
   } catch (e) { /* 数えない */ }
   // af の済み(本人だけ読める。Rules が出るまでは読めないので数えない)
   try {
@@ -133,11 +132,11 @@ async function loadInputs(apiBase) {
   return { scores, pointEvents, rules, closes };
 }
 
-export function loadWeekInputs({ apiBase = (typeof window !== "undefined" && window.AA_API_BASE) || DEFAULT_API_BASE } = {}) {
-  if (!inputsPromise) inputsPromise = loadInputs(apiBase).catch((e) => { inputsPromise = null; throw e; });
+export function loadWeekInputs() {
+  if (!inputsPromise) inputsPromise = loadInputs().catch((e) => { inputsPromise = null; throw e; });
   return inputsPromise;
 }
 
-export async function fetchWeekScore(weekKey, opts) {
-  return weekScore(weekKey, await loadWeekInputs(opts));
+export async function fetchWeekScore(weekKey) {
+  return weekScore(weekKey, await loadWeekInputs());
 }
