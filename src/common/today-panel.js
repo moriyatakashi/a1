@@ -46,12 +46,6 @@ export function fortuneOf(dateStr) {
   return FORTUNES[0][0];
 }
 
-async function getJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
 function row(label, value) {
   const div = document.createElement("div");
   div.className = "today-row";
@@ -71,11 +65,13 @@ export async function showTodayPanel(body, { apiBase = window.AA_API_BASE || DEF
   const lastWeek = previousWeekKey(date);
   body.replaceChildren(row("運勢", fortuneOf(date)), row("今日の得点", "取得中…"), row("今週", "取得中…"));
 
+  // ab-166 ③(2026-10-10): 週の得点は Azure の /api/weekly-scores でなく、ページ側で数える(week-score.js、式は同じ)
+  const week = import("./week-score.js");
   const [today, cur, prev] = await Promise.allSettled([
-    // ab-162: 今日の得点は Firestore から(本人のログインで読む)。Azure の /api/scores は止める予定
+    // ab-162: 今日の得点は Firestore から(本人のログインで読む)
     import("./score-store.js").then((m) => m.fetchScore(date)),
-    getJson(`${apiBase}/weekly-scores/${thisWeek}`),
-    getJson(`${apiBase}/weekly-scores/${lastWeek}`),
+    week.then((m) => m.fetchWeekScore(thisWeek, { apiBase })),
+    week.then((m) => m.fetchWeekScore(lastWeek, { apiBase })),
   ]);
 
   let todayText = "取得できませんでした";

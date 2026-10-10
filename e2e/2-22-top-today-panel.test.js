@@ -1,6 +1,6 @@
 // トップページの「今日の運勢と得点」(ab-42、2026-10-01)。
 // 要点は Takashi の制約「開いただけでは何も取りに行かない、押したときだけ動く」。
-// 開いた時点で API(scores・weekly-scores)にも today-panel.js にも触れていないこと、
+// 開いた時点で API にも today-panel.js にも触れていないこと、
 // 押したら 運勢・今日の得点・今週(先週まであと何点)が出ることを見る。
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -50,19 +50,19 @@ test("トップ: 開いただけでは取りに行かず、押したら運勢・
       if (url.includes("/api/session")) {
         return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) });
       }
-      if (url.includes("/api/weekly-scores/")) {
+      if (url.includes("/api/ba?")) {
+        // ab-166 ③: 週の得点はページ側で数える。旧 ba の close は Azure から(ここでは無し)
         apiCalls.push(url);
-        // 今週は 533点、それ以外(先週)は 1264点。届く順番に頼らず週キーで答える
-        const thisWeek = url.endsWith(`/weekly-scores/${isoWeekKey(jstDate())}`);
-        return route.fulfill({ status: 200, contentType: "application/json",
-          body: JSON.stringify({ weekScore: thisWeek ? 533 : 1264 }) });
+        return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
       }
       return route.abort();
     });
 
     // ab-162: 今日の得点は Firestore(スタブ)から。一覧はログインしてから出る
     const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-    await routeFirebaseStub(page, { [today]: { score: 86, note: "" } });
+    // 週の得点(ab-166 ③)も Firestore から数える: 今週は今日の86点、先週は7日前の200点
+    const weekAgo = new Date(Date.now() + 9 * 3600e3 - 7 * 86400e3).toISOString().slice(0, 10);
+    await routeFirebaseStub(page, { [today]: { score: 86, note: "" }, [weekAgo]: { score: 200, note: "" } });
     await page.goto(`${origin}/`);
     assert.equal(await page.isVisible("#todayBtn"), false, "ログイン前に中身が見えている");
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }),
@@ -83,9 +83,8 @@ test("トップ: 開いただけでは取りに行かず、押したら運勢・
     const text = await page.textContent("#todayBody");
     assert.match(text, /運勢(大吉|中吉|小吉|吉|末吉|凶)/);
     assert.match(text, /今日の得点86点/);
-    assert.match(text, /今週533点\(先週 1264点まで あと731点\)/);
-    assert.equal(apiCalls.length, 2, "今週・先週の2つ(今日の得点は Firestore から、ab-162)");
-    assert.ok(apiCalls.some((u) => /\/weekly-scores\/\d{4}-W\d{2}$/.test(u)));
+    assert.match(text, /今週86点\(先週 200点まで あと114点\)/);
+    assert.equal(apiCalls.length, 1, "旧 ba の close を1回だけ読む(週の得点はページ側、ab-166 ③)");
 
     await page.click("#todayClose");
     assert.equal(await page.$eval("#todayDialog", (d) => d.open), false);

@@ -10,7 +10,6 @@ import "../common/config.js";
 import { CLASSIFICATIONS, findClassification } from "../common/utils.js";
 const API_BASE = window.AA_API_BASE; // common/config.js から(ba-9)
 const BA_API = `${API_BASE}/ba`;
-const WEEKLY_API = `${API_BASE}/weekly-scores`;
 // ab は Firestore(ab01-9f35a)の abThreads とサブコレクション notes。Rules で誰でも読めるので匿名の REST GET。
 const AB_FS = "https://firestore.googleapis.com/v1/projects/ab01-9f35a/databases/(default)/documents/abThreads";
 const AB_LABEL = "ab(連絡)";
@@ -190,7 +189,7 @@ function renderTable(theadRow, tbody, counts, labelHeader, valueHeader) {
   }).join("");
 }
 
-// --- 週次得点(ba-53のweekly-scores API)------------------------------------
+// --- 週次得点(ba-53。2026-10-10 から common/week-score.js でページ側計算)------------------------------------
 // レーダーは複数軸のバランス用なので、単一値の時系列である週次得点は棒グラフで描く。
 // 日次スコアとクローズ得点は性質が異なるため積み上げで内訳が見える形にする。
 const WEEK_COUNT = 8;
@@ -226,8 +225,9 @@ async function fetchWeeklyScores() {
   const results = await Promise.all(weeks.map(async ({ year, week }) => {
     try {
       const key = `${year}-W${String(week).padStart(2, "0")}`;
-      const res = await fetch(`${WEEKLY_API}/${key}`, { cache: "no-store" });
-      return res.ok ? await res.json() : null;
+      // ab-166 ③(2026-10-10): Azure の /api/weekly-scores でなく、ページ側で数える(week-score.js、式は同じ)
+      const { fetchWeekScore } = await import("../common/week-score.js");
+      return await fetchWeekScore(key, { apiBase: API_BASE });
     } catch (e) {
       return null;
     }
