@@ -19,19 +19,5 @@
     "message": "b1コマンド構成整理のたたき台(1.list案)",
     "ba": "ba-267",
     "show": false
-  },
-  {
-    "title": "c4",
-    "url": "https://moriyatakashi.github.io/a1/src/bd/src/c4.html",
-    "message": "idlist・servicelist・azureカタログの現状",
-    "ba": "ba-268",
-    "show": true
-  },
-  {
-    "title": "c5",
-    "url": "https://moriyatakashi.github.io/a1/src/bd/src/c5.html",
-    "message": "3.dosql(JSON→sqlite化してSQL実行)",
-    "ba": "ba-269",
-    "show": true
   }
 ]
