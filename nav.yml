@@ -8,7 +8,7 @@ categories:
         desc: 訪問地図・予定
         href: src/m2/
       - code: m3
-        desc: 記入(仮)
+        desc: メモ
         href: src/m3/
       - code: m4
         desc: 現在地マップ
