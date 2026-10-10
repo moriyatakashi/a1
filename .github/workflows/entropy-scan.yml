@@ -22,5 +22,4 @@ jobs:
           python-version: '3.12'
       - name: repo scan (tree + full history)
         run: python scripts/ba_entropy_scan.py --repo .
-      - name: ba scan (盤面)
-        run: python scripts/ba_entropy_scan.py
+      # 2026-10-11(ab-166): ba 盤面のスキャンはやめた(ba は 10/10 に凍結、Azure をやめる)

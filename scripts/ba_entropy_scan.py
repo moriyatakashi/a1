@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """高エントロピー(鍵様)文字列スキャナ。
 モード:
-  (既定)     ba 全エントリ(GET無認証)の title/body を走査。
+  (既定)     2026-10-11(ab-166)まで ba 全エントリを走査していた。ba は凍結し Azure をやめるので、今は何もしない(案内だけ)。
   --repo DIR  git リポジトリの現ツリー + 全履歴(git log -p --all)を走査。
               CI(actions/checkout fetch-depth:0)でそのまま利用可。
 検出: len>=40 / base64url / 大小英字+数字混在 / entropy>=4.0。
@@ -12,7 +12,6 @@
 import urllib.request, json, math, re, hashlib, sys, os, subprocess
 from collections import Counter
 
-BA_URL='https://ab-board-api.azurewebsites.net/api/ba'
 BASELINE=os.path.join(os.path.dirname(os.path.abspath(__file__)),'entropy_scan_baseline.json')
 TOK=re.compile(r'[^\s、。「」『』()｜|,/:;=\'"\\<>{}\[\]]+')
 LOCKFILES=re.compile(r'(^|/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lock|poetry\.lock|composer\.lock)$')
@@ -32,8 +31,7 @@ def load_baseline():
     try: return {x['fingerprint'] for x in json.load(open(BASELINE))['known']}
     except Exception: return set()
 
-def scan_ba():
-    data=json.loads(urllib.request.urlopen(BA_URL,timeout=60).read().decode())
+def scan_ba(data):
     f={}
     for e in data:
         for fld in ('title','body'):
@@ -83,8 +81,13 @@ if __name__=='__main__':
     if a and a[0]=='--repo':
         sys.exit(report(scan_repo(a[1] if len(a)>1 else '.')))
     elif a and a[0]=='--ack-current':
-        f=scan_ba(); base={'known':[{'fingerprint':k,'note':'ack via --ack-current'} for k in f]}
+        # ab-166: ba は凍結したので、今のリポジトリの検出を既知にする
+        f=scan_repo(a[1] if len(a)>1 else '.'); base={'known':[{'fingerprint':k,'note':'ack via --ack-current'} for k in f]}
         json.dump(base,open(BASELINE,'w'),ensure_ascii=False,indent=2)
         print(f"baseline 更新: {len(f)} 件(指紋のみ)")
+    elif a and a[0]=='--ba-file':
+        # 凍結した旧 ba の写し(JSON)を走査したいとき用(ab-166)
+        sys.exit(report(scan_ba(json.load(open(a[1],encoding='utf-8')))))
     else:
-        sys.exit(report(scan_ba()))
+        print("[entropy-scan] ba は 2026-10-10 に凍結し、盤面スキャンはやめた(ab-166)。--repo <dir> で a1 を見る")
+        sys.exit(0)

@@ -20,7 +20,7 @@ files.update/files.deleteは一切呼ばない。週フォルダの作成もfile
 使わない(個人Googleアカウントの共有フォルダには書き込めないため)。
 
 必須環境変数:
-  TABLE_CONNECTION_STRING   - 対象テーブルへの接続文字列(同一ストレージアカウント)
+  TABLE_CONNECTION_STRING   - 対象テーブルへの接続文字列(tables が空なら不要。2026-10-11 ab-166 で Azure の表は外した)
   GDRIVE_OAUTH_CLIENT_ID
   GDRIVE_OAUTH_CLIENT_SECRET
   GDRIVE_OAUTH_REFRESH_TOKEN
@@ -37,7 +37,6 @@ from pathlib import Path
 
 import requests
 import yaml
-from azure.data.tables import TableServiceClient
 
 BACKUP_TABLES_YML = Path(__file__).resolve().parent / "backup_tables.yml"
 TOKEN_URI = "https://oauth2.googleapis.com/token"
@@ -143,6 +142,8 @@ def _list_firestore_documents(project, path):
 
 
 def _fetch_table_entities(table_name):
+    # 2026-10-11(ab-166): Azure の表は外した(tables: [])。表を足し直したときだけ読み込む
+    from azure.data.tables import TableServiceClient
     conn_str = os.environ["TABLE_CONNECTION_STRING"]
     service = TableServiceClient.from_connection_string(conn_str)
     table = service.get_table_client(table_name)

@@ -3,25 +3,28 @@
 # バックアップ対象に入る(スクリプト本体の変更は不要)。
 # 1テーブル=Google Drive(ba-backupフォルダ)へ1ファイル(<name下>_full_<日時>.json)。
 
-tables:
-  - name: BaLog
-    note: ba台帳本体(追記オンリー・赤黒帳票)。日次バックアップの発端(2026-07-25実装)。
-  - name: Scores
-    note: 日々のスコア記録(m1、旧n1)。2026-07-31追加。ab-24(2026-09-29)で正本はFirestoreへ移り、Azure側は書き込み停止(410)。ab-53で消すまでは凍結した旧データとして取り続ける。
-  - name: Visits
-    note: 訪問記録(n2)。2026-07-31追加。ab-53(2026-10-03)で正本は Firestore の visits へ移り、Azure 側は書き込み停止(410)。消すまでは凍結した旧データとして取り続ける。
-  # 2026-10-03 ab-53: Firestore へ移すまでの保険(それまで日次バックアップが無かった)。移した日に
-  # firestore_collections へ足し、ここは「凍結」と書く(Scores と同じ扱い)。Sessions はトークンなので取らない。
-  - name: PointEvents
-    note: 加点イベント(ba-165)。ab-53(2026-10-03)で正本は Firestore の pointEvents へ移り、Azure 側は書き込み停止(410)。凍結した旧データ。
-  - name: WeeklyScores
-    note: 週次得点の確定スナップショット(ba-53)。ab-53 ③ で移す予定。
-  - name: MonthlyScores
-    note: 月次得点の確定スナップショット(ba-165③)。ab-53 ③ で移す予定。
-  - name: Declarations
-    note: 翌週以降の宣言(ba-160)。ab-53 で移す予定。
-  - name: StreakChecks
-    note: 継続達成のチェック(ba-165)。ab-53 で移す予定。
+# 2026-10-11(ab-166 Q4、Takashi): Azure の表は外した。最後のバックアップは 2026-10-10 15:08Z の回(週フォルダ 2026-10-05_10-11)。
+# BaLog は 10/10 に書き込みを止めて凍結、ほかは Firestore へ移したか空。下は外す前の一覧(記録として残す)。
+tables: []
+# tables:
+#   - name: BaLog
+#     note: ba台帳本体(追記オンリー・赤黒帳票)。日次バックアップの発端(2026-07-25実装)。
+#   - name: Scores
+#     note: 日々のスコア記録(m1、旧n1)。2026-07-31追加。ab-24(2026-09-29)で正本はFirestoreへ移り、Azure側は書き込み停止(410)。ab-53で消すまでは凍結した旧データとして取り続ける。
+#   - name: Visits
+#     note: 訪問記録(n2)。2026-07-31追加。ab-53(2026-10-03)で正本は Firestore の visits へ移り、Azure 側は書き込み停止(410)。消すまでは凍結した旧データとして取り続ける。
+#   # 2026-10-03 ab-53: Firestore へ移すまでの保険(それまで日次バックアップが無かった)。移した日に
+#   # firestore_collections へ足し、ここは「凍結」と書く(Scores と同じ扱い)。Sessions はトークンなので取らない。
+#   - name: PointEvents
+#     note: 加点イベント(ba-165)。ab-53(2026-10-03)で正本は Firestore の pointEvents へ移り、Azure 側は書き込み停止(410)。凍結した旧データ。
+#   - name: WeeklyScores
+#     note: 週次得点の確定スナップショット(ba-53)。ab-53 ③ で移す予定。
+#   - name: MonthlyScores
+#     note: 月次得点の確定スナップショット(ba-165③)。ab-53 ③ で移す予定。
+#   - name: Declarations
+#     note: 翌週以降の宣言(ba-160)。ab-53 で移す予定。
+#   - name: StreakChecks
+#     note: 継続達成のチェック(ba-165)。ab-53 で移す予定。
 
 # Firestore(ab01-9f35a)のコレクション。2026-10-10(ab-166)から、鍵(AA_BACKUP_KEY)があれば aa-lane の fs-get で読む
 # (aa-lane の _FS_GET_PATH_RE に入っているものだけ置ける)。鍵が無ければ匿名で読み、読めないものは飛ばす。
