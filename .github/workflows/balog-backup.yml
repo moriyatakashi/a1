@@ -53,4 +53,6 @@ jobs:
           GDRIVE_OAUTH_CLIENT_ID: ${{ secrets.GDRIVE_OAUTH_CLIENT_ID }}
           GDRIVE_OAUTH_CLIENT_SECRET: ${{ secrets.GDRIVE_OAUTH_CLIENT_SECRET }}
           GDRIVE_OAUTH_REFRESH_TOKEN: ${{ secrets.GDRIVE_OAUTH_REFRESH_TOKEN }}
+          # ab-166: Firestore を aa-lane の fs-get で読むバックアップ専用の読むだけの鍵。無ければ匿名で読む
+          AA_BACKUP_KEY: ${{ secrets.AA_BACKUP_KEY }}
         run: python scripts/backup-balog-to-drive.py

@@ -23,7 +23,8 @@ tables:
   - name: StreakChecks
     note: 継続達成のチェック(ba-165)。ab-53 で移す予定。
 
-# Firestore(ab01-9f35a)のコレクション。読みが無認証(Rules の allow read: if true)のものだけ置ける。
+# Firestore(ab01-9f35a)のコレクション。2026-10-10(ab-166)から、鍵(AA_BACKUP_KEY)があれば aa-lane の fs-get で読む
+# (aa-lane の _FS_GET_PATH_RE に入っているものだけ置ける)。鍵が無ければ匿名で読み、読めないものは飛ばす。
 # 1コレクション=1ファイル(firestore_<name>_full_<日時>.json)。2026-10-02 ab-51 で追加
 # (Scores の正本が Firestore に移ったのに、日次バックアップは Azure の凍結分しか取っていなかったため)。
 firestore_project: ab01-9f35a
@@ -45,3 +46,9 @@ firestore_collections:
   - name: acThreads
     note: ac(決定事項)の台帳。書き込みは aa-lane 経由。
     subcollections: [notes]
+  # 2026-10-10 ab-166: af(ほぼba、Takashi のメモ)と wishes(行きたい場所)も取る。読みは本人だけなので鍵で読む。
+  - name: afThreads
+    note: af(ほぼba、Takashi のメモ置き場)。m3 と aa-lane から書く。
+    subcollections: [notes]
+  - name: wishes
+    note: 行きたい場所(m6)。

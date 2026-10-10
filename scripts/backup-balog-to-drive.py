@@ -25,6 +25,9 @@ files.update/files.deleteは一切呼ばない。週フォルダの作成もfile
   GDRIVE_OAUTH_CLIENT_SECRET
   GDRIVE_OAUTH_REFRESH_TOKEN
   GDRIVE_FOLDER_ID          - 週フォルダを作る親フォルダ(ba-backup)のID
+任意:
+  AA_BACKUP_KEY             - Firestore を aa-lane の fs-get で読むための、バックアップ専用の読むだけの鍵(ab-166)。
+                              無ければ今までどおり匿名で読み、読めないコレクションは飛ばす
 """
 import json
 import os
@@ -48,6 +51,12 @@ UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multip
 RETRY_STATUSES = {429, 500, 502, 503, 504}
 MAX_ATTEMPTS = 5
 BACKOFF_BASE_SEC = 2
+
+# 2026-10-10(ab-166): Rules 第1段で visits・ab・ac などの匿名の読みが閉じた。鍵があれば aa-lane の fs-get
+# (バックアップ専用の読むだけの鍵 backup_key)で読み、無ければ匿名で読む。匿名で 403 のコレクションは
+# 飛ばしてログに出し、ほかの分は取り続ける(1つ読めないだけで全体を落とさない)。
+AA_LANE_URL = "https://asia-northeast2-{project}.cloudfunctions.net/aa-lane"
+FS_PAGE_SIZE = 300
 
 
 def _request_with_retry(method, url, *, sleep=time.sleep, **kwargs):
@@ -94,23 +103,34 @@ def _fetch_firestore_collection(project, collection, subcollections=()):
     ドキュメントごとにそのサブコレクションも全件取って "subcollections" に入れる。
     読み取りは「親の件数ぶんの一覧呼び出し+子の件数」だけ増える(ab-95)。
     """
-    base = f"https://firestore.googleapis.com/v1/projects/{project}/databases/(default)/documents"
-    docs = _list_firestore_documents(f"{base}/{collection}")
+    docs = _list_firestore_documents(project, collection)
     for doc in docs:
         if subcollections:
             doc["subcollections"] = {
-                sub: _list_firestore_documents(f"{base}/{collection}/{doc['id']}/{sub}")
+                sub: _list_firestore_documents(project, f"{collection}/{doc['id']}/{sub}")
                 for sub in subcollections}
     return docs
 
 
-def _list_firestore_documents(url):
+def _firestore_page(project, path, page_token):
+    """1ページ分を取る。AA_BACKUP_KEY があれば aa-lane の fs-get、無ければ匿名 REST。返事の形はどちらも同じ。"""
+    key = os.environ.get("AA_BACKUP_KEY")
+    if key:
+        body = {"action": "fs-get", "backup_key": key, "path": path, "pageSize": FS_PAGE_SIZE}
+        if page_token:
+            body["pageToken"] = page_token
+        return _request_with_retry("POST", AA_LANE_URL.format(project=project), json=body).json()
+    params = {"pageSize": FS_PAGE_SIZE}
+    if page_token:
+        params["pageToken"] = page_token
+    url = f"https://firestore.googleapis.com/v1/projects/{project}/databases/(default)/documents/{path}"
+    return _request_with_retry("GET", url, params=params).json()
+
+
+def _list_firestore_documents(project, path):
     docs, page_token = [], None
     while True:
-        params = {"pageSize": 300}
-        if page_token:
-            params["pageToken"] = page_token
-        data = _request_with_retry("GET", url, params=params).json()
+        data = _firestore_page(project, path, page_token)
         for d in data.get("documents", []):
             docs.append({
                 "id": d["name"].rsplit("/", 1)[1],
@@ -224,14 +244,25 @@ def main():
         print(f"バックアップ完了: {table_name} {len(entities)}件 -> {week_name}/{filename} (fileId={result['id']})")
 
     project, collections = _load_firestore_collections()
+    skipped = []
     for collection, subcollections in collections:
-        docs = _fetch_firestore_collection(project, collection, subcollections)
+        try:
+            docs = _fetch_firestore_collection(project, collection, subcollections)
+        except requests.HTTPError as e:
+            if e.response is None or e.response.status_code not in (401, 403):
+                raise
+            skipped.append(collection)
+            print(f"::warning::Firestore {collection} は読めないので飛ばした(HTTP {e.response.status_code})。"
+                  f"AA_BACKUP_KEY が無いか効いていない(ab-166)")
+            continue
         content = json.dumps(docs, ensure_ascii=False).encode("utf-8")
         filename = f"firestore_{collection.lower()}_full_{timestamp}.json"
         result = _upload_to_drive(access_token, filename, content, week_folder_id)
         sub_counts = "".join(
             f" +{sub} {sum(len(d['subcollections'][sub]) for d in docs)}件" for sub in subcollections)
         print(f"バックアップ完了: Firestore {collection} {len(docs)}件{sub_counts} -> {week_name}/{filename} (fileId={result['id']})")
+    if skipped:
+        print(f"飛ばした Firestore のコレクション: {', '.join(skipped)}")
 
 
 if __name__ == "__main__":
