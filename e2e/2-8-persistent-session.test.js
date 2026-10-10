@@ -1,8 +1,7 @@
-// 永続認証移行(ba-XX, 2026-07-19)。ログイン成功時に生のGoogle IDトークンを
-// サーバー発行の無期限セッショントークンに交換し、localStorageにkind:"session"で
-// 保存すること。/api/sessionが使えない(未対応・通信不可)場合は、従来どおり
-// 生のGoogleトークンをkind:"google"で保存するフォールバックに倒れること。
-// ログアウトはDELETE /api/sessionを呼んでからlocalStorageを消し、ログインゲートに戻すこと。
+// 永続認証。2026-07-19〜10-10 は Azure の /api/session で無期限トークンに交換していた。
+// 2026-10-10(ab-166 ④): Azure をやめるため /session を使わない。持ち主かは Google のトークンのメール(sha256)で見て、
+// ログインを覚えるのは Firebase に任せる。localStorage には「ログイン済み」の印(kind:"firebase")だけを置き、トークンは置かない。
+// ログアウトは Firebase からも出て、印を消し、ログインゲートに戻ること。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
@@ -11,6 +10,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listenSafe } from "./listen-safe.js";
+import { routeFirebaseStub } from "./firebase-stub.js";
+import { FAKE_GOOGLE_CREDENTIAL, credFor, useTestOwner } from "./test-owner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript" };
@@ -30,122 +31,73 @@ function serveStatic() {
   });
 }
 
-// btoa()はASCII専用のため、日本語などマルチバイト文字を含む名前は使わない
-const FAKE_GOOGLE_CREDENTIAL = "header." + Buffer.from(JSON.stringify({ name: "Test User" })).toString("base64") + ".sig";
-// ab-162: サーバーが使えないときは、トークンのメールが持ち主か(sha256)を見てから入れる。テストでは持ち主を owner@example.com にする
-const OWNER_SHA256 = "c8cd3c6427301eaf6665bccacd65ddb614527acc843a15463e3faba57124c351"; // sha256("owner@example.com")
-const credFor = (email) => "header." + Buffer.from(JSON.stringify({ name: "Test User", email, email_verified: true })).toString("base64") + ".sig";
-const OWNER_CREDENTIAL = credFor("owner@example.com");
-
-async function triggerLogin(page) {
-  await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
-  await page.waitForSelector("#content", { state: "visible" });
-}
-
-test("ba: ログイン成功時にセッショントークンへ交換し、無期限として保存する", async () => {
+// ba のページで確かめる。Azure の /session に行ったら数える(行かないことを見る)
+async function openBa(act, { seed } = {}) {
   const server = await serveStatic();
-  const port = server.address().port;
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
-    await page.route("https://accounts.google.com/gsi/client", (route) =>
-      route.fulfill({ contentType: "text/javascript", body: "" })
-    );
-    let sessionCreateCalls = 0;
-    let sessionDeleteCalls = 0;
-    await page.route("https://ab-board-api.azurewebsites.net/api/session", (route) => {
-      const method = route.request().method();
-      if (method === "POST") {
-        sessionCreateCalls++;
-        route.fulfill({
-          status: 201,
-          contentType: "application/json",
-          body: JSON.stringify({ sessionToken: "session:testid.testsig" }),
-        });
-      } else if (method === "DELETE") {
-        sessionDeleteCalls++;
-        route.fulfill({ status: 204, body: "" });
-      } else {
-        route.fulfill({ status: 404, body: "" });
-      }
+    await useTestOwner(page);
+    await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
+    const sessionCalls = [];
+    await page.route("https://ab-board-api.azurewebsites.net/api/**", (route) => {
+      if (route.request().url().includes("/session")) sessionCalls.push(route.request().method());
+      return route.fulfill({ contentType: "application/json", body: "[]" });
     });
-
-    await page.goto(`http://localhost:${port}/src/ba/`);
-    await triggerLogin(page);
-
-    assert.equal(sessionCreateCalls, 1, "ログイン成功時にPOST /api/sessionで交換されるはず");
-
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("aa_credential")));
-    assert.equal(stored.kind, "session");
-    assert.equal(stored.credential, "session:testid.testsig");
-
-    // ログアウトリンクが表示され、押すとDELETEが呼ばれてlocalStorageが消え、ログインゲートに戻る
-    await page.waitForSelector("#aa-logout-link", { state: "visible" });
-    await page.click("#aa-logout-link");
-    await page.waitForSelector("#login-gate", { state: "visible" });
-
-    assert.equal(sessionDeleteCalls, 1, "ログアウト時にDELETE /api/sessionが呼ばれるはず");
-    const afterLogout = await page.evaluate(() => localStorage.getItem("aa_credential"));
-    assert.equal(afterLogout, null, "ログアウト後はlocalStorageの認証情報が消えているはず");
+    await routeFirebaseStub(page, {});
+    if (seed) await page.addInitScript((v) => { if (!sessionStorage.getItem("seeded")) { localStorage.setItem("aa_credential", v); sessionStorage.setItem("seeded", "1"); } }, seed);
+    await page.goto(`http://localhost:${server.address().port}/src/ba/`);
+    const out = await act(page);
+    return { ...out, sessionCalls };
   } finally {
     await browser.close();
     server.close();
   }
-});
-
-test("ba: /api/sessionが使えない場合は生のGoogleトークンにフォールバックする", async () => {
-  const server = await serveStatic();
-  const port = server.address().port;
-  const browser = await chromium.launch();
-  try {
-    const page = await browser.newPage();
-    await page.route("https://accounts.google.com/gsi/client", (route) =>
-      route.fulfill({ contentType: "text/javascript", body: "" })
-    );
-    // SESSION_SECRET未設定のサーバーを模し、503を返す
-    await page.route("https://ab-board-api.azurewebsites.net/api/session", (route) =>
-      route.fulfill({ status: 503, body: "session feature not configured" })
-    );
-
-    await page.addInitScript((h) => { window.AA_OWNER_EMAIL_SHA256 = h; }, OWNER_SHA256);
-    await page.goto(`http://localhost:${port}/src/ba/`);
-    await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), OWNER_CREDENTIAL);
-    await page.waitForSelector("#content", { state: "visible" });
-
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("aa_credential")));
-    assert.equal(stored.kind, "google", "交換に失敗したら従来どおり生のGoogleトークンで保存されるはず");
-    assert.equal(stored.credential, OWNER_CREDENTIAL);
-
-    const contentVisible = await page.isVisible("#content");
-    assert.equal(contentVisible, true, "セッション交換に失敗してもログイン自体は成立するはず");
-  } finally {
-    await browser.close();
-    server.close();
-  }
-});
-
-// ab-162: 持ち主でないアカウントは幕を通さない(サーバーが 401 を返す場合と、サーバーが使えずメールで見る場合)
-for (const [label, sessionStatus, email] of [
-  ["サーバーが持ち主でないと返した(401)", 401, "owner@example.com"],
-  ["サーバーが使えず、メールが持ち主でない", 503, "someone@example.com"],
-]) {
-  test(`ba: ${label}ときはログインさせない`, async () => {
-    const server = await serveStatic();
-    const port = server.address().port;
-    const browser = await chromium.launch();
-    try {
-      const page = await browser.newPage();
-      await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
-      await page.route("https://ab-board-api.azurewebsites.net/api/session", (route) => route.fulfill({ status: sessionStatus, body: "" }));
-      await page.addInitScript((h) => { window.AA_OWNER_EMAIL_SHA256 = h; }, OWNER_SHA256);
-      await page.goto(`http://localhost:${port}/src/ba/`);
-      await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), credFor(email));
-      await page.waitForFunction(() => /このアカウントでは使えません/.test(document.getElementById("status").textContent));
-      assert.equal(await page.isVisible("#content"), false);
-      assert.equal(await page.evaluate(() => localStorage.getItem("aa_credential")), null);
-    } finally {
-      await browser.close();
-      server.close();
-    }
-  });
 }
+
+test("ba: 持ち主でログインすると幕が開き、Firebase にも入り、印だけ保存する。Azure の /session には行かない", async () => {
+  const { stored, signedIn, afterLogout, signedOut, gateVisible, sessionCalls } = await openBa(async (page) => {
+    await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
+    await page.waitForSelector("#content", { state: "visible" });
+    await page.waitForFunction(() => window.__fsSignedIn === true);
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("aa_credential")));
+    const signedIn = await page.evaluate(() => window.__fsSignedIn);
+    // ログアウト: Firebase からも出て、印が消え、ゲートに戻る
+    await page.waitForSelector("#aa-logout-link", { state: "visible" });
+    const signedOutP = page.evaluate(() => new Promise((r) => { const t = setInterval(() => { if (window.__fsSignedOut) { clearInterval(t); r(true); } }, 10); }));
+    await page.click("#aa-logout-link");
+    const signedOut = await signedOutP.catch(() => "reloaded");
+    await page.waitForSelector("#login-gate", { state: "visible" });
+    const afterLogout = await page.evaluate(() => localStorage.getItem("aa_credential"));
+    return { stored, signedIn, afterLogout, signedOut, gateVisible: await page.isVisible("#login-gate") };
+  });
+  assert.equal(stored.kind, "firebase");
+  assert.equal(stored.credential, undefined, "トークンは保存しない");
+  assert.equal(signedIn, true, "裏で Firebase にログインしている");
+  assert.ok(signedOut === true || signedOut === "reloaded");
+  assert.equal(afterLogout, null, "ログアウト後は印が消えている");
+  assert.equal(gateVisible, true);
+  assert.deepEqual(sessionCalls, [], "Azure の /session には行かない");
+});
+
+test("ba: 持ち主でないアカウントはログインさせない", async () => {
+  const { visible, stored } = await openBa(async (page) => {
+    await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), credFor("someone@example.com"));
+    await page.waitForFunction(() => /このアカウントでは使えません/.test(document.getElementById("status").textContent));
+    return { visible: await page.isVisible("#content"), stored: await page.evaluate(() => localStorage.getItem("aa_credential")) };
+  });
+  assert.equal(visible, false);
+  assert.equal(stored, null);
+});
+
+test("ba: Azure の頃の印(kind:session)が残っている端末は、ログアウトさせずに入れて、印を書き換える", async () => {
+  const seed = JSON.stringify({ credential: "session:old.sig", name: "Test User", kind: "session", savedAt: 1 });
+  const { visible, stored, sessionCalls } = await openBa(async (page) => {
+    await page.waitForSelector("#content", { state: "visible" });
+    return { visible: true, stored: await page.evaluate(() => JSON.parse(localStorage.getItem("aa_credential"))) };
+  }, { seed });
+  assert.equal(visible, true);
+  assert.equal(stored.kind, "firebase");
+  assert.equal(stored.credential, undefined, "古いトークンは捨てる");
+  assert.deepEqual(sessionCalls, []);
+});

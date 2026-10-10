@@ -13,6 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listenSafe } from "./listen-safe.js";
+import { FAKE_GOOGLE_CREDENTIAL, useTestOwner } from "./test-owner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".geojson": "application/json" };
@@ -34,7 +35,6 @@ function serveStatic() {
 }
 
 // btoa()はASCII専用のため、日本語などマルチバイト文字を含む名前は使わない
-const FAKE_GOOGLE_CREDENTIAL = "header." + Buffer.from(JSON.stringify({ name: "Test User" })).toString("base64") + ".sig";
 
 const BA_FIXTURE = [
   { id: "T1", threadId: "T1", by: "claude-pc", ref: null, type: "new", seq: 1, createdAt: "2026-07-14T00:00:01+00:00", title: "回帰確認用スレッド", tags: ["案件"], body: "本文" },
@@ -77,7 +77,8 @@ for (const [pageName, spec] of Object.entries(PAGES)) {
     const browser = await chromium.launch();
     try {
       const context = await browser.newContext(); // localStorage等は常にクリーンな新規コンテキスト
-      const page = await context.newPage();
+      const page = await context.newPage()
+      await useTestOwner(page);
 
       const brokenRequests = [];
       const consoleErrors = [];

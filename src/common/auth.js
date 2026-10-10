@@ -9,6 +9,7 @@
 // 書き込み(人間レーン)にはGoogle IDトークン自体をab-board-api側で検証するため、
 // デコード結果だけでなく生のcredentialもwindow.__credentialに保持しておく。
 //
+// (以下 4行は 2026-07-19〜10-10 の Azure の頃の話。今は下の ab-166 の段落)
 // 永続認証移行(ba-XX, 2026-07-19): Googleの生IDトークンは約1時間しか有効でないため、
 // ログイン成功時にAA_API_BASE/session(POST)へ渡してサーバー発行の無期限セッション
 // トークン("session:<id>.<署名>")に交換し、以後はそちらをwindow.__credentialとして使う。
@@ -17,14 +18,28 @@
 // 無期限トークンはログアウト(window.aaLogout、またはサーバー側の失効)でのみ失効する。
 // m1/n2/n4で共通のキーを使うため、いずれか1つでログインすれば他も再ログイン不要になる。
 // ab-162(2026-10-10): ログインの幕を通すのは持ち主(Takashi)のアカウントだけ。
-// サーバー(/session)は持ち主のトークンにしかセッションを出さない(ALLOWED_EMAIL)。401/403 が返ったら持ち主ではないので入れない。
-// サーバーが使えないとき(フォールバック)は、Google のトークンのメールを sha256 で持ち主と比べる(公開レポなのでメールそのものは書かない)。
+// Google のトークンのメールを sha256 で持ち主と比べる(公開レポなのでメールそのものは書かない)。
+// (10/10 までは Azure の /session が先に判定し、使えないときだけこれで見ていた)
 // これは画面の幕で、本当の守りは Firestore の Rules とサーバー側(ab-162 段2〜4)。テストは window.AA_OWNER_EMAIL_SHA256 で差し替える。
+//
+// 2026-10-10(ab-166 ④、Takashi「A」): Azure の /session をやめた(Azure をなくすため)。
+// - 持ち主かどうかは、Google のトークンのメール(sha256)で見る(上の判定を常に使う)
+// - ログインを覚えておくのは Firebase のログインに任せる(端末に残る。ログアウトするまで切れない)。幕を開けたあと、
+//   裏で Google のトークンを Firebase に渡してログインしておく(読み書きの前のログイン ensureReadLogin と同じ道)
+// - 保存するのは「ログイン済み」の印だけ(kind:"firebase"、トークンは保存しない)。前の kind:"session"(Azure の無期限トークン)が
+//   残っている端末は、ログアウトさせずにそのまま入れて、印を書き換える
+// - window.__credential は「ログイン済みか」の印としてだけ残す(中身はどこにも送らない)
 const OWNER_EMAIL_SHA256 = "53b299b790f73429d69af153213ea0a61e2ef6b4a61f03d36b9acb22510a5ca8";
 const NOT_OWNER_MESSAGE = "このアカウントでは使えません(持ち主のアカウントでログインしてください)";
 const STORAGE_KEY = "aa_credential";
 const GOOGLE_TOKEN_SESSION_MS = 60 * 60 * 1000; // フォールバック(生Googleトークン)のみに適用
 const LOGIN_EVENT = window.AA_AUTH_EVENT || "aa-login-success";
+const LOGGED_IN_MARK = "firebase-login"; // window.__credential に入れる印(送らない)
+// firebase.js の場所。auth.js は普通の script なので、読み込まれた時点の自分の URL から決める(ページの深さに依らない)
+const FIREBASE_JS = (() => {
+  try { return new URL("firebase.js", document.currentScript.src).href; } catch (e) { return null; }
+})();
+const loadFirebase = () => (FIREBASE_JS ? import(FIREBASE_JS) : Promise.reject(new Error("firebase.js の場所が分からない")));
 
 function getElement(id) {
   return typeof document !== "undefined" ? document.getElementById(id) : null;
@@ -122,28 +137,16 @@ function suppressAutoPromptWhenGsiReady(retriesLeft = 100) {
   setTimeout(() => suppressAutoPromptWhenGsiReady(retriesLeft - 1), 50);
 }
 
-function persistSession(credential, name, kind) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ credential, name, kind, savedAt: Date.now() }));
+function persistSession(name) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ kind: "firebase", name, savedAt: Date.now() }));
 }
 
-// GoogleのIDトークンを、サーバー発行の無期限セッショントークンに交換する。
-// 失敗時(未対応サーバー・オフライン等)はnullを返し、呼び出し側で従来フローにフォールバックする。
-async function exchangeForPersistentSession(googleCredential) {
-  const base = window.AA_API_BASE;
-  if (!base) return null;
-  try {
-    const res = await fetch(`${base}/session`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ credential: googleCredential }),
-    });
-    if (res.status === 401 || res.status === 403) return { denied: true };
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.sessionToken ? { token: data.sessionToken } : null;
-  } catch (e) {
-    return null;
-  }
+// 幕を開けたあと、裏で Firebase にログインしておく(次から端末が覚えている)。失敗しても幕は開いたまま
+// (読むときに入れなければ「読むためにログイン」の帯が出る)。
+function signInFirebaseInBackground(googleCredential) {
+  loadFirebase()
+    .then((m) => m.signInWithGoogleIdToken(googleCredential))
+    .catch((e) => console.warn("Firebase へのログインに失敗(読むときにもう一度試す)", e));
 }
 
 async function sha256Hex(text) {
@@ -163,80 +166,55 @@ window.handleCredentialResponse = async (response) => {
   try {
     const payload = decodeJwtPayload(response.credential);
     const name = payload.name || "";
-    // ab-24: m1 が Firebase にもログインするときに渡す生のIDトークン。メモリだけに置き、保存はしない(寿命1時間)。
-    const exchanged = await exchangeForPersistentSession(response.credential);
-    if (exchanged && exchanged.denied) {
+    if (!(await isOwnerPayload(payload))) {
       setText("status", NOT_OWNER_MESSAGE);
       return;
     }
-    if (exchanged && exchanged.token) {
-      window.__googleIdToken = response.credential;
-      persistSession(exchanged.token, name, "session");
-      activateSession(exchanged.token, name);
-    } else {
-      // サーバーが使えないときは、トークンのメールで持ち主かを見てから入れる(ab-162)
-      if (!(await isOwnerPayload(payload))) {
-        setText("status", NOT_OWNER_MESSAGE);
-        return;
-      }
-      window.__googleIdToken = response.credential;
-      persistSession(response.credential, name, "google");
-      activateSession(response.credential, name);
-    }
+    // ab-24: Firebase にログインするときに渡す生のIDトークン。メモリだけに置き、保存はしない(寿命1時間)。
+    window.__googleIdToken = response.credential;
+    persistSession(name);
+    activateSession(LOGGED_IN_MARK, name);
+    signInFirebaseInBackground(response.credential);
   } catch (e) {
     window.__loginState = { loggedIn: false, error: String(e) };
     setText("status", "ログインに失敗しました");
   }
 };
 
-// 明示的なログアウト。サーバー発行のセッショントークンならサーバー側でも即時失効させてから、
-// ローカルの保存内容を消してページを再読み込みする(ログインゲートに戻すため)。
+// 明示的なログアウト。Firebase からもログアウトしてから、ローカルの印を消してページを再読み込みする(ログインゲートに戻すため)。
 window.aaLogout = async () => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const { credential, kind } = JSON.parse(raw);
-      if (kind === "session" && credential && window.AA_API_BASE) {
-        await fetch(`${window.AA_API_BASE}/session`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ credential }),
-        }).catch(() => {});
-      }
-    }
+    await loadFirebase().then((m) => m.signOutFirebase()).catch(() => {});
   } finally {
     localStorage.removeItem(STORAGE_KEY);
     location.reload();
   }
 };
 
-// ページ読み込み時、保存済みログインがあれば再利用する。
-// kind:"session"(サーバー発行の無期限トークン)はローカルでの期限切れ判定を行わない
-// (失効はログアウトかサーバー側の取り消しでのみ起こる)。
-// kind:"google"(交換前の生IDトークン、または移行前からの保存データ)は
-// 従来どおり60分でローカル失効させる(Googleトークン自体の寿命に合わせた安全策)。
+// ページ読み込み時、保存済みのログインの印があれば幕を開ける。
+// kind:"firebase"(今の印)と kind:"session"(Azure の無期限トークンの頃の印、ab-166 で印を書き換える)は期限なし
+// (切れるのはログアウトしたとき)。kind:"google"(生の Google トークン)は60分で切る(トークンの寿命に合わせる)。
 (function restoreSession() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const { credential, savedAt, kind, name } = JSON.parse(raw);
-    if (!credential) {
-      localStorage.removeItem(STORAGE_KEY);
-      return;
-    }
-    if (kind !== "session" && (!savedAt || Date.now() - savedAt > GOOGLE_TOKEN_SESSION_MS)) {
+    const lasting = kind === "firebase" || (kind === "session" && credential);
+    if (!lasting && (!credential || !savedAt || Date.now() - savedAt > GOOGLE_TOKEN_SESSION_MS)) {
       localStorage.removeItem(STORAGE_KEY);
       return;
     }
     let displayName = name || "";
-    if (kind !== "session") {
+    if (!lasting) {
       try {
         displayName = name || decodeJwtPayload(credential).name || "";
       } catch (e) {
         displayName = name || "";
       }
     }
-    activateSession(credential, displayName);
+    if (kind === "session") persistSession(displayName); // Azure の頃の印を書き換える(トークンは捨てる)
+    if (kind === "google") window.__googleIdToken = credential; // 60分以内なら、読むときの Firebase ログインに使える
+    activateSession(LOGGED_IN_MARK, displayName);
     suppressAutoPromptWhenGsiReady();
   } catch (e) {
     localStorage.removeItem(STORAGE_KEY);

@@ -9,11 +9,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listenSafe } from "./listen-safe.js";
+import { FAKE_GOOGLE_CREDENTIAL, useTestOwner } from "./test-owner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".geojson": "application/json" };
 const API_BASE = "https://ab-board-api.azurewebsites.net/api";
-const FAKE_GOOGLE_CREDENTIAL = "header." + Buffer.from(JSON.stringify({ name: "Test User" })).toString("base64") + ".sig";
 
 function serveStatic() {
   return new Promise((resolve) => {
@@ -35,7 +35,8 @@ test("m8: Firebase にログインしていない端末で訪問が読めない�
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext({ timezoneId: "Asia/Tokyo", geolocation: { latitude: 34.69, longitude: 135.52 }, permissions: ["geolocation"] });
-    const page = await context.newPage();
+    const page = await context.newPage()
+    await useTestOwner(page);
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     await page.route(`${API_BASE}/**`, (route) => route.request().url().endsWith("/session")
       ? route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:t.s" }) })

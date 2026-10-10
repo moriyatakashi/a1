@@ -5,7 +5,7 @@
 // Firebase 側がログインを覚えるので、ポップアップは初回だけ。apiKey は公開前提の値(認可は Firestore の rules 側)。
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, signInWithCredential, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithCredential, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuPw8nMuFWx8ghV5ZeBGETeiNII3uk4l8",
@@ -36,6 +36,19 @@ export async function ensureFirebaseLogin() {
     }
   }
   return (await signInWithPopup(fbAuth, new GoogleAuthProvider())).user;
+}
+
+// ab-166 ④(2026-10-10): ログインの幕(common/auth.js)が開いたあとに呼ぶ。Azure の /session の代わりに、
+// Firebase のログインを端末に覚えておいてもらう。済んでいればそのまま。
+export async function signInWithGoogleIdToken(idToken) {
+  if (!authReady) await fbAuth.authStateReady();
+  if (fbAuth.currentUser) return fbAuth.currentUser;
+  return (await signInWithCredential(fbAuth, GoogleAuthProvider.credential(idToken))).user;
+}
+
+// ab-166 ④: ログアウト(auth.js の aaLogout から)
+export function signOutFirebase() {
+  return signOut(fbAuth);
 }
 
 // ab-162(2026-10-10): 読む前のログイン。いずれ Rules の読みを Takashi 本人だけに絞るので、読む側も先にログインしておく。

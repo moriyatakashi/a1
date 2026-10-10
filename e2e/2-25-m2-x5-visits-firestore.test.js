@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listenSafe } from "./listen-safe.js";
+import { FAKE_GOOGLE_CREDENTIAL, useTestOwner } from "./test-owner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = {
@@ -16,7 +17,6 @@ const MIME = {
   ".json": "application/json", ".geojson": "application/json",
 };
 const API_BASE = "https://ab-board-api.azurewebsites.net/api";
-const FAKE_GOOGLE_CREDENTIAL = "header." + Buffer.from(JSON.stringify({ name: "Test User" })).toString("base64") + ".sig";
 
 function serveStatic() {
   return new Promise((resolve) => {
@@ -46,7 +46,8 @@ async function addVisitVia(rel, address, { digest = null, signedIn = false, visi
   try {
     // 「今日」は日本時間で作るので、ブラウザも日本時間にする(CI は UTC で、UTC 15〜24時は日付がずれて落ちていた、ab-153)
     const context = await browser.newContext({ timezoneId: "Asia/Tokyo", geolocation: { latitude: 34.69, longitude: 135.52 }, permissions: ["geolocation"] });
-    const page = await context.newPage();
+    const page = await context.newPage()
+    await useTestOwner(page);
     const azureCalls = [];
     page.on("request", (req) => {
       const u = req.url();

@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { jstDate, isoWeekKey } from "../src/common/today-panel.js";
 import { listenSafe } from "./listen-safe.js";
 import { routeFirebaseStub } from "./firebase-stub.js";
+import { FAKE_GOOGLE_CREDENTIAL, useTestOwner } from "./test-owner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".yml": "text/plain" };
@@ -39,7 +40,8 @@ test("トップ: 開いただけでは取りに行かず、押したら運勢・
   const origin = `http://localhost:${server.address().port}`;
   const browser = await chromium.launch();
   try {
-    const page = await browser.newPage();
+    const page = await browser.newPage()
+    await useTestOwner(page);
     const apiCalls = [];
     const localJs = [];
     page.on("request", (r) => {
@@ -65,8 +67,7 @@ test("トップ: 開いただけでは取りに行かず、押したら運勢・
     await routeFirebaseStub(page, { [today]: { score: 86, note: "" }, [weekAgo]: { score: 200, note: "" } });
     await page.goto(`${origin}/`);
     assert.equal(await page.isVisible("#todayBtn"), false, "ログイン前に中身が見えている");
-    await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }),
-      "header." + Buffer.from(JSON.stringify({ name: "Test User" })).toString("base64") + ".sig");
+    await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
     await page.waitForSelector("#todayBtn", { state: "visible" });
     // 決め打ちで待たず、通信が落ち着くまで待ってから「取りに行っていない」を見る(ab-106)
     await page.waitForLoadState("networkidle");

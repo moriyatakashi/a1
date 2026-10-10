@@ -10,11 +10,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listenSafe } from "./listen-safe.js";
+import { FAKE_GOOGLE_CREDENTIAL, useTestOwner } from "./test-owner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
 const API_BASE = "https://ab-board-api.azurewebsites.net/api";
-const FAKE_GOOGLE_CREDENTIAL = "header." + Buffer.from(JSON.stringify({ name: "Test User" })).toString("base64") + ".sig";
 
 function serveStatic() {
   return new Promise((resolve) => {
@@ -40,7 +40,8 @@ async function openM3({ denyAf = false } = {}, act) {
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
-    const page = await browser.newPage();
+    const page = await browser.newPage()
+    await useTestOwner(page);
     const errors = [];
     const baPosts = [];
     const dialogs = [];

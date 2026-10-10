@@ -96,7 +96,8 @@ function modules(scores, others) {
       export const getAuth = () => auth;
       export class GoogleAuthProvider { static credential(t) { return { t }; } }
       export async function signInWithCredential(a, c) { if (window.__fsCredentialFails) throw new Error("credential"); auth.currentUser = testUser(); window.__fsSignedIn = true; return { user: auth.currentUser }; }
-      export async function signInWithPopup(a, p) { auth.currentUser = testUser(); window.__fsSignedIn = true; return { user: auth.currentUser }; }`,
+      export async function signInWithPopup(a, p) { auth.currentUser = testUser(); window.__fsSignedIn = true; return { user: auth.currentUser }; }
+      export async function signOut(a) { auth.currentUser = null; window.__fsSignedIn = false; window.__fsSignedOut = true; }`,
   };
 }
 
