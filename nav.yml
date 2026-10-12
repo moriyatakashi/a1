@@ -45,14 +45,6 @@ categories:
       - code: bc
         desc: レーダーチャート
         href: src/bc/
-  - label: baのデータ
-    items:
-      - code: x1
-        desc: SQLビュー
-        href: src/x1/
-      - code: x2
-        desc: 生JSON
-        href: src/x2/
   - label: まとめ・文書・設計
     items:
       - code: bd

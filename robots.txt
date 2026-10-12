@@ -4,4 +4,3 @@ User-agent: *
 Disallow: /src/ba/
 Disallow: /src/bb/
 Disallow: /src/bd/wip/
-Disallow: /src/x2/
