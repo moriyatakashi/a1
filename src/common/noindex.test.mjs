@@ -1,5 +1,5 @@
 // 検索に出したくないページに noindex が入っているか(ab-154、2026-10-09)。
-// a1/robots.txt はドメインの一番上に無いので効かない。ページごとの <meta name="robots"> で外す。
+// robots.txt はドメインの一番上にしか効かない(a1 のものは効かず、2026-10-12 に消した)。ページごとの <meta name="robots"> で外す。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

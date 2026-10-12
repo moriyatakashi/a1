@@ -8,9 +8,8 @@ Takashi の個人プロジェクト（roreki）の公開メインアプリ。Git
 
 - `src/` … 各アプリ
   - `m1` `m2` `m3` … 記録系（日々記録・訪問地図ほか）
-  - `ba` `bb` `bc` `bd` … 内部メモ系（ba ログのビュー／レーダーチャート／card ほか）
+  - `bc` … レーダーチャート。ba・bb・bd と x1・x2 は2026-10-12に礼文のローカル Web(b1/g/c1、家の中だけ)へ移した(ab-165)
   - (旧 `g/`)ゲーム・エミュレータ(g1〜g7・g9)は2026-09-29に b1/g へ移し、公開をやめた(ab-32)。残っていた g8(aa の設計記録)と bd/be/t26(aa の現況)は2026-10-03に外した(写しは ab-85)
-  - `a2/` … 旧a2(独立リポジトリ時代)のアプリ x1〜x6(2026-09-22に`a2-archive/`から移設。共通部品は`src/common/`を使う。robots.txtで検索除外)
   - `common/` … 共有モジュール（auth・config・ledger スタイル ほか）
 - `e2e/` … Playwright テスト
 - `scripts/` … ビルド・BaLog バックアップ・エントロピースキャン
@@ -19,4 +18,4 @@ Takashi の個人プロジェクト（roreki）の公開メインアプリ。Git
 ## 生成の流れ
 
 トップページの掲載項目は `nav.yml` が定義し、`scripts/build-index.mjs` が index を生成する。
-内部メモ系は `robots.txt` で検索除外している。
+検索よけはページごとの `<meta name="robots" content="noindex">` で行う(`src/common/noindex.test.mjs`)。
