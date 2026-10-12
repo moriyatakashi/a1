@@ -31,8 +31,8 @@ function serveStatic() {
   });
 }
 
-// ba のページで確かめる。Azure の /session に行ったら数える(行かないことを見る)
-async function openBa(act, { seed } = {}) {
+// bc のページで確かめる(ba は 2026-10-12 に礼文のローカル Web へ移した、ab-165)。Azure の /session に行ったら数える(行かないことを見る)
+async function openBc(act, { seed } = {}) {
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
@@ -46,7 +46,7 @@ async function openBa(act, { seed } = {}) {
     });
     await routeFirebaseStub(page, {});
     if (seed) await page.addInitScript((v) => { if (!sessionStorage.getItem("seeded")) { localStorage.setItem("aa_credential", v); sessionStorage.setItem("seeded", "1"); } }, seed);
-    await page.goto(`http://localhost:${server.address().port}/src/ba/`);
+    await page.goto(`http://localhost:${server.address().port}/src/bc/`);
     const out = await act(page);
     return { ...out, sessionCalls };
   } finally {
@@ -55,8 +55,8 @@ async function openBa(act, { seed } = {}) {
   }
 }
 
-test("ba: 持ち主でログインすると幕が開き、Firebase にも入り、印だけ保存する。Azure の /session には行かない", async () => {
-  const { stored, signedIn, afterLogout, signedOut, gateVisible, sessionCalls } = await openBa(async (page) => {
+test("bc: 持ち主でログインすると幕が開き、Firebase にも入り、印だけ保存する。Azure の /session には行かない", async () => {
+  const { stored, signedIn, afterLogout, signedOut, gateVisible, sessionCalls } = await openBc(async (page) => {
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
     await page.waitForSelector("#content", { state: "visible" });
     await page.waitForFunction(() => window.__fsSignedIn === true);
@@ -80,8 +80,8 @@ test("ba: 持ち主でログインすると幕が開き、Firebase にも入り�
   assert.deepEqual(sessionCalls, [], "Azure の /session には行かない");
 });
 
-test("ba: 持ち主でないアカウントはログインさせない", async () => {
-  const { visible, stored } = await openBa(async (page) => {
+test("bc: 持ち主でないアカウントはログインさせない", async () => {
+  const { visible, stored } = await openBc(async (page) => {
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), credFor("someone@example.com"));
     await page.waitForFunction(() => /このアカウントでは使えません/.test(document.getElementById("status").textContent));
     return { visible: await page.isVisible("#content"), stored: await page.evaluate(() => localStorage.getItem("aa_credential")) };
@@ -90,9 +90,9 @@ test("ba: 持ち主でないアカウントはログインさせない", async (
   assert.equal(stored, null);
 });
 
-test("ba: Azure の頃の印(kind:session)が残っている端末は、ログアウトさせずに入れて、印を書き換える", async () => {
+test("bc: Azure の頃の印(kind:session)が残っている端末は、ログアウトさせずに入れて、印を書き換える", async () => {
   const seed = JSON.stringify({ credential: "session:old.sig", name: "Test User", kind: "session", savedAt: 1 });
-  const { visible, stored, sessionCalls } = await openBa(async (page) => {
+  const { visible, stored, sessionCalls } = await openBc(async (page) => {
     await page.waitForSelector("#content", { state: "visible" });
     return { visible: true, stored: await page.evaluate(() => JSON.parse(localStorage.getItem("aa_credential"))) };
   }, { seed });

@@ -36,17 +36,6 @@ categories:
         stage: beta
   - label: baを見る
     items:
-      - code: ba
-        desc: 気づきログ(台帳本体)
-        href: src/ba/
-      - code: bb
-        desc: 現在形ビュー
-        href: src/bb/
       - code: bc
         desc: レーダーチャート
         href: src/bc/
-  - label: まとめ・文書・設計
-    items:
-      - code: bd
-        desc: カタログ＋be文書/設計メモ(be・c群を収容)
-        href: src/bd/

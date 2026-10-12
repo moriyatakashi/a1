@@ -1,5 +1,5 @@
 // ba-9の残タスク(2): API_BASEをcommon/config.jsへ集約したリファクタ後、
-// m1/bc(旧k2)/baがクリーンな状態(localStorageなし)でログイン→config.js解決→
+// m1/bc(旧k2)がクリーンな状態(ba は 2026-10-12 に礼文のローカル Web へ移した、ab-165)(localStorageなし)でログイン→config.js解決→
 // データ取得まで通しで壊れていないかの回帰確認。
 // config.jsの自己importが効いていない場合、AA_API_BASEがundefinedになり
 // フェッチ先が".../undefined/..."になる(2026-07-16の表示不具合と同型)ため、
@@ -58,15 +58,6 @@ const PAGES = {
     routeRegex: [[/firestore\.googleapis\.com\//, () => ({ status: 200, body: {} })]],
     async assertLoaded(page) {
       await page.waitForFunction(() => document.querySelectorAll("#radarSvg polygon").length > 0);
-    },
-  },
-  ba: {
-    routes: {
-      [`${API_BASE}/ba`]: () => ({ status: 200, body: BA_FIXTURE }),
-    },
-    async assertLoaded(page) {
-      await page.waitForSelector('[data-thread-id="T1"]');
-      assert.equal(await page.textContent(".thread-title"), "回帰確認用スレッド");
     },
   },
 };

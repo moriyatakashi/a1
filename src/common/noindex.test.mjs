@@ -5,7 +5,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 export const NOINDEX_PAGES = [
-  "src/ba/index.html", "src/bb/index.html",
   "src/m8/index.html", // ab-159: 保存するだけの自分用ページ
 ];
 
