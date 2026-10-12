@@ -24,6 +24,10 @@ categories:
         desc: ここに来た(今の町名を見て、前回と違う・初めてなら保存)
         href: src/m8/
         stage: beta
+      - code: m9
+        desc: 打倒あすけん(食べる前に点を予測)
+        href: src/m9/
+        stage: beta
   - label: 学ぶ
     items:
       - code: m7

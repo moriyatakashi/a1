@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../common/config.js?v=202607160712"></script>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>打倒あすけん</title>
+<link rel="stylesheet" href="../common/base.css?v=202607141905">
+<style>
+  /* ab-177(2026-10-12): 食べる前に候補を選んで点を予測する。結果は残さない(その場の予測だけ) */
+  .day { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .day-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .big { font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 0.9rem; font-weight: 400; color: var(--ink-soft); }
+  .sub { font-size: 0.85rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .lack { font-size: 0.9rem; font-weight: 700; color: var(--accent); min-height: 1.2em; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0 8px; }
+  .tab { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink); font-size: 0.9rem; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .tab.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  .meal { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .picked { display: flex; gap: 6px; flex-wrap: wrap; min-height: 1.6em; }
+  .chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--accent); background: transparent; color: var(--ink); font-size: 0.85rem; cursor: pointer; }
+  .empty { font-size: 0.85rem; color: var(--ink-soft); }
+  .meal-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .meal-foot .clear { margin-left: auto; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink-soft); font-size: 0.8rem; cursor: pointer; }
+  .group { margin-top: 14px; }
+  .group h2 { font-size: 0.75rem; color: var(--ink-soft); margin: 0 0 6px; letter-spacing: 0.04em; }
+  .foods { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+  .food { text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; gap: 2px; touch-action: manipulation; }
+  .food.in { border-color: var(--accent); }
+  .food .nm { font-size: 0.9rem; font-weight: 700; }
+  .food .mt { font-size: 0.75rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .food .wn { font-size: 0.7rem; color: var(--ink-soft); }
+  .tab:focus-visible, .food:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .note { font-size: 0.72rem; color: var(--ink-soft); margin-top: 18px; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>路歴 / 打倒あすけん</h1>
+  <p id="lastUpdated" style="font-size:0.8rem;color:#aaa;">最終更新: 2026-10-12 16:00 JST</p>
+
+<!-- LOGIN_GATE:START -->
+  <div id="login-gate">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
+    <div class="g_id_signin"></div>
+    <p id="status">未ログイン(ログインすると食べ物の表が出ます)</p>
+  </div>
+<!-- LOGIN_GATE:END -->
+
+  <div id="content" style="display:none;">
+    <div class="day" aria-live="polite">
+      <div class="sub">1日の予測</div>
+      <div class="day-row">
+        <div class="big" id="dayTotal">0<small> 点</small></div>
+        <div class="sub" id="dayMeta"></div>
+      </div>
+      <div class="lack" id="dayLack"></div>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+
+    <div class="meal" aria-live="polite">
+      <div class="picked" id="picked"></div>
+      <div class="meal-foot">
+        <span class="sub" id="mealLine"></span>
+        <button class="clear" id="btnClear" type="button">この食事を空にする</button>
+      </div>
+      <div class="lack" id="mealLack"></div>
+    </div>
+
+    <div id="groups"></div>
+    <p class="note">点は体への良さ(0〜5)。主食・たんぱく・野菜が1食にそろうと +3。¥ と手間(●の数)は点に混ぜていません。選んだものは残しません(その場の予測だけ)。表はすまの仮の案です。</p>
+  </div>
+
+  <script>window.AA_AUTH_EVENT = "m9-login-success";</script>
+  <script src="../common/auth.js?v=202607201000"></script>
+  <script type="module" src="app.js?v=202610121600"></script>
+  <script type="module">
+    import { applyLastUpdated } from "../common/last-updated.js";
+    applyLastUpdated("src/m9", "lastUpdated", "最終更新");
+  </script>
+</body>
+</html>
