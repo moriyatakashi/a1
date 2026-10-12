@@ -13,6 +13,7 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+// af-2(2026-10-12): 利用者には「何をするか」の名前(desc)を主に見せ、番号(code)は小さく後ろに添える
 function renderSections(categories) {
   return categories
     .map((category) => {
@@ -28,11 +29,11 @@ function renderSections(categories) {
           if (item.sub) {
             // サブリンクを持つ項目は、同じカード(枠)の中にメインリンク+小さなサブリンクを縦に並べる
             return `    <div class="nav-item has-sub${stageClass}">
-      <a class="nav-main" href="${escapeHtml(item.href)}"><span class="nav-code">${escapeHtml(item.code)}</span><span class="nav-desc">${escapeHtml(item.desc)}</span>${stageLabel}</a>
+      <a class="nav-main" href="${escapeHtml(item.href)}"><span class="nav-desc">${escapeHtml(item.desc)}</span><span class="nav-code">${escapeHtml(item.code)}</span>${stageLabel}</a>
       <a class="nav-sub" href="${escapeHtml(item.sub.href)}">↳ <span class="nav-code">${escapeHtml(item.sub.code)}</span> ${escapeHtml(item.sub.desc)}</a>
     </div>`;
           }
-          return `    <a class="nav-item${stageClass}" href="${escapeHtml(item.href)}"><span class="nav-code">${escapeHtml(item.code)}</span><span class="nav-desc">${escapeHtml(item.desc)}</span>${stageLabel}</a>`;
+          return `    <a class="nav-item${stageClass}" href="${escapeHtml(item.href)}"><span class="nav-desc">${escapeHtml(item.desc)}</span><span class="nav-code">${escapeHtml(item.code)}</span>${stageLabel}</a>`;
         })
         .join("\n");
       return `  <div class="cat-label">${escapeHtml(category.label)}</div>\n  <div class="nav-list">\n${items}\n  </div>`;
