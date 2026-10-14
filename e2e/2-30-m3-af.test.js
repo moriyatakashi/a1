@@ -14,8 +14,6 @@ import { FAKE_GOOGLE_CREDENTIAL, useTestOwner } from "./test-owner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
-const API_BASE = "https://ab-board-api.azurewebsites.net/api";
-
 function serveStatic() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
@@ -46,19 +44,9 @@ async function openM3({ denyAf = false } = {}, act) {
     const baPosts = [];
     const dialogs = [];
     page.on("pageerror", (e) => errors.push(e.message));
+    page.on("request", (r) => { if (r.url().includes("azurewebsites.net")) baPosts.push(r.url()); }); // ab-182: 旧 ba(Azure)へは行かない
     page.on("dialog", (d) => { dialogs.push(d.message()); d.accept(d.type() === "prompt" ? "足したnote" : undefined); });
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
-    await page.route(`${API_BASE}/**`, (route) => {
-      const req = route.request();
-      if (req.url().endsWith("/session")) {
-        return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) });
-      }
-      if (req.method() === "POST" && req.url().endsWith("/ba")) {
-        baPosts.push(JSON.parse(req.postData()));
-        return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ seq: 999 }) });
-      }
-      return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
-    });
     if (denyAf) await page.addInitScript(() => { window.__fsDenyWrite = ["afThreads", "_meta"]; window.__fsDenyRead = ["afThreads"]; window.__fsCredentialFails = true; });
     await routeFirebaseStub(page, {}, { afThreads: denyAf ? {} : AF, _meta: denyAf ? {} : { af_seq: { value: 2 } } });
     await page.goto(`http://localhost:${server.address().port}/src/m3/`);

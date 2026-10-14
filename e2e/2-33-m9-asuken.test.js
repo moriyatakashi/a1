@@ -13,8 +13,6 @@ import { FAKE_GOOGLE_CREDENTIAL, useTestOwner } from "./test-owner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
-const API_BASE = "https://ab-board-api.azurewebsites.net/api";
-
 function serveStatic() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
@@ -39,9 +37,6 @@ test("m9: ご飯・納豆・みそ汁で 12点(そろい +3)、2食目のカッ�
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
-    await page.route(`${API_BASE}/**`, (route) => route.request().url().endsWith("/session")
-      ? route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) })
-      : route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
     await routeFirebaseStub(page, {}, {});
     await page.goto(`http://localhost:${server.address().port}/src/m9/`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);

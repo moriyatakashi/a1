@@ -13,8 +13,6 @@ import { listenSafe } from "./listen-safe.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".geojson": "application/json" };
-const API_BASE = "https://ab-board-api.azurewebsites.net/api";
-
 function serveStatic() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
@@ -42,10 +40,9 @@ for (const rel of PAGES) {
       page.on("request", (req) => {
         const u = req.url();
         // 最終更新の時刻(/last-updated)はページの作りの情報なので数えない
-        if ((u.startsWith(API_BASE) && !u.startsWith(`${API_BASE}/last-updated`)) || /firestore\.googleapis\.com/.test(u)) dataCalls.push(u);
+        if (u.includes("azurewebsites.net") || /firestore\.googleapis\.com/.test(u)) dataCalls.push(u);
       });
       await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
-      await page.route(`${API_BASE}/**`, (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
       await page.route(/firestore\.googleapis\.com\//, (route) => route.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
       await routeFirebaseStub(page, {}, {});
 

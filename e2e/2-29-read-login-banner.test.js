@@ -13,8 +13,6 @@ import { FAKE_GOOGLE_CREDENTIAL, useTestOwner } from "./test-owner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".geojson": "application/json" };
-const API_BASE = "https://ab-board-api.azurewebsites.net/api";
-
 function serveStatic() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
@@ -38,9 +36,6 @@ test("m8: Firebase にログインしていない端末で訪問が読めない�
     const page = await context.newPage()
     await useTestOwner(page);
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
-    await page.route(`${API_BASE}/**`, (route) => route.request().url().endsWith("/session")
-      ? route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:t.s" }) })
-      : route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
     await page.route("https://nominatim.openstreetmap.org/**", (route) =>
       route.fulfill({ contentType: "application/json", body: JSON.stringify({ address: { state: "大阪府", city: "東大阪市", suburb: "布施" } }) }));
     await routeFirebaseStub(page, {}, { visits: {} });

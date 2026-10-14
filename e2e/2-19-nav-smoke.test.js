@@ -67,12 +67,7 @@ test("nav.ymlの全ページがローカルの404・スクリプトエラーな�
         // last-updated.json は Pages に公開するときに作る(ab-166 ⑤)。ローカルに無いのは正しい
         if (r.url().startsWith(origin) && r.status() >= 400 && !r.url().endsWith("/last-updated.json")) localFailures.push(`${r.status()} ${r.url().slice(origin.length)}`);
       });
-      await page.route((u) => !u.href.startsWith(origin), (route) => {
-        if (route.request().url().includes("ab-board-api.azurewebsites.net")) {
-          return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
-        }
-        return route.abort();
-      });
+      await page.route((u) => !u.href.startsWith(origin), (route) => route.abort()); // 外へは出さない(Azure も、ab-182)
       await page.goto(`${origin}/${rel}`);
       // 決め打ちで待たず、通信が落ち着く(500ms 何も出ない)まで待ってから見る(ab-106)。重いときに見落とさない
       await page.waitForLoadState("networkidle");

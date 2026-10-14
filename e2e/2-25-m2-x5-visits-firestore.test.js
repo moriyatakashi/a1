@@ -16,8 +16,6 @@ const MIME = {
   ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
   ".json": "application/json", ".geojson": "application/json",
 };
-const API_BASE = "https://ab-board-api.azurewebsites.net/api";
-
 function serveStatic() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
@@ -51,15 +49,9 @@ async function addVisitVia(rel, address, { digest = null, signedIn = false, visi
     const azureCalls = [];
     page.on("request", (req) => {
       const u = req.url();
-      if (u.startsWith(`${API_BASE}/visits`) || u.startsWith(`${API_BASE}/points`)) azureCalls.push(u);
+      if (u.includes("azurewebsites.net")) azureCalls.push(u);
     });
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
-    await page.route(`${API_BASE}/**`, (route) => {
-      if (route.request().url().endsWith("/session")) {
-        return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) });
-      }
-      return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
-    });
     await page.route("https://nominatim.openstreetmap.org/**", (route) =>
       route.fulfill({ contentType: "application/json", body: JSON.stringify({ address }) }));
     await routeFirebaseStub(page, {}, { visits, ...(digest ? { digests: { visits: digest } } : {}) });

@@ -15,12 +15,8 @@ import { FAKE_GOOGLE_CREDENTIAL, useTestOwner } from "./test-owner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
-const API_BASE = "https://ab-board-api.azurewebsites.net/api";
-
 // ab-162: 公開の閲覧モードをやめたので、開いたらログインする(セッション交換はスタブ)
 async function openLoggedIn(page, url) {
-  await page.route(`${API_BASE}/session`, (route) =>
-    route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) }));
   await page.goto(url);
   await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
 }
@@ -47,8 +43,6 @@ test("m1: チェック項目を押して保存すると check が残り、項目
     const page = await (await browser.newContext({ timezoneId: "Asia/Tokyo" })).newPage()
     await useTestOwner(page);
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
-    await page.route(`${API_BASE}/session`, (route) =>
-      route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) }));
     await routeFirebaseStub(page, { "2026-07-18": { score: 80, note: "" } }, {
       scoreItems: { a: { text: "3食" }, b: { text: "散歩" } },
       scoreConfig: { current: { items: [{ id: "a", text: "3食" }, { id: "b", text: "散歩" }] } },

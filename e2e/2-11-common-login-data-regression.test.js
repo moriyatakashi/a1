@@ -17,8 +17,6 @@ import { FAKE_GOOGLE_CREDENTIAL, useTestOwner } from "./test-owner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".geojson": "application/json" };
-const API_BASE = "https://ab-board-api.azurewebsites.net/api";
-
 function serveStatic() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
@@ -83,9 +81,6 @@ for (const [pageName, spec] of Object.entries(PAGES)) {
 
       await page.route("https://accounts.google.com/gsi/client", (route) =>
         route.fulfill({ contentType: "text/javascript", body: "" })
-      );
-      await page.route(`${API_BASE}/session`, (route) =>
-        route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ sessionToken: "session:testid.testsig" }) })
       );
       if (spec.firebase) await routeFirebaseStub(page, spec.firebase, spec.firebaseOthers || {});
       for (const [url, handler] of Object.entries(spec.routes)) {

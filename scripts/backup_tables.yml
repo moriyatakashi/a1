@@ -55,3 +55,12 @@ firestore_collections:
     subcollections: [notes]
   - name: wishes
     note: 行きたい場所(m6)。
+  # 2026-10-15 ab-182(Takashi explain Q5 A): 体のデータと点数の設定も取る。読みは本人だけなので鍵(fs-get)で読む。
+  - name: steps
+    note: 毎日の歩数(ab-128、iPhone のショートカットが毎晩 steps-set で書く)。
+  - name: sleep
+    note: 毎日の睡眠(ab-181、iPhone のショートカットが sleep-set で書く)。
+  - name: scoreConfig
+    note: m1 のチェック項目の今の並び(ab-43)。
+  - name: scoreItems
+    note: m1 のチェック項目のカタログ(ab-43)。

@@ -39,11 +39,8 @@ async function openBc(act, { seed } = {}) {
     const page = await browser.newPage();
     await useTestOwner(page);
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
-    const sessionCalls = [];
-    await page.route("https://ab-board-api.azurewebsites.net/api/**", (route) => {
-      if (route.request().url().includes("/session")) sessionCalls.push(route.request().method());
-      return route.fulfill({ contentType: "application/json", body: "[]" });
-    });
+    const sessionCalls = []; // ab-182: Azure(ab-board-api)へ行ったら残す。行かないのが正しい
+    page.on("request", (r) => { if (r.url().includes("azurewebsites.net")) sessionCalls.push(r.method()); });
     await routeFirebaseStub(page, {});
     if (seed) await page.addInitScript((v) => { if (!sessionStorage.getItem("seeded")) { localStorage.setItem("aa_credential", v); sessionStorage.setItem("seeded", "1"); } }, seed);
     await page.goto(`http://localhost:${server.address().port}/src/bc/`);

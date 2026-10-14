@@ -9,7 +9,7 @@
 // GSIの初期化方式自体(async defer・宣言的init)には触れない。このscriptタグを
 // 各index.htmlの<head>先頭に置くことで、GSIの外部scriptが実際にfetchを開始する
 // 時点でこの値が確実に設定済みになるようにしている(タイミングの偶然に頼らない)。
-window.AA_API_BASE = "https://ab-board-api.azurewebsites.net/api";
+// AA_API_BASE(Azure の ab-board-api)は 2026-10-15 に外した。どのページも使っていない(ab-182)。
 window.AA_GOOGLE_CLIENT_ID = "550466095352-50h92anfullp137l4gq4gdi7ogjk0auc.apps.googleusercontent.com";
 
 // ファビコンの動的挿入: 各サブページで相対パスを気にせず表示させるため、
