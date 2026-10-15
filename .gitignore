@@ -1,3 +1,4 @@
 node_modules/
 /index.html
 /last-updated.json
+__pycache__/

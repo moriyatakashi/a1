@@ -10,11 +10,8 @@ categories:
       - code: m3
         desc: メモ
         href: src/m3/
-      - code: m4
-        desc: 現在地マップ
-        href: src/m4/
       - code: m5
-        desc: 現在地マップ(実座標版)
+        desc: 現在地マップ
         href: src/m5/
       - code: m6
         desc: 地図あそび(制覇・霧・スタンプ・クイズ)
