@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../common/config.js?v=202607160712"></script>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>歩数</title>
+<link rel="stylesheet" href="../common/base.css?v=202607141905">
+<style>
+  /* ab-128(2026-10-15): 週ごとの棒、押すとその週の日ごとの数字。読むだけ */
+  .bars { display: flex; align-items: flex-end; gap: 4px; height: 200px; border-bottom: 1px solid var(--line); padding-top: 4px; overflow-x: auto; }
+  .bar { flex: 1 0 36px; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: none; background: transparent; color: var(--ink); cursor: pointer; touch-action: manipulation; }
+  .bar .val { font-size: 0.65rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bar .col { flex: 1; width: 70%; display: flex; align-items: flex-end; }
+  .bar .fill { width: 100%; background: var(--accent); opacity: 0.45; border-radius: 4px 4px 0 0; }
+  .bar.on .fill { opacity: 1; }
+  .bar.on .val { color: var(--ink); font-weight: 700; }
+  .bar .lbl { font-size: 0.7rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; padding-bottom: 2px; }
+  .bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .week { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-top: 14px; }
+  .week h2 { font-size: 1rem; margin: 0 0 2px; }
+  .sub { font-size: 0.85rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; margin-bottom: 8px; }
+  .drow { display: grid; grid-template-columns: 6.5em 1fr 6.5em; gap: 8px; align-items: center; padding: 4px 0; font-variant-numeric: tabular-nums; }
+  .dd { font-size: 0.85rem; }
+  .dbar { height: 10px; background: transparent; }
+  .dbar .fill { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+  .dn { text-align: right; font-weight: 700; }
+  .dn.none { font-weight: 400; color: var(--ink-soft); font-size: 0.8rem; }
+  .empty { font-size: 0.85rem; color: var(--ink-soft); align-self: center; margin: auto; }
+  .note { font-size: 0.72rem; color: var(--ink-soft); margin-top: 18px; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>路歴 / 歩数</h1>
+  <p id="lastUpdated" style="font-size:0.8rem;color:#aaa;">最終更新: 2026-10-15 JST</p>
+
+<!-- LOGIN_GATE:START -->
+  <div id="login-gate">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
+    <div class="g_id_signin"></div>
+    <p id="status">未ログイン(ログインすると歩数が出ます)</p>
+  </div>
+<!-- LOGIN_GATE:END -->
+
+  <div id="content" style="display:none;">
+    <div class="bars" id="bars" aria-label="週ごとの歩数(押すと日ごと)"></div>
+    <div class="week" id="week" hidden aria-live="polite">
+      <h2 id="weekHead"></h2>
+      <div class="sub" id="weekMeta"></div>
+      <div id="days"></div>
+    </div>
+    <p class="note">iPhone のショートカットが毎晩 23:50 に送るその日の歩数です。棒は週(月〜日)の合計、押すとその週の日ごとの数字が出ます。点数には入れていません。</p>
+  </div>
+
+  <script>window.AA_AUTH_EVENT = "m10-login-success";</script>
+  <script src="../common/auth.js?v=202607201000"></script>
+  <script type="module" src="app.js?v=202610151200"></script>
+  <script type="module">
+    import { applyLastUpdated } from "../common/last-updated.js";
+    applyLastUpdated("src/m10", "lastUpdated", "最終更新");
+  </script>
+</body>
+</html>

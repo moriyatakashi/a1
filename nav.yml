@@ -25,6 +25,10 @@ categories:
         desc: 打倒あすけん(食べる前に点を予測)
         href: src/m9/
         stage: beta
+      - code: m10
+        desc: 歩数(週ごとの棒、押すと日ごと)
+        href: src/m10/
+        stage: beta
   - label: 学ぶ
     items:
       - code: m7

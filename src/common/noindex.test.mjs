@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 
 export const NOINDEX_PAGES = [
   "src/m8/index.html", // ab-159: 保存するだけの自分用ページ
+  "src/m10/index.html", // ab-128: 体のデータ(歩数)
 ];
 
 for (const page of NOINDEX_PAGES) {
