@@ -10,7 +10,7 @@ function row(i) {
   const note = i.state === "ng" || i.state === "unknown" ? i.note || i.error || "" : "";
   return `<tr class="st-${i.state}">
     <td><b>${esc(i.name)}</b><div class="when">${esc(i.when)}</div></td>
-    <td class="state">${STATE_LABEL[i.state]}</td>
+    <td class="state">${(i.state === "ng" && i.ngLabel) || STATE_LABEL[i.state]}</td>
     <td>${jst(i.okAt)}</td>
     <td>${jst(i.ngAt)}</td>
   </tr>${note ? `<tr class="st-${i.state} note-row"><td colspan="4">${esc(note)}</td></tr>` : ""}`;
