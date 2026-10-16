@@ -31,13 +31,18 @@ function serveStatic() {
 
 const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString();
 
-// ba: B1 開いている / B2 閉じた / B3 無効にした
+// ba: B1 開いている / B2 閉じた / B3 無効にした / B4 7月の古い書き方の無効(value が無い、root も無い迷子) / B5 無効を戻した(開いている)
 const BA = [
   { id: "B1", threadId: "B1", by: "claude-pc", type: "new", seq: 1, createdAt: daysAgo(50), title: "B1" },
   { id: "B2", threadId: "B2", by: "claude-pc", type: "new", seq: 2, createdAt: daysAgo(50), title: "B2" },
   { id: "B2-s", threadId: "B2", by: "takashi", type: "status", status: "closed", createdAt: daysAgo(40) },
   { id: "B3", threadId: "B3", by: "claude-pc", type: "new", seq: 3, createdAt: daysAgo(50), title: "B3" },
   { id: "B3-v", threadId: "B3", by: "takashi", type: "void", value: true, createdAt: daysAgo(40) },
+  { id: "B4-n", threadId: "B4", by: "claude-mobile", type: "note", createdAt: daysAgo(80) },
+  { id: "B4-v", threadId: "B4", by: "claude-mobile", type: "void", body: "void: 迷子スレッド", createdAt: daysAgo(78) },
+  { id: "B5", threadId: "B5", by: "claude-pc", type: "new", seq: 5, createdAt: daysAgo(50), title: "B5" },
+  { id: "B5-v", threadId: "B5", by: "takashi", type: "void", value: true, createdAt: daysAgo(45) },
+  { id: "B5-u", threadId: "B5", by: "takashi", type: "void", value: false, createdAt: daysAgo(44) },
 ];
 
 const FS = "https://firestore.googleapis.com/v1/projects/ab01-9f35a/databases/(default)/documents/abThreads";
@@ -91,7 +96,7 @@ test("bc: 今の状態(開いている件数・返事待ち・最後の動きが
     assert.ok(abAuth.length > 0 && abAuth.every((h) => h === "Bearer test-id-token"), "ab を ID トークン付きで読んでいない");
     const text = (await page.textContent("#nowPanel")).replace(/\s+/g, "");
     assert.match(text, /ab開いている3件/, "A1・A2・A4(A3は済み)");
-    assert.match(text, /ba開いている1件/, "B1だけ(B2は閉じた、B3は無効)");
+    assert.match(text, /ba開いている2件/, "B1とB5(B2は閉じた、B3・B4は無効、B5は無効を戻した)");
     assert.deepEqual(await page.locator("#nowPanel .now-chip").allTextContents(), ["すま 2", "礼文 1"], "A3(済み)は数えない");
     const stale = (await page.locator("#nowPanel .now-stale li").allTextContents()).map((s) => s.replace(/\s+/g, ""));
     assert.deepEqual(stale, ["ab-2寝ている件30日前", "ab-4返事がほしい件10日前", "ab-1動いている古い件2日前"],

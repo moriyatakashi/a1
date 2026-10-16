@@ -446,9 +446,10 @@ function daysSince(iso) {
 }
 
 function isBaVoided(thread) {
-  // ba の void は最後に付いたものが効く(value=true で無効)
+  // ba の void は最後に付いたものが効く(value=true で無効)。
+  // 7月の古い void(迷子スレッドの取り消し4件)は value を持たない。これも無効として数える(value=false だけが戻す)
   const voids = thread.entries.filter((e) => e.type === "void");
-  return voids.length > 0 && voids[voids.length - 1].value === true;
+  return voids.length > 0 && voids[voids.length - 1].value !== false;
 }
 
 function escapeHtml(s) {
