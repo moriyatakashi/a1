@@ -28,7 +28,7 @@ function serveStatic() {
   });
 }
 
-test("m9: ご飯・納豆・みそ汁で 12点(そろい +3)、2食目のカップ麺は足りないものが出る。何も書かない", async () => {
+test("m9: ご飯・納豆・みそ汁で 12点(そろい +3)、2食目のカップ麺は足りないものが出る。今日の歩数を添える。何も書かない", async () => {
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
@@ -37,7 +37,9 @@ test("m9: ご飯・納豆・みそ汁で 12点(そろい +3)、2食目のカッ�
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
-    await routeFirebaseStub(page, {}, {});
+    // 歩数は今日の分がまだ無く、昨日の分だけある形(23:50 に届く前の昼)
+    const ymd = (d) => new Date(Date.now() + 9 * 3600000 - d * 86400000).toISOString().slice(0, 10);
+    await routeFirebaseStub(page, {}, { steps: { [ymd(1)]: { steps: 1234, by: "iphone" }, [ymd(5)]: { steps: 999, by: "iphone" } } });
     await page.goto(`http://localhost:${server.address().port}/src/m9/`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
     await page.waitForSelector(".food");
@@ -53,6 +55,11 @@ test("m9: ご飯・納豆・みそ汁で 12点(そろい +3)、2食目のカッ�
     assert.match(await page.textContent("#mealLine"), /2食目 まだ選んでいません/);
     await page.setViewportSize({ width: 390, height: 900 });
     await page.screenshot({ path: process.env.M9_SHOT || "/dev/null", fullPage: false }).catch(() => {});
+    // 今日の歩数(ab-177 Q4 A): 今日が無いので昨日を添える。点には入らない。steps を丸ごと読まない(ac-19)
+    await page.waitForFunction(() => document.getElementById("steps").textContent.trim() !== "");
+    assert.equal((await page.textContent("#steps")).trim(), "今日の歩数はまだ(毎晩 23:50 に届く) / 昨日 1,234歩");
+    assert.match(await page.textContent("#dayTotal"), /^12/);
+    assert.ok(!(await page.evaluate(() => window.__fsReads || [])).includes("steps"));
     const writes = await page.evaluate(() => window.__fsOtherWrites || []);
     assert.deepEqual(writes, []);
     assert.deepEqual(errors, []);

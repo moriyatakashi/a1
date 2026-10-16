@@ -1,7 +1,9 @@
 // app.js — m9「打倒あすけん」(ab-177、2026-10-12 すま)。
 // 食べる前に候補を選ぶと、1食ずつの点と1日の合計を予測する。表は同じフォルダの foods.json(Q6 C: 最初は a1 のファイル)。
 // 選んだものは残さない(Q8 A)。開き直すと空に戻る。
-import { mealSummary, daySummary, missingText, MEAL_BONUS } from "./score.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { db, ensureReadLogin, guardRead } from "../common/firebase.js";
+import { mealSummary, daySummary, missingText, MEAL_BONUS, stepsText } from "./score.js";
 
 const ORDER = ["主食", "たんぱく", "野菜", "果物", "乳", "その他"];
 const $ = (id) => document.getElementById(id);
@@ -59,7 +61,28 @@ function buildGroups() {
       </button>`).join("")}</div></section>`).join("");
 }
 
+// 今日の歩数(ab-177 Q4 A、2026-10-17 すま)。点には入れない、並べて見せるだけ。
+// steps/{日付} を今日と昨日の2件だけ読む(コレクション全体は読まない、ac-19)。書かない。
+// 読めなくても食べ物の表は使えるように、失敗は一言だけ出して止めない。
+const jstDate = (offsetDays) => new Date(Date.now() + 9 * 3600000 - offsetDays * 86400000).toISOString().slice(0, 10);
+async function showSteps() {
+  const el = $("steps");
+  try {
+    await ensureReadLogin();
+    const read = async (date) => {
+      const snap = await guardRead(() => getDoc(doc(db, "steps", date)));
+      return snap.exists() ? Number(snap.data().steps) || 0 : null;
+    };
+    const today = await read(jstDate(0));
+    const yesterday = today === null ? await read(jstDate(1)) : null;
+    el.textContent = stepsText(today, yesterday);
+  } catch (e) {
+    el.textContent = `歩数を読めませんでした(${e.code || e.message})`;
+  }
+}
+
 async function onLoginSuccess() {
+  showSteps();
   try {
     const res = await fetch("foods.json", { cache: "no-store" });
     FOODS = (await res.json()).foods || [];

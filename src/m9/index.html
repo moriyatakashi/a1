@@ -42,7 +42,7 @@
 <body>
   <p><a href="../../">← 戻る</a></p>
   <h1>路歴 / 打倒あすけん</h1>
-  <p id="lastUpdated" style="font-size:0.8rem;color:#aaa;">最終更新: 2026-10-12 16:00 JST</p>
+  <p id="lastUpdated" style="font-size:0.8rem;color:#aaa;">最終更新: 2026-10-17 07:00 JST</p>
 
 <!-- LOGIN_GATE:START -->
   <div id="login-gate">
@@ -65,6 +65,7 @@
         <div class="sub" id="dayMeta"></div>
       </div>
       <div class="lack" id="dayLack"></div>
+      <div class="sub" id="steps"></div>
     </div>
 
     <div class="tabs" id="tabs"></div>
@@ -79,12 +80,12 @@
     </div>
 
     <div id="groups"></div>
-    <p class="note">点は体への良さ(0〜5)。主食・たんぱく・野菜が1食にそろうと +3。¥ と手間(●の数)は点に混ぜていません。選んだものは残しません(その場の予測だけ)。表はすまの仮の案です。</p>
+    <p class="note">点は体への良さ(0〜5)。主食・たんぱく・野菜が1食にそろうと +3。¥ と手間(●の数)は点に混ぜていません。選んだものは残しません(その場の予測だけ)。表はすまの仮の案です。歩数は m10 と同じ iPhone の記録で、点には入れていません。</p>
   </div>
 
   <script>window.AA_AUTH_EVENT = "m9-login-success";</script>
   <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202610121600"></script>
+  <script type="module" src="app.js?v=202610170700"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/m9", "lastUpdated", "最終更新");

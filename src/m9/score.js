@@ -45,3 +45,13 @@ export function daySummary(meals) {
 export function missingText(missing) {
   return missing && missing.length ? `${missing.join("・")}が足りない` : "";
 }
+
+// 今日の歩数の一言(ab-177 Q4 A・ab-128、2026-10-17 すま)。点には入れない。
+// 歩数は iPhone が毎晩 23:50 にその日の分を送るので、昼のあいだは今日の分がまだ無い。そのときは昨日の分を添える。
+// today・yesterday は歩数(数)か null(記録なし)。
+export function stepsText(today, yesterday) {
+  const n = (v) => Number(v).toLocaleString("ja-JP");
+  if (today !== null && today !== undefined) return `今日の歩数 ${n(today)}歩`;
+  const head = "今日の歩数はまだ(毎晩 23:50 に届く)";
+  return yesterday !== null && yesterday !== undefined ? `${head} / 昨日 ${n(yesterday)}歩` : head;
+}

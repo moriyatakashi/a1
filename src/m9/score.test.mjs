@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { mealSummary, daySummary, missingText, MEAL_BONUS } from "./score.js";
+import { mealSummary, daySummary, missingText, MEAL_BONUS, stepsText } from "./score.js";
 
 const foods = JSON.parse(fs.readFileSync(new URL("./foods.json", import.meta.url), "utf8")).foods;
 const by = (name) => foods.find((f) => f.name === name);
@@ -38,4 +38,11 @@ test("1日: 空の食事は数えず、合計と1日で足りないものを出�
   assert.equal(day.total, 2 + 4 + 3 + MEAL_BONUS + 3);
   assert.equal(day.bonusMeals, 1);
   assert.deepEqual(day.missing, ["乳"]);
+});
+
+test("今日の歩数の一言: 今日があれば今日、無ければ昨日を添える、どちらも無ければ届く時刻だけ", () => {
+  assert.equal(stepsText(4321, 190), "今日の歩数 4,321歩");
+  assert.equal(stepsText(0, 190), "今日の歩数 0歩");
+  assert.equal(stepsText(null, 1234), "今日の歩数はまだ(毎晩 23:50 に届く) / 昨日 1,234歩");
+  assert.equal(stepsText(null, null), "今日の歩数はまだ(毎晩 23:50 に届く)");
 });
