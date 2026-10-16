@@ -42,7 +42,7 @@ function serveStatic() {
 const nav = yaml.load(fs.readFileSync(path.join(ROOT, "nav.yml"), "utf8"));
 const HREFS = nav.categories.flatMap((c) => c.items.map((i) => i.href)).filter((h) => h && h.startsWith("src/"));
 // トップの一覧に載せないページも開くだけは見る(ab-171: 課金の指数は非常時の別窓)
-const HIDDEN = ["src/cost/"];
+const HIDDEN = ["src/cost/", "src/jobs/"];
 
 test("nav.ymlの全リンク先が実在する", () => {
   // 2026-09-29(ab-32): g1〜g7・g9 を b1/g へ移したので下限を30→20に下げた(移設後は27件)

@@ -72,6 +72,18 @@
     .today-label { color: var(--nav-desc); font-size: 0.85rem; min-width: 6em; }
     .today-value { font-weight: bold; }
     #todayClose { margin-top: 12px; font: inherit; font-size: 0.85rem; }
+    /* 2026-10-17: 毎日の処理が止まったときだけ出る細い1行(common/job-banner.js) */
+    .job-alert {
+      display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 4px 10px;
+      font-size: 0.8rem; border: 1px solid rgba(217,130,43,0.55); background: rgba(217,130,43,0.12); border-radius: 6px;
+    }
+    .job-alert[hidden] { display: none; }
+    .job-alert-text { flex: 1; min-width: 0; }
+    .job-alert a { white-space: nowrap; }
+    .job-alert button {
+      font: inherit; font-size: 0.75rem; color: var(--nav-desc); background: none; cursor: pointer;
+      border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px;
+    }
   </style>
 </head>
 <body>
@@ -88,6 +100,7 @@
     <p id="status">未ログイン(ログインすると一覧が出ます)</p>
   </div>
   <div id="content" style="display:none;">
+  <div id="jobAlert" class="job-alert" role="status" hidden></div>
   <p>日々の記録や気づきを、少しずつ積み重ねています。</p>
   <p><button type="button" id="todayBtn">今日の運勢と得点</button></p>
   <dialog id="todayDialog">
@@ -111,6 +124,14 @@
       await showTodayPanel(document.getElementById("todayBody"));
     });
     document.getElementById("todayClose").addEventListener("click", () => dialog.close());
+
+    // 2026-10-17: ログインしたら、毎日の処理が止まっていないかを見て、止まっていれば頭に1行(部品は読むときに読み込む)
+    const checkJobs = async () => {
+      const { showJobBanner } = await import("./src/common/job-banner.js");
+      await showJobBanner(document.getElementById("jobAlert"), "src/jobs/");
+    };
+    if (window.__loginState && window.__loginState.loggedIn) checkJobs();
+    else window.addEventListener("top-login-success", checkJobs, { once: true });
   </script>
 </body>
 </html>

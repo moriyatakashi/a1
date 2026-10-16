@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../common/config.js?v=202607160712"></script>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>処理の様子</title>
+<link rel="stylesheet" href="../common/base.css?v=202607141905">
+<style>
+  /* 2026-10-17: 毎日の処理ごとの最後の成功・失敗。トップの一覧には載せない(トップの頭の1行の「詳しく」から来る)。読むだけ */
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 400; color: var(--ink-soft); font-size: 0.75rem; }
+  .when { font-size: 0.72rem; color: var(--ink-soft); }
+  .state { white-space: nowrap; font-weight: 700; }
+  .st-ng .state, .st-late .state { color: #d9822b; }
+  .st-none .state, .st-unknown .state { color: var(--ink-soft); font-weight: 400; }
+  .note-row td { font-size: 0.75rem; color: var(--ink-soft); border-top: none; padding-top: 0; word-break: break-all; }
+  .empty { font-size: 0.85rem; color: var(--ink-soft); }
+  .note { font-size: 0.72rem; color: var(--ink-soft); margin-top: 18px; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>路歴 / 処理の様子</h1>
+  <p id="lastUpdated" style="font-size:0.8rem;color:#aaa;">最終更新: 2026-10-17 JST</p>
+
+<!-- LOGIN_GATE:START -->
+  <div id="login-gate">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
+    <div class="g_id_signin"></div>
+    <p id="status">未ログイン(ログインすると処理の様子が出ます)</p>
+  </div>
+<!-- LOGIN_GATE:END -->
+
+  <div id="content" style="display:none;">
+    <div id="jobs"><p class="empty">読んでいます…</p></div>
+    <p class="note">毎日の処理が、最後にうまくいった時刻と失敗した時刻です。「来ていない」は、決まった時刻から6時間すぎても成功が届いていないもの(電池切れ・礼文が止まっているなど、処理そのものが動かなかったとき)。「まだ記録なし」は、まだ一度も結果が届いていないもの(トップには出しません)。礼文の処理は b1/run job で結果を残し、バックアップは GitHub の実行結果を見ています。</p>
+  </div>
+
+  <script>window.AA_AUTH_EVENT = "jobs-login-success";</script>
+  <script src="../common/auth.js?v=202607201000"></script>
+  <script type="module" src="app.js?v=202610171800"></script>
+  <script type="module">
+    import { applyLastUpdated } from "../common/last-updated.js";
+    applyLastUpdated("src/jobs", "lastUpdated", "最終更新");
+  </script>
+</body>
+</html>

@@ -8,6 +8,7 @@ export const NOINDEX_PAGES = [
   "src/m8/index.html", // ab-159: 保存するだけの自分用ページ
   "src/m10/index.html", // ab-128: 体のデータ(歩数)
   "src/cost/index.html", // ab-171: 課金の指数(トップの一覧にも載せない)
+  "src/jobs/index.html", // 2026-10-17: 処理の様子(トップの一覧にも載せない)
 ];
 
 for (const page of NOINDEX_PAGES) {
