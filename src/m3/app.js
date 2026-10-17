@@ -4,7 +4,7 @@
 // 2026-10-10(ab-166 ②): Rules 第1段が出て m3 から af に書けるのを確かめたので、ba(Azure)への逃げ道は外した。
 import "../common/config.js";
 import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
-import { addAfNote, cleanAfTags, createAf, doneAf, fetchOpenAf, isDenied } from "./af-store.js";
+import { addAfNote, cleanAfTags, createAf, doneAf, fetchOpenAf, fetchRecentAg, isDenied } from "./af-store.js";
 
 // af に書く。書けなければ(この端末で Firebase に未ログインなど)そのまま失敗を出す
 async function writeEntry({ title, tags, body }) {
@@ -65,6 +65,33 @@ async function renderList() {
   }
 }
 
+// 2026-10-18(ab-185、Takashi explain Q1 A): ag は家人が書き、Takashi はここで読むだけ
+async function renderAg() {
+  const box = document.getElementById("agList");
+  if (!box) return;
+  box.textContent = "読み込み中…";
+  let items;
+  try {
+    items = await fetchRecentAg();
+  } catch (e) {
+    box.textContent = isDenied(e) ? "まだ読めません(この端末で未ログイン)" : "読めませんでした: " + (e.message || e);
+    return;
+  }
+  box.textContent = "";
+  if (!items.length) { box.append(el("p", { class: "af-empty" }, "まだありません")); return; }
+  for (const t of items) {
+    const notes = Array.isArray(t.noteMeta) ? t.noteMeta.length : 0;
+    const related = Array.isArray(t.related) && t.related.length ? "関連 " + t.related.join(",") : "";
+    const meta = [`ag-${t.seq}`, (t.createdAt || "").slice(0, 10), t.by || "", related, notes ? `note ${notes}` : ""]
+      .filter(Boolean).join(" · ");
+    const row = el("div", { class: "af-item" },
+      el("div", { class: "af-meta" }, meta),
+      el("div", { class: "af-title" }, t.title || "(タイトルなし)"));
+    if (t.body) row.append(el("div", { class: "af-body" }, t.body));
+    box.append(row);
+  }
+}
+
 function initNewEntryForm() {
   const elTitle = document.getElementById("newTitle");
   const elTags = document.getElementById("newTags");
@@ -106,6 +133,7 @@ function initNewEntryForm() {
     }
   });
   renderList();
+  renderAg();
 }
 
 if (window.__loginState && window.__loginState.loggedIn) {

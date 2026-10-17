@@ -18,6 +18,15 @@ export async function fetchOpenAf() {
     .sort((a, b) => (Number(b.seq) || 0) - (Number(a.seq) || 0));
 }
 
+// ag(家人のやったあとのまとめと判断、2026-10-18 ab-185)。m3 からは読むだけ。閉じない台帳なので新しい順に n 件
+export async function fetchRecentAg(n = 20) {
+  const [{ collection, getDocs }, { db, ensureReadLogin, guardRead }] = await load();
+  await ensureReadLogin();
+  const snap = await guardRead(() => getDocs(collection(db, "agThreads")));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (Number(b.seq) || 0) - (Number(a.seq) || 0)).slice(0, n);
+}
+
 // 新しく作る。返すのは {id, seq}
 export async function createAf({ title, body = "", tags = [] }) {
   const [{ collection, doc, runTransaction }, { db, ensureFirebaseLogin }] = await load();

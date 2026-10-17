@@ -34,6 +34,12 @@ const AF = {
   a2: { title: "済んだメモ", body: "", tags: [], done: true, by: "takashi", createdAt: "2026-10-10T02:00:00.000Z", noteMeta: [], seq: 2 },
 };
 
+// ag(ab-185): 家人のやったあと。m3 は読むだけ・新しい順
+const AG = {
+  g1: { title: "古いまとめ", body: "■まとめ: 一つ目", related: [], by: "claude-mobile", createdAt: "2026-10-16T12:00:00.000Z", noteMeta: [], seq: 1 },
+  g2: { title: "新しいまとめ", body: "", related: ["ab-167"], by: "claude-pc", createdAt: "2026-10-18T01:00:00.000Z", noteMeta: [], seq: 2 },
+};
+
 async function openM3({ denyAf = false } = {}, act) {
   const server = await serveStatic();
   const browser = await chromium.launch();
@@ -48,7 +54,7 @@ async function openM3({ denyAf = false } = {}, act) {
     page.on("dialog", (d) => { dialogs.push(d.message()); d.accept(d.type() === "prompt" ? "足したnote" : undefined); });
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     if (denyAf) await page.addInitScript(() => { window.__fsDenyWrite = ["afThreads", "_meta"]; window.__fsDenyRead = ["afThreads"]; window.__fsCredentialFails = true; });
-    await routeFirebaseStub(page, {}, { afThreads: denyAf ? {} : AF, _meta: denyAf ? {} : { af_seq: { value: 2 } } });
+    await routeFirebaseStub(page, {}, { afThreads: denyAf ? {} : AF, agThreads: denyAf ? {} : AG, _meta: denyAf ? {} : { af_seq: { value: 2 } } });
     await page.goto(`http://localhost:${server.address().port}/src/m3/`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
     await page.waitForFunction(() => !/読み込み中/.test(document.getElementById("afList").textContent));
@@ -67,6 +73,16 @@ test("m3: 開いている af だけが一覧に出る(済みは出ない)", asyn
   assert.match(list, /前からあるメモ/);
   assert.doesNotMatch(list, /済んだメモ/);
   assert.deepEqual(errors, []);
+});
+
+test("m3: ag は新しい順に読むだけで出る(ボタンなし)", async () => {
+  const { ag, buttons } = await openM3({}, async (page) => {
+    await page.waitForFunction(() => !/読み込み中/.test(document.getElementById("agList").textContent));
+    return { ag: await page.textContent("#agList"), buttons: await page.locator("#agList button").count() };
+  });
+  assert.ok(ag.indexOf("新しいまとめ") < ag.indexOf("古いまとめ"), ag);
+  assert.match(ag, /ag-2 · 2026-10-18 · claude-pc · 関連 ab-167/);
+  assert.equal(buttons, 0);
 });
 
 test("m3: 追加すると af に書き、番号はカウンタの次(af-3)。ba には書かない", async () => {
