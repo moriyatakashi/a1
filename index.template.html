@@ -78,6 +78,8 @@
     .job-alert[hidden] { display: none; }
     .job-alert-text { flex: 1; min-width: 0; }
     .job-alert a { white-space: nowrap; }
+    .weather { margin: 0 0 12px; font-size: 0.85rem; }
+    .weather[hidden] { display: none; }
     .job-alert button {
       font: inherit; font-size: 0.75rem; color: var(--nav-desc); background: none; cursor: pointer;
       border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px;
@@ -99,6 +101,7 @@
   </div>
   <div id="content" style="display:none;">
   <div id="jobAlert" class="job-alert" role="status" hidden></div>
+  <p id="weather" class="weather" hidden></p>
   <p>日々の記録や気づきを、少しずつ積み重ねています。</p>
   <p><button type="button" id="todayBtn">今日の運勢と得点</button></p>
   <dialog id="todayDialog">
@@ -128,8 +131,14 @@
       const { showJobBanner } = await import("./src/common/job-banner.js");
       await showJobBanner(document.getElementById("jobAlert"), "src/jobs/");
     };
-    if (window.__loginState && window.__loginState.loggedIn) checkJobs();
-    else window.addEventListener("top-login-success", checkJobs, { once: true });
+    // ah-39: ログインしたら今日の天気を1行(公開ページで住んでいる地域が分からないように、未ログインでは出さない)
+    const showWeatherLine = async () => {
+      const { showWeather } = await import("./src/common/weather.js");
+      await showWeather(document.getElementById("weather"));
+    };
+    const onLogin = () => { checkJobs(); showWeatherLine(); };
+    if (window.__loginState && window.__loginState.loggedIn) onLogin();
+    else window.addEventListener("top-login-success", onLogin, { once: true });
   </script>
 </body>
 </html>
