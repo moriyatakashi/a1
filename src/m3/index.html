@@ -52,7 +52,11 @@
   .af-btn { font-size: 0.74rem; padding: 5px 12px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; }
   .af-msg { font-size: 0.72rem; color: var(--ink-soft); }
   .ah-mine { border-left: 3px solid var(--ink); padding-left: 8px; }
-  .af-empty, #afList, #agList, #ahList { font-size: 0.8rem; color: var(--ink-soft); }
+  .af-empty, #afList, #agList, #ahList, #rebunAh { font-size: 0.8rem; color: var(--ink-soft); }
+  /* 礼文の票(ah-38) */
+  .rb-sub { font-size: 0.78rem; font-weight: 600; color: var(--ink); margin: 8px 0 4px; }
+  .rb-job { margin-bottom: 6px; }
+  .rb-stale { border-left: 3px solid #c0392b; padding-left: 8px; color: #c0392b; }
 </style>
 </head>
 <body>
@@ -110,13 +114,16 @@
     <div class="af-head">家人のやったあと(ag・新しい順20件、読むだけ)</div>
     <div id="agList"></div>
 
+    <div class="af-head">礼文の票(ah・礼文に絞った見え方、読むだけ)</div>
+    <div id="rebunAh"></div>
+
     <div class="af-head">作業票(ah・済んでいないもの、次が Takashi の票が先頭、読むだけ)</div>
     <div id="ahList"></div>
   </div>
 
   <script>window.AA_AUTH_EVENT = "m3-login-success";</script>
   <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202610181030"></script>
+  <script type="module" src="app.js?v=202610190730"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/m3", "lastUpdated", "最終更新");

@@ -4,7 +4,7 @@
 // 2026-10-10(ab-166 ②): Rules 第1段が出て m3 から af に書けるのを確かめたので、ba(Azure)への逃げ道は外した。
 import "../common/config.js";
 import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
-import { addAfNote, cleanAfTags, createAf, doneAf, fetchOpenAf, fetchOpenAh, fetchRecentAg, isDenied } from "./af-store.js";
+import { addAfNote, cleanAfTags, createAf, doneAf, fetchAllAh, fetchOpenAf, fetchOpenAh, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN } from "./af-store.js";
 
 // af に書く。書けなければ(この端末で Firebase に未ログインなど)そのまま失敗を出す
 async function writeEntry({ title, tags, body }) {
@@ -94,20 +94,25 @@ async function renderAg() {
 
 // 2026-10-18(b1 ab-193): ah(作業票)は家人が握って動かし、Takashi はここで読むだけ。次が Takashi の票が先頭
 const AH_NAMES = { takashi: "Takashi", rishiri: "利尻", suma: "すま", rebun: "礼文", teuri: "天売" };
+const who = (id) => AH_NAMES[id] || id || "-";
 async function renderAh() {
   const box = document.getElementById("ahList");
   if (!box) return;
   box.textContent = "読み込み中…";
-  let items;
+  const rb = document.getElementById("rebunAh");
+  if (rb) rb.textContent = "読み込み中…";
+  let all, items;
   try {
-    items = await fetchOpenAh();
+    all = await fetchAllAh();
+    items = await fetchOpenAh(Date.now(), all);
   } catch (e) {
     box.textContent = isDenied(e) ? "まだ読めません(この端末で未ログイン)" : "読めませんでした: " + (e.message || e);
+    if (rb) rb.textContent = box.textContent;
     return;
   }
+  renderRebun(all);
   box.textContent = "";
   if (!items.length) { box.append(el("p", { class: "af-empty" }, "まだありません")); return; }
-  const who = (id) => AH_NAMES[id] || id || "-";
   for (const t of items) {
     const meta = [`ah-${t.seq}`, t.state || "待ち", `次:${who(t.next)}`, t.holder ? `握り:${who(t.holder)}` : ""]
       .filter(Boolean).join(" · ");
@@ -115,6 +120,34 @@ async function renderAh() {
       el("div", { class: "af-meta" }, meta),
       el("div", { class: "af-title" }, t.title || "(タイトルなし)")));
   }
+}
+
+// 2026-10-19(ah-38): 礼文の票だけに絞った見え方。下の ah 一覧はそのまま。読むだけ
+const ago = (m) => (m == null ? "-" : m < 60 ? `${m}分前` : `${Math.floor(m / 60)}時間${m % 60}分前`);
+const hm = (s) => (s ? new Date(s).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-");
+function renderRebun(all) {
+  const box = document.getElementById("rebunAh");
+  if (!box) return;
+  const { holding, assigned, done } = rebunView(all);
+  box.textContent = "";
+  const part = (head, rows) => {
+    box.append(el("div", { class: "rb-sub" }, head));
+    if (!rows.length) box.append(el("p", { class: "af-empty" }, "なし"));
+    for (const [meta, title, cls] of rows) {
+      box.append(el("div", { class: "af-item" + (cls ? " " + cls : "") }, el("div", { class: "af-meta" }, meta), el("div", { class: "af-title" }, title || "(タイトルなし)")));
+    }
+  };
+  part("握っている票(作業中)", holding.map((t) => [
+    [`ah-${t.seq}`, t.view, `握って ${ago(t.claimedMin)}`, `最後の印 ${ago(t.beatMin)}`, t.stale ? `印が${STALE_MIN}分より古い(止まっているかも)` : ""].filter(Boolean).join(" · "),
+    t.title, t.stale ? "rb-stale" : ""]));
+  part("礼文に回っている票", assigned.map((t) => [[`ah-${t.seq}`, t.state || "待ち", `次:${who(t.next)}`].join(" · "), t.title, t.next === "takashi" ? "ah-mine" : ""]));
+  part(`最近済んだ票(${done.length}件)`, done.map((t) => [[`ah-${t.seq}`, "済", hm(t.doneAt)].join(" · "), t.title]));
+  fetchTicketJob().then((j) => {
+    if (!j) return;
+    const ok = Date.parse(j.okAt || "") || 0, ng = Date.parse(j.ngAt || "") || 0;
+    const line = ng > ok ? `票の cron の最後の回: ${hm(j.ngAt)} うまくいかなかった${j.ngNote ? `(${j.ngNote})` : ""}` : `票の cron の最後の回: ${hm(j.okAt)} うまくいった`;
+    box.prepend(el("div", { class: "af-meta rb-job" + (ng > ok ? " rb-stale" : "") }, line));
+  });
 }
 
 function initNewEntryForm() {

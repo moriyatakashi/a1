@@ -104,6 +104,19 @@ test("m3: ah は済んでいない票を、次が Takashi の票から読むだ�
   assert.equal(buttons, 0);
 });
 
+// ah-38: 礼文に絞った見え方。印が止まった作業中は目立たせる・回っている票・済んだ票
+test("m3: 礼文の票に、握っている票(印が古い印つき)・回っている票・済んだ票が読むだけで出る", async () => {
+  const { rb, buttons, stale } = await openM3({}, async (page) => {
+    await page.waitForFunction(() => /最近済んだ票/.test(document.getElementById("rebunAh").textContent));
+    return { rb: await page.textContent("#rebunAh"), buttons: await page.locator("#rebunAh button").count(), stale: await page.locator("#rebunAh .rb-stale").count() };
+  });
+  assert.match(rb, /ah-1 · 落ちた · 握って - · 最後の印 .*止まっているかも/);
+  assert.match(rb, /ah-2 · 渡し先待ち · 次:Takashi/);
+  assert.match(rb, /ah-3 · 済/);
+  assert.ok(stale >= 1);
+  assert.equal(buttons, 0);
+});
+
 test("m3: 追加すると af に書き、番号はカウンタの次(af-3)。ba には書かない", async () => {
   const { result, list, writes, baPosts } = await openM3({}, async (page) => {
     await page.fill("#newTitle", "新しいメモ");
