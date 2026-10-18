@@ -84,6 +84,11 @@ test("m6: 訪問と点数を読んで、制覇数・県の集計・スタンプ�
     assert.match(await page.textContent("#officeSummary"), /^行った 0 \/ 1,916/);
     assert.match(await page.textContent("#officeFog"), /^霧が晴れた市区町村 3 のうち、役所まで行ったのは 0$/);
     assert.match(await page.textContent("#domeSummary"), /^行った 0 \/ 6/);
+    // ab-175(10/18): 橋・トンネル。大阪と滋賀だけなので、5つのつなぎを点線で出して、渡ったのは0
+    assert.match(await page.textContent("#bridgeSummary"), /^渡った 0 \/ 5、渡った日 0日/);
+    assert.equal(await page.locator("#bridges line.bridge").count(), 5);
+    await page.locator('#bridges [data-b="seto"]').dispatchEvent("click");
+    assert.match(await page.textContent("#info"), /^児島坂出\(瀬戸大橋、本州〜四国\) — まだ渡っていない/);
     assert.equal(await page.locator("#domes circle").count(), 6);
     await page.locator('.dome-stamp:has-text("京セラドーム大阪")').dispatchEvent("click");
     assert.match(await page.textContent("#info"), /^京セラドーム大阪\(大阪府、ドーム\) — まだ。いちばん近づいたのは約1\.2km\(大阪市 西区\)/);

@@ -21,10 +21,12 @@
 // 同日(ab-48 の続き): お店。shops.json(OpenStreetMap から scripts/build-m6-shops.mjs で作る)。イオンモールは名城と同じ制覇、
 // コメダは表が欠けているので行った数だけ。
 // 10/09(礼文、ab-48 の続き): 銭湯・温泉と東横イン・アパホテルも、コメダと同じ「行った数」で足した(COUNT_SHOPS)。
+// 10/18(礼文、ab-175): 本州と四国・九州・北海道をつなぐ橋・トンネル。続けて付けた訪問の島がちがえば渡った(geo.js の bridgeCrossings)。
+// 点は1日1回まで(ab-153 と同じ)。ここでは「付くはずの点」を出すだけで、pointEvents には書かない(書くかは Takashi に聞いている)。
 
 import { fetchWishes, addWish, removeWish } from "./wish-store.js?v=202610041800";
 import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031800";
-import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM, wishVisits, WISH_KM, stationVisits, STATION_KM, STATION_KINDS, officeVisits, OFFICE_KM, OFFICE_KINDS, domeVisits, DOME_KM, aeonVisits, AEON_KM, COUNT_SHOPS, shopCountVisits, prefAt } from "./geo.js?v=202610092300";
+import { REGIONS, regionOf, CAPITALS, areaText, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, prefCode, cityVisits, castleVisits, CASTLE_KM, wishVisits, WISH_KM, stationVisits, STATION_KM, STATION_KINDS, officeVisits, OFFICE_KM, OFFICE_KINDS, domeVisits, DOME_KM, aeonVisits, AEON_KM, COUNT_SHOPS, shopCountVisits, prefAt, BRIDGES, bridgeCrossings, bridgeDays, BRIDGE_POINTS, BRIDGE_REACH_KM, BRIDGE_DETOUR } from "./geo.js?v=202610181700";
 
 const RAD = Math.PI / 180;
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2));
@@ -121,6 +123,8 @@ let countAgg = Object.fromEntries(COUNT_SHOPS.map((c) => [c.key, new Map()]));
 let selectedAeon = null;
 let selectedCount = null;
 const shopsReady = fetch("shops.json?v=202610092300").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+// 橋・トンネル(ab-175)。bridgeCross は渡った回の一覧 [{key, date, from, to}]。
+let bridgeCross = [];
 let adj = new Map();
 let centerOf = new Map();
 let names = [];
@@ -151,6 +155,7 @@ function drawMap() {
     <rect class="fog-rect" id="fog" width="760" height="760" filter="url(#fogTex)" mask="url(#fogMask)"/>
     <g id="front"></g>
     <g id="dots"></g>
+    <g id="bridges"></g>
     <g id="stations"></g>
     <g id="offices"></g>
     <g id="domes"></g>
@@ -166,6 +171,7 @@ function drawMap() {
     else if (d.s) selectStation(Number(d.s));
     else if (d.o) selectOffice(Number(d.o));
     else if (d.d) selectDome(Number(d.d));
+    else if (d.b) selectBridge(d.b);
     else if (d.a) selectAeon(Number(d.a));
     else if (d.m) selectCount(d.m);
     else if (d.c) selectCity(d.c);
@@ -245,6 +251,12 @@ function paint() {
   svg.querySelector("#dots").innerHTML = $("dotsOn").checked
     ? visits.filter(hasXY).map((v) => { const [x, y] = projPoint(v); return `<circle class="dot" data-rk="1" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${dotR()}"/>`; }).join("")
     : "";
+  // 橋・トンネル: 5つのつなぎを線で。渡ったら塗る、まだは点線。
+  svg.querySelector("#bridges").innerHTML = $("bridgesOn").checked ? BRIDGES.map((b) => {
+    const [x1, y1] = MAIN([b.a[1], b.a[0]]), [x2, y2] = MAIN([b.b[1], b.b[0]]);
+    const done = bridgeCross.some((c) => c.key === b.key);
+    return `<line class="bridge${done ? " done" : ""}" data-b="${b.key}" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"><title>${esc(b.name)}(${esc(b.parts)})</title></line>`;
+  }).join("") : "";
   // 駅: 行った駅だけ緑の小さな丸(9000駅ぜんぶは描かない)。選んだ駅は、まだでも白抜きで出す。
   const sts = !stations ? [] : [...($("stationsOn").checked ? stationAgg.keys() : []),
     ...(selectedStation !== null && !($("stationsOn").checked && stationAgg.has(selectedStation)) ? [selectedStation] : [])];
@@ -887,6 +899,32 @@ function drawDomes() {
   $("map").scrollIntoView({ behavior: "smooth", block: "center" });
 }));
 
+// ---- 橋・トンネル(ab-175) ----
+function selectBridge(key) {
+  const b = BRIDGES.find((x) => x.key === key);
+  if (!b) return;
+  const cs = bridgeCross.filter((c) => c.key === key);
+  const last = cs[cs.length - 1];
+  $("info").innerHTML = `<b>${esc(b.name)}</b>(${esc(b.parts)}、本州〜${esc(b.to)}) — `
+    + (cs.length ? `渡った ${cs.length}回、初めて ${esc(cs[0].date || "?")}、最後 ${esc(last.date || "?")}(${esc(last.from)} → ${esc(last.to)})` : "まだ渡っていない");
+}
+function drawBridges() {
+  const days = bridgeDays(bridgeCross);
+  const done = BRIDGES.filter((b) => bridgeCross.some((c) => c.key === b.key)).length;
+  $("bridgeSummary").textContent = `渡った ${done} / ${BRIDGES.length}、渡った日 ${days.length}日(1日${BRIDGE_POINTS}点まで、合わせて ${days.length * BRIDGE_POINTS}点ぶん。まだ点には入れていない)`;
+  $("bridgeRule").textContent = `続けて付けた2つの訪問の島(本州・四国・九州・北海道)がちがえば渡ったとみる。どちらもつなぎから${BRIDGE_REACH_KM}km以内で、回り道がまっすぐの${BRIDGE_DETOUR}倍以内のときだけ(飛行機・フェリーは数えない)。`;
+  $("bridgeBook").innerHTML = BRIDGES.map((b) => {
+    const n = bridgeCross.filter((c) => c.key === b.key).length;
+    return `<button type="button" class="dome-stamp bridge-stamp${n ? " done" : ""}" data-b="${b.key}"><span>本州〜${esc(b.to)}${n ? `・${n}回` : ""}</span>${esc(b.name)}</button>`;
+  }).join("");
+}
+$("bridgeBook").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-b]");
+  if (!b) return;
+  selectBridge(b.dataset.b);
+  $("map").scrollIntoView({ behavior: "smooth", block: "center" });
+});
+
 // ---- お店(ab-48): イオンモールとコメダ ----
 function clearPicksForShop() {
   selected = null;
@@ -1111,6 +1149,8 @@ async function loadData() {
   officeAgg = officeVisits(visits, offices);
   domeState = domeVisits(visits, await domesReady);
   drawDomes();
+  bridgeCross = bridgeCrossings(visits);
+  drawBridges();
   shops = (await shopsReady) || shops;
   aeonState = aeonVisits(visits, shops.aeon);
   for (const { key, km } of COUNT_SHOPS) countAgg[key] = shopCountVisits(visits, shops[key] || [], km);
@@ -1134,7 +1174,7 @@ async function loadData() {
   stats();
 }
 
-["colorBy", "fogOn", "dotsOn", "frontOn", "stationsOn", "officesOn", "domesOn", "shopsOn", "castlesOn", "wishesOn"].forEach((id) => $(id).addEventListener("change", paint));
+["colorBy", "fogOn", "dotsOn", "frontOn", "stationsOn", "officesOn", "domesOn", "bridgesOn", "shopsOn", "castlesOn", "wishesOn"].forEach((id) => $(id).addEventListener("change", paint));
 $("zoomIn").addEventListener("change", () => { userView = null; $("btnFit").hidden = true; paint(); });
 // 霧の細かさ(県/市区町村)はこの端末に覚える。既定は市区町村(行くと地図が変わる方)。
 try { const u = localStorage.getItem(FOG_UNIT_KEY); if (u === "pref" || u === "city") $("fogUnit").value = u; } catch { /* 覚えられなくても動く */ }

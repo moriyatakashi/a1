@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits, wishVisits, stationVisits, STATION_KM, officeVisits, OFFICE_KM, domeVisits, aeonVisits, komedaVisits, KOMEDA_KM, COUNT_SHOPS, shopCountVisits, BATH_KM, prefAt } from "./geo.js";
+import { REGIONS, CAPITALS, AREAS, adjacency, centers, distKm, frontier, regionProgress, QUIZ_KINDS, makeQuiz, capitalAskable, prefCode, inGeometry, cityVisits, castleVisits, wishVisits, stationVisits, STATION_KM, officeVisits, OFFICE_KM, domeVisits, aeonVisits, komedaVisits, KOMEDA_KM, COUNT_SHOPS, shopCountVisits, BATH_KM, prefAt, BRIDGES, islandOf, bridgeCrossings, bridgeDays } from "./geo.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const features = JSON.parse(fs.readFileSync(path.join(HERE, "../m5/prefectures.geojson"), "utf8")).features;
@@ -286,4 +286,25 @@ test("お店: イオンモールは0.5km以内で行った(いちばん近づい
   const got = komedaVisits([{ lat: 34.7005, lng: 135.5000, date: "2026-09-02" }], komeda); // 甲から約55m・乙から約170m
   assert.equal(KOMEDA_KM, 0.15);
   assert.deepEqual([...got.keys()], [0]);
+});
+
+test("橋・トンネル(ab-175): 続けて付けた訪問の島がちがえば渡った。飛行機・フェリーらしいものは数えない、点は1日1回", () => {
+  assert.equal(BRIDGES.length, 5);
+  assert.equal(islandOf("香川県"), "四国");
+  assert.equal(islandOf("兵庫県"), "本州");
+  assert.equal(islandOf("沖縄県"), "");
+  const v = (pref, lat, lng, date, time) => ({ pref, lat, lng, date, time });
+  const got = bridgeCrossings([
+    v("岡山県", 34.66, 133.92, "2026-10-10", "09:00"), v("香川県", 34.34, 134.05, "2026-10-10", "11:00"), // 瀬戸大橋
+    v("岡山県", 34.66, 133.92, "2026-10-10", "18:00"), // 同じ日に戻る(点は1日1回)
+    v("東京都", 35.68, 139.76, "2026-10-11", "09:00"), v("北海道", 43.06, 141.35, "2026-10-11", "12:00"), // 飛行機(遠すぎる)
+    v("広島県", 34.39, 132.46, "2026-10-12", "09:00"), v("愛媛県", 33.84, 132.77, "2026-10-12", "12:00"), // フェリー(回り道すぎる)
+    v("山口県", 33.95, 130.94, "2026-10-13", "09:00"), v("福岡県", 33.88, 130.88, "2026-10-13", "10:00"), // 関門
+    v("兵庫県", 34.69, 135.19, "2026-10-14", "09:00"), v("徳島県", 34.07, 134.55, "2026-10-14", "11:00"), // 明石・鳴門
+    v("青森県", 40.83, 140.69, "2026-10-15", "09:00"), v("北海道", 41.77, 140.73, "2026-10-15", "11:00"), // 青函
+  ]);
+  assert.deepEqual(got.map((c) => `${c.date} ${c.key}`), [
+    "2026-10-10 seto", "2026-10-10 seto", "2026-10-13 kanmon", "2026-10-14 akashi", "2026-10-15 seikan",
+  ]);
+  assert.deepEqual(bridgeDays(got), ["2026-10-10", "2026-10-13", "2026-10-14", "2026-10-15"]);
 });
