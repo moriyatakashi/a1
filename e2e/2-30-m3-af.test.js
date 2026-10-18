@@ -101,6 +101,7 @@ test("m3: ah は済んでいない票を、次が Takashi の票から読むだ�
   assert.match(ah, /ah-2 · 渡し先待ち · 次:Takashi/);
   assert.match(ah, /ah-1 · 落ちた · 次:礼文 · 握り:礼文/);
   assert.doesNotMatch(ah, /済んだ票/);
+  assert.match(ah, /たかしさん待ち 1 · 窓を開けば進む 0 · 礼文が進めている 1/); // ah-37
   assert.equal(buttons, 0);
 });
 

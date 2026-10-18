@@ -60,6 +60,20 @@ export function rebunView(threads, now = Date.now(), doneN = 5) {
   return { holding, assigned, done };
 }
 
+// 3つの数(ah-37、2026-10-19): 済んでいない票を、次が Takashi / 次が cron を持たない利尻・すま / それ以外(礼文・天売)に分ける。
+// 落ちた票は持ち主の分(ahView が次を持ち主にする)。b1 の run_lock.group と同じ決まり
+export const AH_GROUPS = ["たかしさん待ち", "窓を開けば進む", "礼文が進めている"];
+const WITH_TAKASHI = ["rishiri", "suma"];
+export function ahGroup(t, now = Date.now()) {
+  const v = ahView(t, now);
+  return v.next === "takashi" ? AH_GROUPS[0] : WITH_TAKASHI.includes(v.next) ? AH_GROUPS[1] : AH_GROUPS[2];
+}
+export function ahCounts(threads, now = Date.now()) {
+  const n = Object.fromEntries(AH_GROUPS.map((g) => [g, 0]));
+  for (const t of threads) if (t.state !== "済") n[ahGroup(t, now)] += 1;
+  return n;
+}
+
 // 礼文の票の cron の最後の回(jobStatus/ticket、b1 infra/pi/ticket_cron.sh が run job で書く)。読めなければ null
 export async function fetchTicketJob() {
   try {
