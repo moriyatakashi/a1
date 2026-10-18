@@ -22,7 +22,7 @@
 // コメダは表が欠けているので行った数だけ。
 // 10/09(礼文、ab-48 の続き): 銭湯・温泉と東横イン・アパホテルも、コメダと同じ「行った数」で足した(COUNT_SHOPS)。
 // 10/18(礼文、ab-175): 本州と四国・九州・北海道をつなぐ橋・トンネル。続けて付けた訪問の島がちがえば渡った(geo.js の bridgeCrossings)。
-// 点は1日1回まで(ab-153 と同じ)。ここでは「付くはずの点」を出すだけで、pointEvents には書かない(書くかは Takashi に聞いている)。
+// 点は1日1回まで(ab-153 と同じ)。点は m2 で訪問を保存したときに pointEvents に書く(catalogId bridge_cross、10/18 Takashi の答え A)。ここは数を出すだけ。
 
 import { fetchWishes, addWish, removeWish } from "./wish-store.js?v=202610041800";
 import { PER_POINT, loadBank, saveBank, writeQuizPoint, fetchQuizPoints } from "./quiz-point.js?v=202610031800";
@@ -911,7 +911,7 @@ function selectBridge(key) {
 function drawBridges() {
   const days = bridgeDays(bridgeCross);
   const done = BRIDGES.filter((b) => bridgeCross.some((c) => c.key === b.key)).length;
-  $("bridgeSummary").textContent = `渡った ${done} / ${BRIDGES.length}、渡った日 ${days.length}日(1日${BRIDGE_POINTS}点まで、合わせて ${days.length * BRIDGE_POINTS}点ぶん。まだ点には入れていない)`;
+  $("bridgeSummary").textContent = `渡った ${done} / ${BRIDGES.length}、渡った日 ${days.length}日(1日${BRIDGE_POINTS}点まで、m2 で保存したときに点が付く)`;
   $("bridgeRule").textContent = `続けて付けた2つの訪問の島(本州・四国・九州・北海道)がちがえば渡ったとみる。どちらもつなぎから${BRIDGE_REACH_KM}km以内で、回り道がまっすぐの${BRIDGE_DETOUR}倍以内のときだけ(飛行機・フェリーは数えない)。`;
   $("bridgeBook").innerHTML = BRIDGES.map((b) => {
     const n = bridgeCross.filter((c) => c.key === b.key).length;

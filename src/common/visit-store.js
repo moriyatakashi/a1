@@ -6,6 +6,7 @@ import { collection, doc, getDoc, getDocs, getCountFromServer, setDoc, writeBatc
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
 import { db, ensureFirebaseLogin, ensureReadLogin, guardRead } from "./firebase.js";
 import { roundPointFor, ROUND_RULE } from "./visit-round.js";
+import { bridgePointFor, BRIDGES, BRIDGE_POINTS } from "./visit-bridge.js";
 
 // ba-165②(2026-07-29確定、Takashi判断): 初めて行った県・市・町を自動で加点する。
 // 粒度は県>市>町の順で粗い方を優先し(同時に複数が初登場でも二重加点しない)、県=high/市=normal/町=low
@@ -66,6 +67,7 @@ export function newVisitGranularity(visits, { pref, city, town }) {
 // 読めていない(null)ときだけここで読む。空配列を「読めなかった」の代わりに渡すと全部が初訪問になるので渡さない。
 // 1日に何か所か回ったときの1点(ab-153、visit-round.js)も同じ batch で書く。付いたかどうかは返す値の roundPoint で知らせる
 // (画面の一言用。visits には書かない)。
+// 本州と四国・九州・北海道をつなぐ橋・トンネルを渡った日の1点(ab-175、visit-bridge.js、1日1点)も同じ batch で書く。返す値の bridgePoint で知らせる。
 export async function saveVisit({ place, date, time, lat, lng, pref, city, town }, knownVisits = null) {
   await ensureFirebaseLogin();
   const visits = knownVisits || await fetchVisits();
@@ -80,6 +82,7 @@ export async function saveVisit({ place, date, time, lat, lng, pref, city, town 
   if (lat != null) visit.lat = Number(lat);
   if (lng != null) visit.lng = Number(lng);
   const round = roundPointFor(visits, { ...visit, createdAt: now });
+  const bridge = bridgePointFor(visits, { ...visit, createdAt: now });
 
   const batch = writeBatch(db);
   batch.set(doc(db, "visits", id), visit);
@@ -98,10 +101,18 @@ export async function saveVisit({ place, date, time, lat, lng, pref, city, town 
       createdAt: now, by: "takashi", visitId: id,
     });
   }
+  if (bridge) {
+    const b = BRIDGES.find((x) => x.key === bridge.key);
+    batch.set(doc(db, "pointEvents", crypto.randomUUID()), {
+      axis: "訪問", points: BRIDGE_POINTS,
+      note: `${visit.date} ${b ? b.name : bridge.key}を渡った(${bridge.from} → ${bridge.to})`, period: "week", catalogId: "bridge_cross",
+      createdAt: now, by: "takashi", visitId: id,
+    });
+  }
   await batch.commit();
   // まとめにも1件足す。訪問とは別に書き、失敗しても保存は止めない(ずれたら読む側が件数で気づいて作り直す)。
   // 待たない(ab-159、2026-10-10): 保存の待ち時間に入れない。大きな1文書の書き換えなので待つと遅く感じる
   setDoc(digestRef(), { items: arrayUnion({ id, ...visit }), count: increment(1), at: now }, { merge: true })
     .catch((e) => console.warn("訪問のまとめに足せなかった", e));
-  return round ? { id, ...visit, roundPoint: true } : { id, ...visit };
+  return { id, ...visit, ...(round ? { roundPoint: true } : {}), ...(bridge ? { bridgePoint: (BRIDGES.find((x) => x.key === bridge.key) || {}).name || bridge.key } : {}) };
 }

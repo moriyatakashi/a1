@@ -132,6 +132,28 @@ test("m2: 今日3か所目で合計10km以上回っていたら1点(何度も行
   assert.match(status, /今日あちこち回ったので1点/);
 });
 
+// ab-175(2026-10-18): 前の訪問が四国(高松、きのう)で、今日大阪で保存すると明石海峡大橋・大鳴門橋を渡ったことになり、1点(bridge_cross)が付く。
+// (前の訪問を今日にすると、大阪→高松で今日もう渡ったことになり、1日1点なので付かない)
+test("m2: 島をまたいだ訪問を保存すると、橋を渡った1点(1日1点、ab-175)", async () => {
+  const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() + 9 * 3600e3 - 86400e3).toISOString().slice(0, 10);
+  const visits = {
+    ...VISITS,
+    k1: { place: "高松市", date: yesterday, time: "20:00", memo: "", lat: 34.34, lng: 134.05, pref: "香川県", city: "高松市", town: "",
+          autoPointGranularity: "pref", createdAt: `${yesterday}T11:00:00.000Z`, by: "takashi" },
+  };
+  const { writes, status } = await addVisitVia("m2/", { state: "大阪府", city: "大阪市", suburb: "北区" }, { visits });
+  const visit = writes.find((w) => w.col === "visits");
+  const points = writes.filter((w) => w.col === "pointEvents");
+  assert.equal(points.length, 1, "行ったことのある町で、今日は2か所だけなので、橋の1点だけ");
+  assert.equal(points[0].points, 1);
+  assert.equal(points[0].catalogId, "bridge_cross");
+  assert.match(points[0].note, new RegExp(`^${today} 神戸淡路鳴門を渡った`));
+  assert.equal(points[0].visitId, visit.id);
+  assert.equal("bridgePoint" in visit, false);
+  assert.match(status, /神戸淡路鳴門を渡ったので1点/);
+});
+
 // ab-97: まとめ文書(digests/visits)が visits の件数と合っていれば、visits は全件読まない
 test("m2: まとめ文書が合っていれば visits を全件読まず、保存でまとめに1件足す", async () => {
   const digest = { items: [{ id: "v1", ...VISITS.v1 }], count: 1, at: "2026-10-07T00:00:00.000Z" };

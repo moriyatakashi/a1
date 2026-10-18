@@ -137,7 +137,7 @@ async function onSave() {
       pref: _here.pref, city: _here.city, town: _here.town }, _visits);
     if (_visits) _visits.push(saved);
     const gran = GRAN_LABEL[saved.autoPointGranularity];
-    const notes = [gran && `初${gran}で自動加点`, saved.roundPoint && "今日あちこち回ったので1点"].filter(Boolean);
+    const notes = [gran && `初${gran}で自動加点`, saved.roundPoint && "今日あちこち回ったので1点", saved.bridgePoint && `${saved.bridgePoint}を渡ったので1点`].filter(Boolean);
     $("hereSaved").textContent = `✓ 保存しました(${time})${notes.length ? " " + notes.join("、") : ""}`;
     renderJudge(); // 保存した分が「前回」になる
   } catch (e) {
