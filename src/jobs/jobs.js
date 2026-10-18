@@ -7,6 +7,7 @@ export const GRACE_HOURS = 6; // 決まった時刻から遅れてよい幅(動�
 
 export const CHECKS = [
   { id: "steps", name: "歩数", when: "iPhone 毎晩 23:50", everyHours: 24, source: "steps" },
+  { id: "refill", name: "票の補い", when: "礼文 毎日 2:30", everyHours: 24, source: "job" }, // 補わない日も記録する(ah-28)
   { id: "ab-dump", name: "ab の控え", when: "礼文 毎日 2:40", everyHours: 24, source: "job" },
   { id: "summary", name: "テーマのまとめ", when: "礼文 毎日 2:50", everyHours: 24, source: "job" },
   { id: "dopdf", name: "PDF", when: "礼文 毎日 3:00", everyHours: 24, source: "job" },
