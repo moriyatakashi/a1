@@ -40,6 +40,13 @@ const AG = {
   g2: { title: "新しいまとめ", body: "", related: ["ab-167"], by: "claude-pc", createdAt: "2026-10-18T01:00:00.000Z", noteMeta: [], seq: 2 },
 };
 
+// ah(b1 ab-193): 作業票。m3 は読むだけ・済は出さない・次が Takashi の票が先頭・印が止まった票は落ちた
+const AH = {
+  h1: { title: "礼文の作業", state: "作業中", next: "rebun", holder: "rebun", owner: "rebun", beatAt: "2026-10-01T00:00:00.000Z", seq: 1 },
+  h2: { title: "Takashi に頼む", state: "渡し先待ち", next: "takashi", holder: "", owner: "rebun", seq: 2 },
+  h3: { title: "済んだ票", state: "済", next: "", holder: "", owner: "rebun", seq: 3 },
+};
+
 async function openM3({ denyAf = false } = {}, act) {
   const server = await serveStatic();
   const browser = await chromium.launch();
@@ -54,7 +61,7 @@ async function openM3({ denyAf = false } = {}, act) {
     page.on("dialog", (d) => { dialogs.push(d.message()); d.accept(d.type() === "prompt" ? "足したnote" : undefined); });
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     if (denyAf) await page.addInitScript(() => { window.__fsDenyWrite = ["afThreads", "_meta"]; window.__fsDenyRead = ["afThreads"]; window.__fsCredentialFails = true; });
-    await routeFirebaseStub(page, {}, { afThreads: denyAf ? {} : AF, agThreads: denyAf ? {} : AG, _meta: denyAf ? {} : { af_seq: { value: 2 } } });
+    await routeFirebaseStub(page, {}, { afThreads: denyAf ? {} : AF, agThreads: denyAf ? {} : AG, ahThreads: denyAf ? {} : AH, _meta: denyAf ? {} : { af_seq: { value: 2 } } });
     await page.goto(`http://localhost:${server.address().port}/src/m3/`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
     await page.waitForFunction(() => !/読み込み中/.test(document.getElementById("afList").textContent));
@@ -82,6 +89,18 @@ test("m3: ag は新しい順に読むだけで出る(ボタンなし)", async ()
   });
   assert.ok(ag.indexOf("新しいまとめ") < ag.indexOf("古いまとめ"), ag);
   assert.match(ag, /ag-2 · 2026-10-18 · claude-pc · 関連 ab-167/);
+  assert.equal(buttons, 0);
+});
+
+test("m3: ah は済んでいない票を、次が Takashi の票から読むだけで出す", async () => {
+  const { ah, buttons } = await openM3({}, async (page) => {
+    await page.waitForFunction(() => !/読み込み中/.test(document.getElementById("ahList").textContent));
+    return { ah: await page.textContent("#ahList"), buttons: await page.locator("#ahList button").count() };
+  });
+  assert.ok(ah.indexOf("Takashi に頼む") < ah.indexOf("礼文の作業"), ah);
+  assert.match(ah, /ah-2 · 渡し先待ち · 次:Takashi/);
+  assert.match(ah, /ah-1 · 落ちた · 次:礼文 · 握り:礼文/);
+  assert.doesNotMatch(ah, /済んだ票/);
   assert.equal(buttons, 0);
 });
 

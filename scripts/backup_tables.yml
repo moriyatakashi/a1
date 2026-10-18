@@ -57,6 +57,10 @@ firestore_collections:
   - name: agThreads
     note: ag(やったあとのまとめと家人の判断)。aa-lane の lg-* から書く。閉じない台帳。
     subcollections: [notes]
+  # 2026-10-18 b1 ab-193: ah(作業票)も ag と同じく鍵で読んで取る。
+  - name: ahThreads
+    note: ah(作業票、持ち場とロック)。aa-lane の lg-* と lg-lock から書く。閉じない台帳。
+    subcollections: [notes]
   - name: wishes
     note: 行きたい場所(m6)。
   # 2026-10-15 ab-182(Takashi explain Q5 A): 体のデータと点数の設定も取る。読みは本人だけなので鍵(fs-get)で読む。

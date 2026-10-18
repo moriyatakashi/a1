@@ -4,7 +4,7 @@
 // 2026-10-10(ab-166 ②): Rules 第1段が出て m3 から af に書けるのを確かめたので、ba(Azure)への逃げ道は外した。
 import "../common/config.js";
 import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
-import { addAfNote, cleanAfTags, createAf, doneAf, fetchOpenAf, fetchRecentAg, isDenied } from "./af-store.js";
+import { addAfNote, cleanAfTags, createAf, doneAf, fetchOpenAf, fetchOpenAh, fetchRecentAg, isDenied } from "./af-store.js";
 
 // af に書く。書けなければ(この端末で Firebase に未ログインなど)そのまま失敗を出す
 async function writeEntry({ title, tags, body }) {
@@ -92,6 +92,31 @@ async function renderAg() {
   }
 }
 
+// 2026-10-18(b1 ab-193): ah(作業票)は家人が握って動かし、Takashi はここで読むだけ。次が Takashi の票が先頭
+const AH_NAMES = { takashi: "Takashi", rishiri: "利尻", suma: "すま", rebun: "礼文", teuri: "天売" };
+async function renderAh() {
+  const box = document.getElementById("ahList");
+  if (!box) return;
+  box.textContent = "読み込み中…";
+  let items;
+  try {
+    items = await fetchOpenAh();
+  } catch (e) {
+    box.textContent = isDenied(e) ? "まだ読めません(この端末で未ログイン)" : "読めませんでした: " + (e.message || e);
+    return;
+  }
+  box.textContent = "";
+  if (!items.length) { box.append(el("p", { class: "af-empty" }, "まだありません")); return; }
+  const who = (id) => AH_NAMES[id] || id || "-";
+  for (const t of items) {
+    const meta = [`ah-${t.seq}`, t.state || "待ち", `次:${who(t.next)}`, t.holder ? `握り:${who(t.holder)}` : ""]
+      .filter(Boolean).join(" · ");
+    box.append(el("div", { class: "af-item" + (t.next === "takashi" ? " ah-mine" : "") },
+      el("div", { class: "af-meta" }, meta),
+      el("div", { class: "af-title" }, t.title || "(タイトルなし)")));
+  }
+}
+
 function initNewEntryForm() {
   const elTitle = document.getElementById("newTitle");
   const elTags = document.getElementById("newTags");
@@ -134,6 +159,7 @@ function initNewEntryForm() {
   });
   renderList();
   renderAg();
+  renderAh();
 }
 
 if (window.__loginState && window.__loginState.loggedIn) {

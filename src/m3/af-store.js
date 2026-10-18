@@ -27,6 +27,22 @@ export async function fetchRecentAg(n = 20) {
     .sort((a, b) => (Number(b.seq) || 0) - (Number(a.seq) || 0)).slice(0, n);
 }
 
+// ah(作業票、持ち場とロック、2026-10-18 b1 ab-193)。m3 からは読むだけ。済んでいない票を、次が Takashi の票を先に
+export async function fetchOpenAh(now = Date.now()) {
+  const [{ collection, getDocs }, { db, ensureReadLogin, guardRead }] = await load();
+  await ensureReadLogin();
+  const snap = await guardRead(() => getDocs(collection(db, "ahThreads")));
+  return snap.docs.map((d) => ahView({ id: d.id, ...d.data() }, now)).filter((t) => t.state !== "済")
+    .sort((a, b) => (b.next === "takashi") - (a.next === "takashi") || (Number(a.seq) || 0) - (Number(b.seq) || 0));
+}
+
+// 作業中で印が2時間止まった票は「落ちた」(次は持ち主)。b1 の run_lock.view_state と同じ決まり
+export function ahView(t, now = Date.now()) {
+  const beat = Date.parse(t.beatAt || "");
+  if (t.state === "作業中" && !(now - beat <= 2 * 3600 * 1000)) return { ...t, state: "落ちた", next: t.owner };
+  return t;
+}
+
 // 新しく作る。返すのは {id, seq}
 export async function createAf({ title, body = "", tags = [] }) {
   const [{ collection, doc, runTransaction }, { db, ensureFirebaseLogin }] = await load();
