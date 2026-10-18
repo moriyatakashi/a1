@@ -10,6 +10,9 @@ categories:
       - code: m3
         desc: メモ
         href: src/m3/
+      - code: m4
+        desc: レーダーチャート
+        href: src/m4/
       - code: m5
         desc: 現在地マップ
         href: src/m5/
@@ -35,8 +38,3 @@ categories:
         desc: COBOL 入門(例題・四択・その場で動く)
         href: src/m7/
         stage: beta
-  - label: baを見る
-    items:
-      - code: bc
-        desc: レーダーチャート
-        href: src/bc/

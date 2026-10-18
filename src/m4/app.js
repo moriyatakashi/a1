@@ -1,4 +1,4 @@
-// app.js — k2(baレーダーチャート)。baの生ログを読み、
+// app.js — m4(baレーダーチャート、旧bc・k2)。baの生ログを読み、
 // (1)投稿者別: 投稿者3人を軸にした参加スレッド数、
 // (2)分類別: ba-32規約の4分類(案件/確定仕様/気づき/保留論点)ごとのスレッド数
 // をタブ切り替えでレーダーチャート表示する。読み取り専用。
@@ -736,5 +736,5 @@ function onLoginSuccess() {
 if (window.__loginState && window.__loginState.loggedIn) {
   onLoginSuccess();
 } else {
-  window.addEventListener("bc-login-success", onLoginSuccess, { once: true });
+  window.addEventListener("m4-login-success", onLoginSuccess, { once: true });
 }

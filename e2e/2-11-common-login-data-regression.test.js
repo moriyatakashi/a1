@@ -1,5 +1,5 @@
 // ba-9の残タスク(2): API_BASEをcommon/config.jsへ集約したリファクタ後、
-// m1/bc(旧k2)がクリーンな状態(ba は 2026-10-12 に礼文のローカル Web へ移した、ab-165)(localStorageなし)でログイン→config.js解決→
+// m1/m4(旧bc・k2)がクリーンな状態(ba は 2026-10-12 に礼文のローカル Web へ移した、ab-165)(localStorageなし)でログイン→config.js解決→
 // データ取得まで通しで壊れていないかの回帰確認。
 // config.jsの自己importが効いていない場合、AA_API_BASEがundefinedになり
 // フェッチ先が".../undefined/..."になる(2026-07-16の表示不具合と同型)ため、
@@ -47,12 +47,12 @@ const PAGES = {
       assert.equal(await page.textContent("#statLatest"), "80");
     },
   },
-  bc: {
+  m4: {
     // ab-166(2026-10-11): 旧 ba は Firestore の写し(baArchive)から読む
     routes: {},
     firebase: {},
     firebaseOthers: baArchiveOf(BA_FIXTURE),
-    // 2026-09-30: bc は ab(Firestore abThreads)も読む。ここでは空で返す(ネットワークに出さない)
+    // 2026-09-30: m4 は ab(Firestore abThreads)も読む。ここでは空で返す(ネットワークに出さない)
     routeRegex: [[/firestore\.googleapis\.com\//, () => ({ status: 200, body: {} })]],
     async assertLoaded(page) {
       await page.waitForFunction(() => document.querySelectorAll("#radarSvg polygon").length > 0);

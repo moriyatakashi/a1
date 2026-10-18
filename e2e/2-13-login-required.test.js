@@ -1,4 +1,4 @@
-// ab-162(2026-10-10): 公開の閲覧モード(AA_PUBLIC_VIEW、ba-35残課題(2) で m1・m2・bc・cc・a2/x3〜x5 に入れていた)をやめた。
+// ab-162(2026-10-10): 公開の閲覧モード(AA_PUBLIC_VIEW、ba-35残課題(2) で m1・m2・m4・cc・a2/x3〜x5 に入れていた)をやめた。
 // ログインしていなければ中身(#content)は出ず、ログインの幕だけが見えること。データも取りに行かないこと。
 // (旧 2-13-public-view-k2.test.js は「ログインなしで中身が見える」ことを確かめていた。向きを逆にした)
 import { test } from "node:test";
@@ -28,7 +28,7 @@ function serveStatic() {
   });
 }
 
-const PAGES = ["m1", "m2", "bc"]; // 2026-10-10: cc・旧a2 は消した(ab-161)
+const PAGES = ["m1", "m2", "m4"]; // 2026-10-10: cc・旧a2 は消した(ab-161)
 
 for (const rel of PAGES) {
   test(`${rel}: ログインしていなければ中身を出さず、データも取りに行かない(ab-162)`, async () => {

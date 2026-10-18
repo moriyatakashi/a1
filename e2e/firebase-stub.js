@@ -91,7 +91,7 @@ function modules(scores, others) {
       }`,
     "firebase-auth.js": `
       // window.__fsSignedIn(addInitScript で立てる)なら、開いた時点でログイン済みにする(ab-97 のまとめの作り直し)
-      const testUser = () => ({ uid: "test", getIdToken: async () => "test-id-token" }); // ab-162: bc が読むときに付ける
+      const testUser = () => ({ uid: "test", getIdToken: async () => "test-id-token" }); // ab-162: m4 が読むときに付ける
       const auth = { currentUser: window.__fsSignedIn ? testUser() : null, authStateReady: async () => {} };
       export const getAuth = () => auth;
       export class GoogleAuthProvider { static credential(t) { return { t }; } }
@@ -101,7 +101,7 @@ function modules(scores, others) {
   };
 }
 
-// ab-166(2026-10-11): 旧 ba の写し(Firestore baArchive)。bc・週の得点は Azure でなくこれを読む
+// ab-166(2026-10-11): 旧 ba の写し(Firestore baArchive)。m4・週の得点は Azure でなくこれを読む
 export const baArchiveOf = (entries = [], closes = []) => ({
   baArchive: { "entries-1": { items: entries, part: 1, of: 1 }, closes: { items: closes, count: closes.length } },
 });

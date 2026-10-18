@@ -1,7 +1,7 @@
 // common/ba-archive.js — 旧 ba(Azure の BaLog、2026-10-10 に書き込みを止めて凍結)の読むだけの写し(ab-166、2026-10-11)。
 // Firestore の baArchive に1回だけ置いた(b1 infra/firebase/ab01/copy_ba_archive.py)。読みは本人だけ(Rules)。
 //   baArchive/closes     … 週の点数で数える close の一覧 [{at, difficulty}](week-score.js の baCloseEvents で数えたもの)
-//   baArchive/entries-N  … 生ログ(本文抜き、600件ずつ)。bc が分類・状態・作った月を数えるのに使う
+//   baArchive/entries-N  … 生ログ(本文抜き、600件ずつ)。m4 が分類・状態・作った月を数えるのに使う
 // 増えないので、1回読んだらこのページの間は使い回す。
 const SDK = "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 let entriesPromise = null;

@@ -22,8 +22,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css" };
 const EXPECTED_CLIENT_ID = "550466095352-50h92anfullp137l4gq4gdi7ogjk0auc.apps.googleusercontent.com";
 
-// Stage 2はbc(旧k2)のみが対象(パイロット)、Stage 4で残り4ページを追加。
-const PAGES = ["bc", "m1"]; // ba は 2026-10-12 に礼文のローカル Web へ移した(ab-165)
+// Stage 2はm4(旧bc・k2)のみが対象(パイロット)、Stage 4で残り4ページを追加。
+const PAGES = ["m4", "m1"]; // ba は 2026-10-12 に礼文のローカル Web へ移した(ab-165)
 
 function serveStatic() {
   return new Promise((resolve) => {

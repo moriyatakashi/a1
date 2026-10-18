@@ -1,4 +1,4 @@
-// bc の追加(2026-10-03、ab-45 の続き)。
+// m4 の追加(2026-10-03、ab-45 の続き)。
 // - 今の状態に「待ち(ab)」: 済んでいない ab の waitUntil を日付順に。日が来たら「来た」、まだなら「まで」
 // - 今の状態に「最近の動き(ba・ab)」: 書き込みを新しい順に8件。ab の済みも1件の動き、タイトルを直しただけの自動 note は出さない
 // - 「流れ」タブ: 直近14日、日ごとに開いた件数と片付いた件数。ba で無効にしたものは数えない
@@ -73,23 +73,23 @@ const AB_ROUTES = {
   [`${FS}/A3/notes`]: { documents: [note(hoursAgo(2)), note(hoursAgo(3))] },
 };
 
-test("bc: 待ち・最近の動き・流れ・投稿者の名前(ab-45)", async () => {
+test("m4: 待ち・最近の動き・流れ・投稿者の名前(ab-45)", async () => {
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
-    await routeFirebaseStub(page, {}, baArchiveOf(BA)); // ab-166: 旧 ba は Firestore の写しから // ab-162: bc は ab を読む前に Firebase にログインする(ネットワークに出さない)
+    await routeFirebaseStub(page, {}, baArchiveOf(BA)); // ab-166: 旧 ba は Firestore の写しから // ab-162: m4 は ab を読む前に Firebase にログインする(ネットワークに出さない)
     await page.route(/firestore\.googleapis\.com\//, (route) => {
       const url = route.request().url().split("?")[0];
       route.fulfill({ contentType: "application/json", body: JSON.stringify(AB_ROUTES[url] || {}) });
     });
 
-    await page.goto(`http://localhost:${server.address().port}/src/bc/`);
+    await page.goto(`http://localhost:${server.address().port}/src/m4/`);
     await page.evaluate(() => {
       document.getElementById("content").style.display = "block";
       window.__credential = "test";
-      window.dispatchEvent(new Event("bc-login-success"));
+      window.dispatchEvent(new Event("m4-login-success"));
     });
     await page.waitForSelector("#nowPanel .now-recent li");
 

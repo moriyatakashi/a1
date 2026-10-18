@@ -1,4 +1,4 @@
-// bc の「今の状態」(2026-10-03、ab-45)。累計のチャートの上に、開いている件数・返事待ち・最後の動きが古い ab を出す。
+// m4 の「今の状態」(2026-10-03、ab-45)。累計のチャートの上に、開いている件数・返事待ち・最後の動きが古い ab を出す。
 // ab は済み(done)を除く。返事待ちは needsReply かつ済んでいないものを宛先ごとに数える。
 // ba は status が closed のもの、Takashi が最後に無効(void=true)にしたものを除く。
 import { test } from "node:test";
@@ -69,7 +69,7 @@ const AB_ROUTES = {
   [`${FS}/A2/notes`]: { documents: [note(daysAgo(0), "タイトルを変えた(旧: 寝ている件の古い名前)")] },
 };
 
-test("bc: 今の状態(開いている件数・返事待ち・最後の動きが古い ab)が出る(ab-45)", async () => {
+test("m4: 今の状態(開いている件数・返事待ち・最後の動きが古い ab)が出る(ab-45)", async () => {
   const server = await serveStatic();
   const browser = await chromium.launch();
   try {
@@ -85,11 +85,11 @@ test("bc: 今の状態(開いている件数・返事待ち・最後の動きが
       route.fulfill({ contentType: "application/json", body: JSON.stringify(AB_ROUTES[url] || {}) });
     });
 
-    await page.goto(`http://localhost:${server.address().port}/src/bc/`);
+    await page.goto(`http://localhost:${server.address().port}/src/m4/`);
     await page.evaluate(() => {
       document.getElementById("content").style.display = "block";
       window.__credential = "test";
-      window.dispatchEvent(new Event("bc-login-success"));
+      window.dispatchEvent(new Event("m4-login-success"));
     });
     await page.waitForSelector("#nowPanel .now-stale li");
 

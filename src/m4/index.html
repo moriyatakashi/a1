@@ -4,7 +4,7 @@
 <script src="../common/config.js?v=202607160712"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>bc / ba・abレーダーチャート</title>
+<title>m4 / ba・abレーダーチャート</title>
 <link rel="stylesheet" href="../common/ledger.css?v=202607262133">
 <style>
   .radar-wrap {
@@ -51,7 +51,7 @@
 <body>
   <p><a href="../../">← 戻る</a></p>
   <div class="eyebrow">ロレキ内部メモ</div>
-  <h1>路歴（bc） / ba・abレーダーチャート</h1>
+  <h1>路歴（m4） / ba・abレーダーチャート</h1>
   <p class="lede">ba(n4後継の追記ログ)と ab(家人たちの連絡用)を軸にしたレーダーチャート。投稿者別(参加スレッド数、ba・ab合算)、分類別(ba-32規約の分類ごとのスレッド数、abは「ab(連絡)」として1軸)、週次得点(ba-53、直近8週の推移)、月次集計(分類別スレッド数の月次推移、abを含む、直近6ヶ月)、流れ(日ごとに開いた件数と片付いた件数、直近14日)を切り替えて見られる。上の「今の状態」は、開いている件数・返事待ち・待ち・最後の動きが古い ab・最近の動き(ab-45)。</p>
   <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: 2026-07-16 07:48 JST</p>
 
@@ -89,12 +89,12 @@
     <p class="radar-empty" id="radarEmpty" style="display:none;">スレッドがまだありません</p>
   </div>
 
-  <script>window.AA_AUTH_EVENT = "bc-login-success";</script><!-- ab-162: 公開の閲覧モードをやめた(本人がログインしたときだけ中身を出す) -->
+  <script>window.AA_AUTH_EVENT = "m4-login-success";</script><!-- ab-162: 公開の閲覧モードをやめた(本人がログインしたときだけ中身を出す) -->
   <script src="../common/auth.js?v=202607201000"></script>
   <script type="module" src="app.js?v=202610100800"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
-    applyLastUpdated("src/bc", "lastUpdated", "最終更新");
+    applyLastUpdated("src/m4", "lastUpdated", "最終更新");
   </script>
 </body>
 </html>

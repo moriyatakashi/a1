@@ -31,7 +31,7 @@ function serveStatic() {
   });
 }
 
-// bc のページで確かめる(ba は 2026-10-12 に礼文のローカル Web へ移した、ab-165)。Azure の /session に行ったら数える(行かないことを見る)
+// m4 のページで確かめる(ba は 2026-10-12 に礼文のローカル Web へ移した、ab-165)。Azure の /session に行ったら数える(行かないことを見る)
 async function openBc(act, { seed } = {}) {
   const server = await serveStatic();
   const browser = await chromium.launch();
@@ -43,7 +43,7 @@ async function openBc(act, { seed } = {}) {
     page.on("request", (r) => { if (r.url().includes("azurewebsites.net")) sessionCalls.push(r.method()); });
     await routeFirebaseStub(page, {});
     if (seed) await page.addInitScript((v) => { if (!sessionStorage.getItem("seeded")) { localStorage.setItem("aa_credential", v); sessionStorage.setItem("seeded", "1"); } }, seed);
-    await page.goto(`http://localhost:${server.address().port}/src/bc/`);
+    await page.goto(`http://localhost:${server.address().port}/src/m4/`);
     const out = await act(page);
     return { ...out, sessionCalls };
   } finally {
@@ -52,7 +52,7 @@ async function openBc(act, { seed } = {}) {
   }
 }
 
-test("bc: 持ち主でログインすると幕が開き、Firebase にも入り、印だけ保存する。Azure の /session には行かない", async () => {
+test("m4: 持ち主でログインすると幕が開き、Firebase にも入り、印だけ保存する。Azure の /session には行かない", async () => {
   const { stored, signedIn, afterLogout, signedOut, gateVisible, sessionCalls } = await openBc(async (page) => {
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
     await page.waitForSelector("#content", { state: "visible" });
@@ -77,7 +77,7 @@ test("bc: 持ち主でログインすると幕が開き、Firebase にも入り�
   assert.deepEqual(sessionCalls, [], "Azure の /session には行かない");
 });
 
-test("bc: 持ち主でないアカウントはログインさせない", async () => {
+test("m4: 持ち主でないアカウントはログインさせない", async () => {
   const { visible, stored } = await openBc(async (page) => {
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), credFor("someone@example.com"));
     await page.waitForFunction(() => /このアカウントでは使えません/.test(document.getElementById("status").textContent));
@@ -87,7 +87,7 @@ test("bc: 持ち主でないアカウントはログインさせない", async (
   assert.equal(stored, null);
 });
 
-test("bc: Azure の頃の印(kind:session)が残っている端末は、ログアウトさせずに入れて、印を書き換える", async () => {
+test("m4: Azure の頃の印(kind:session)が残っている端末は、ログアウトさせずに入れて、印を書き換える", async () => {
   const seed = JSON.stringify({ credential: "session:old.sig", name: "Test User", kind: "session", savedAt: 1 });
   const { visible, stored, sessionCalls } = await openBc(async (page) => {
     await page.waitForSelector("#content", { state: "visible" });

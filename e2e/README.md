@@ -7,7 +7,7 @@
 |---|---|
 | `2-1-ba-void-title-display.test.js` | `ba` |
 | `2-2-bb-current-view.test.js` | `bb` |
-| `2-5-k2-radar-chart.test.js` | `k2` |
+| `2-5-m4-radar-chart.test.js` | `m4`(旧bc・k2) |
 | `2-6-n1-n2-google-one-tap.test.js` | `m1` |
 | `2-8-persistent-session.test.js` | `ba`(`common/auth.js`) |
 | `2-14-ba-approval-queue.test.js` | `ba`(承認キュー) |

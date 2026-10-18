@@ -76,7 +76,7 @@ const inWeek = (iso, b) => {
 };
 
 // inputs: { scores: {"YYYY-MM-DD": 点}, pointEvents: [{createdAt, points}], rules: [{effectiveFrom, difficultyPoints}], closes: [{at, difficulty}] }
-// 返す形は Azure の /api/weekly-scores/{週} と同じ(bc・今日パネルがそのまま使える)
+// 返す形は Azure の /api/weekly-scores/{週} と同じ(m4・今日パネルがそのまま使える)
 export function weekScore(weekKey, { scores = {}, pointEvents = [], rules = [], closes = [] } = {}) {
   const b = weekBounds(weekKey);
   const dates = Array.from({ length: 7 }, (_, i) => addDays(b.monday, i));

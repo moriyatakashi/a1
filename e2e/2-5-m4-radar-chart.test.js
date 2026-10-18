@@ -1,4 +1,4 @@
-// bc(baレーダーチャート、旧k2)の集計ロジックの検証。
+// m4(baレーダーチャート、旧k2)の集計ロジックの検証。
 // (1) 投稿者別タブ: スレッドに発言した投稿者(by)ごとの参加スレッド数(open/closed問わず)。
 // (2) 分類別タブ: スレッド内で最後に見つかった分類タグ(4分類)がそのスレッドの分類になる
 //     (同スレッド内で分類タグが後から上書きされた場合は新しい方を採用)。
@@ -53,7 +53,7 @@ const AB_ROUTES = {
   [`${FS}/A2/notes`]: {},
 };
 
-// ab-97: aa-lane が書く noteMeta(誰が・いつ)があれば、bc は notes を読まない。中身は上の AB_ROUTES と同じ
+// ab-97: aa-lane が書く noteMeta(誰が・いつ)があれば、m4 は notes を読まない。中身は上の AB_ROUTES と同じ
 const metaDoc = (name, by, createdAt, metas) => {
   const d = fsDoc(name, by, createdAt);
   d.fields.noteMeta = { arrayValue: metas.length ? { values: metas.map(([b, c]) => (
@@ -65,8 +65,8 @@ const AB_ROUTES_META = {
                       metaDoc(`x/abThreads/A2`, "claude-mobile", now, [])] },
 };
 
-test("bc: 投稿者別/分類別のスレッド集計が期待通りに出る", () => checkBc(AB_ROUTES, 2));
-test("bc: noteMeta があれば notes を読まずに同じ集計になる(ab-97)", () => checkBc(AB_ROUTES_META, 0));
+test("m4: 投稿者別/分類別のスレッド集計が期待通りに出る", () => checkBc(AB_ROUTES, 2));
+test("m4: noteMeta があれば notes を読まずに同じ集計になる(ab-97)", () => checkBc(AB_ROUTES_META, 0));
 
 async function checkBc(abRoutes, expectedNoteFetches) {
   const notesFetched = [];
@@ -78,19 +78,19 @@ async function checkBc(abRoutes, expectedNoteFetches) {
     await page.route("https://accounts.google.com/gsi/client", (route) =>
       route.fulfill({ contentType: "text/javascript", body: "" })
     );
-    await routeFirebaseStub(page, {}, baArchiveOf(FIXTURE)); // ab-166: 旧 ba は Firestore の写しから // ab-162: bc は ab を読む前に Firebase にログインする(ネットワークに出さない)
+    await routeFirebaseStub(page, {}, baArchiveOf(FIXTURE)); // ab-166: 旧 ba は Firestore の写しから // ab-162: m4 は ab を読む前に Firebase にログインする(ネットワークに出さない)
     await page.route(/firestore\.googleapis\.com\//, (route) => {
       const url = route.request().url().split("?")[0];
       if (url.endsWith("/notes")) notesFetched.push(url);
       route.fulfill({ contentType: "application/json", body: JSON.stringify(abRoutes[url] || {}) });
     });
 
-    await page.goto(`http://localhost:${port}/src/bc/`);
+    await page.goto(`http://localhost:${port}/src/m4/`);
     // ログインゲートは通さず、auth.jsが発火するのと同じイベントで直接開ける
     await page.evaluate(() => {
       document.getElementById("content").style.display = "block";
       window.__credential = "test";
-      window.dispatchEvent(new Event("bc-login-success"));
+      window.dispatchEvent(new Event("m4-login-success"));
     });
     await page.waitForSelector("#radarTableBody tr");
 
