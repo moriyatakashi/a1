@@ -84,6 +84,30 @@ export function ahHeld(threads, now = Date.now()) {
     .map((t) => ({ ...t, late: !!t.holdReview && t.holdReview < today }));
 }
 
+// Takashi の番(b1 ah-44、2026-10-20): 次が Takashi の票。TAKASHI_MIN 件より少ないときは全 aX の未決(ab・ac・af は done でない、
+// ah は済・保留でない)から古い順に足して TAKASHI_MIN 件にする。足した分は fill。ag は閉じない台帳なので入れない。
+// 出すだけで台帳の next は書き換えない(Takashi 10/20 選択)。open は { ab: [...], ac: [...], af: [...] }
+export const TAKASHI_MIN = 4;
+export function takashiView(ah, open = {}, now = Date.now(), n = TAKASHI_MIN) {
+  const live = ah.map((t) => ahView(t, now)).filter((t) => t.state !== "済" && t.state !== HOLD);
+  const asAh = (t) => ({ ...t, key: `ah-${t.seq}`, who: t.owner });
+  const mine = live.filter((t) => t.next === "takashi").sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0)).map(asAh);
+  if (mine.length >= n) return mine;
+  const pool = [
+    ...Object.entries(open).flatMap(([p, ts]) => (ts || []).filter((t) => !t.done).map((t) => ({ ...t, key: `${p}-${t.seq}`, who: t.by }))),
+    ...live.filter((t) => t.next !== "takashi").map(asAh),
+  ].sort((a, b) => (ms(a.createdAt) || Infinity) - (ms(b.createdAt) || Infinity) || a.key.localeCompare(b.key));
+  return [...mine, ...pool.slice(0, n - mine.length).map((t) => ({ ...t, fill: true }))];
+}
+
+// ab・ac の済んでいないもの(Takashi の番を足すときだけ読む)。af は fetchOpenAf
+export async function fetchOpenOf(col) {
+  const [{ collection, getDocs, query, where }, { db, ensureReadLogin, guardRead }] = await load();
+  await ensureReadLogin();
+  const snap = await guardRead(() => getDocs(query(collection(db, col), where("done", "==", false))));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 // 礼文の票の cron の最後の回(jobStatus/ticket、b1 infra/pi/ticket_cron.sh が run job で書く)。読めなければ null
 export async function fetchTicketJob() {
   try {

@@ -4,7 +4,7 @@
 // 2026-10-10(ab-166 ②): Rules 第1段が出て m3 から af に書けるのを確かめたので、ba(Azure)への逃げ道は外した。
 import "../common/config.js";
 import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
-import { addAfNote, AH_GROUPS, ahCounts, ahHeld,cleanAfTags, createAf, doneAf, fetchAllAh, fetchOpenAf, fetchOpenAh, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN } from "./af-store.js";
+import { addAfNote, AH_GROUPS, ahCounts, ahHeld,cleanAfTags, createAf, doneAf, fetchAllAh, fetchOpenAf, fetchOpenAh, fetchOpenOf, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN, TAKASHI_MIN, takashiView } from "./af-store.js";
 
 // af に書く。書けなければ(この端末で Firebase に未ログインなど)そのまま失敗を出す
 async function writeEntry({ title, tags, body }) {
@@ -93,7 +93,8 @@ async function renderAg() {
 }
 
 // 2026-10-18(b1 ab-193): ah(作業票)は家人が握って動かし、Takashi はここで読むだけ。次が Takashi の票が先頭
-const AH_NAMES = { takashi: "Takashi", rishiri: "利尻", suma: "すま", rebun: "礼文", teuri: "天売" };
+const AH_NAMES = { takashi: "Takashi", rishiri: "利尻", suma: "すま", rebun: "礼文", teuri: "天売",
+  "claude-mobile": "すま", "claude-pc": "利尻", "claude-pi": "礼文" };
 const who = (id) => AH_NAMES[id] || id || "-";
 async function renderAh() {
   const box = document.getElementById("ahList");
@@ -111,6 +112,7 @@ async function renderAh() {
     return;
   }
   renderRebun(all);
+  renderTakashi(all);
   box.textContent = "";
   // ah-37: 頭に3つの数(b1/run ah list の頭と同じ分け方)。ah-40: 上に移した礼文の票の頭にも同じ行
   const n = ahCounts(all);
@@ -167,6 +169,26 @@ function renderRebun(all) {
     const line = ng > ok ? `票の cron の最後の回: ${hm(j.ngAt)} うまくいかなかった${j.ngNote ? `(${j.ngNote})` : ""}` : `票の cron の最後の回: ${hm(j.okAt)} うまくいった`;
     more.querySelector("summary").after(el("div", { class: "af-meta rb-job" + (ng > ok ? " rb-stale" : "") }, line));
   });
+}
+
+// 2026-10-20(ah-44): Takashi の番。次が Takashi の票、TAKASHI_MIN 件より少なければ全 aX の未決から古い順に足す。読むだけ
+async function renderTakashi(all) {
+  const box = document.getElementById("takashiAh");
+  if (!box) return;
+  let items = takashiView(all);
+  if (items.some((t) => t.fill) || items.length < TAKASHI_MIN) {
+    try {
+      const [ab, ac, af] = await Promise.all([fetchOpenOf("abThreads"), fetchOpenOf("acThreads"), fetchOpenAf()]);
+      items = takashiView(all, { ab, ac, af });
+    } catch { /* 読めなければ ah の分だけ */ }
+  }
+  box.textContent = "";
+  if (!items.length) { box.append(el("p", { class: "af-empty" }, "なし")); return; }
+  for (const t of items) {
+    box.append(el("div", { class: "af-item" + (t.fill ? "" : " ah-mine") },
+      el("div", { class: "af-meta" }, [t.key, `持ち主:${who(t.who)}`, t.fill ? "未決から" : ""].filter(Boolean).join(" · ")),
+      el("div", { class: "af-title" }, t.title || "(タイトルなし)")));
+  }
 }
 
 function initNewEntryForm() {

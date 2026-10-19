@@ -47,6 +47,10 @@ const AH = {
   h3: { title: "済んだ票", state: "済", next: "", holder: "", owner: "rebun", seq: 3 },
 };
 
+// ah-44: Takashi の番に足す未決(ab・ac)。ag は足さない
+const AB = { b1: { title: "古い連絡", done: false, by: "claude-pc", createdAt: "2026-09-01T00:00:00.000Z", seq: 5 } };
+const AC = { c1: { title: "決まったこと", done: false, by: "claude-mobile", createdAt: "2026-10-01T00:00:00.000Z", seq: 25 } };
+
 async function openM3({ denyAf = false } = {}, act) {
   const server = await serveStatic();
   const browser = await chromium.launch();
@@ -61,7 +65,7 @@ async function openM3({ denyAf = false } = {}, act) {
     page.on("dialog", (d) => { dialogs.push(d.message()); d.accept(d.type() === "prompt" ? "足したnote" : undefined); });
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     if (denyAf) await page.addInitScript(() => { window.__fsDenyWrite = ["afThreads", "_meta"]; window.__fsDenyRead = ["afThreads"]; window.__fsCredentialFails = true; });
-    await routeFirebaseStub(page, {}, { afThreads: denyAf ? {} : AF, agThreads: denyAf ? {} : AG, ahThreads: denyAf ? {} : AH, _meta: denyAf ? {} : { af_seq: { value: 2 } } });
+    await routeFirebaseStub(page, {}, { afThreads: denyAf ? {} : AF, agThreads: denyAf ? {} : AG, ahThreads: denyAf ? {} : AH, abThreads: denyAf ? {} : AB, acThreads: denyAf ? {} : AC, _meta: denyAf ? {} : { af_seq: { value: 2 } } });
     await page.goto(`http://localhost:${server.address().port}/src/m3/`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
     await page.waitForFunction(() => !/読み込み中/.test(document.getElementById("afList").textContent));
@@ -102,6 +106,18 @@ test("m3: ah は済んでいない票を、次が Takashi の票から読むだ�
   assert.match(ah, /ah-1 · 落ちた · 次:礼文 · 握り:礼文/);
   assert.doesNotMatch(ah, /済んだ票/);
   assert.match(ah, /たかしさん待ち 1 · 窓を開けば進む 0 · 礼文が進めている 1/); // ah-37
+  assert.equal(buttons, 0);
+});
+
+// ah-44: Takashi の番。次が Takashi の票(1件)に、未決から古い順に3件足して4件。足した分に「未決から」
+test("m3: Takashi の番に次が Takashi の票と、未決から足した分が読むだけで出る", async () => {
+  const { tk, buttons } = await openM3({}, async (page) => {
+    await page.waitForFunction(() => /未決から/.test(document.getElementById("takashiAh").textContent));
+    return { tk: await page.textContent("#takashiAh"), buttons: await page.locator("#takashiAh button").count() };
+  });
+  assert.match(tk, /^ah-2 · 持ち主:礼文Takashi に頼む/);
+  assert.match(tk, /ab-5 · 持ち主:利尻 · 未決から古い連絡.*ac-25 · 持ち主:すま · 未決から決まったこと.*af-1 · 持ち主:Takashi · 未決から前からあるメモ/);
+  assert.doesNotMatch(tk, /ag-|済んだ/);
   assert.equal(buttons, 0);
 });
 

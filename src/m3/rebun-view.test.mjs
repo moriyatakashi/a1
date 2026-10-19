@@ -1,7 +1,7 @@
 // ah-38(2026-10-19): m3 の「礼文の票」の分け方。握っている・回っている・最近済んだ、印が30分より古い作業中は stale
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ahCounts, ahGroup, ahHeld, rebunView } from "./af-store.js";
+import { ahCounts, ahGroup, ahHeld, rebunView, takashiView } from "./af-store.js";
 
 const NOW = Date.parse("2026-10-19T00:00:00.000Z");
 const at = (min) => new Date(NOW - min * 60000).toISOString();
@@ -58,4 +58,29 @@ test("ahHeld: 保留は数えず礼文の票にも出さない。見直す日を
   assert.deepEqual(ahCounts(H, NOW), { "たかしさん待ち": 1, "窓を開けば進む": 0, "礼文が進めている": 0 });
   assert.deepEqual(rebunView(H, NOW).assigned.map((t) => t.seq), [4]);
   assert.deepEqual(ahHeld(H, NOW).map((t) => [t.seq, t.late]), [[2, true], [3, false], [18, false]]);
+});
+
+// ah-44: Takashi の番。次が Takashi の票が4件以上ならそれだけ、3件以下なら全 aX の未決から古い順に足して4件(ag は入れない)
+test("takashiView: 次が Takashi の票が4件以上なら足さない", () => {
+  const A = [1, 2, 3, 4, 5].map((seq) => ({ seq, state: "渡し先待ち", owner: "rebun", next: "takashi", createdAt: at(seq) }));
+  const open = { ab: [{ seq: 1, by: "claude-mobile", done: false, createdAt: at(9999) }] };
+  assert.deepEqual(takashiView(A, open, NOW).map((t) => [t.key, !!t.fill]), [1, 2, 3, 4, 5].map((s) => [`ah-${s}`, false]));
+});
+
+test("takashiView: 3件以下なら ab・ac・af・ah の未決から古い順に足して4件。済・done・保留は足さない", () => {
+  const A = [
+    { seq: 4, state: "渡し先待ち", owner: "rebun", next: "takashi", createdAt: at(10) },
+    { seq: 6, state: "待ち", owner: "suma", next: "rebun", createdAt: at(500) },
+    { seq: 7, state: "済", owner: "rebun", next: "", createdAt: at(9000) },
+    { seq: 8, state: "保留", owner: "rebun", next: "", createdAt: at(9000) },
+  ];
+  const open = {
+    ab: [{ seq: 3, by: "claude-pc", done: false, createdAt: at(800) }, { seq: 2, by: "claude-pc", done: true, createdAt: at(9000) }],
+    ac: [{ seq: 25, by: "claude-pc", done: false, createdAt: at(700) }],
+    af: [{ seq: 9, by: "takashi", done: false, createdAt: at(100) }],
+  };
+  const v = takashiView(A, open, NOW);
+  assert.deepEqual(v.map((t) => [t.key, !!t.fill]), [["ah-4", false], ["ab-3", true], ["ac-25", true], ["ah-6", true]]);
+  assert.equal(v[1].who, "claude-pc");
+  assert.equal(takashiView(A, {}, NOW).length, 2); // ab・ac・af が読めなければ ah の分だけ
 });

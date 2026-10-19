@@ -52,7 +52,7 @@
   .af-btn { font-size: 0.74rem; padding: 5px 12px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; }
   .af-msg { font-size: 0.72rem; color: var(--ink-soft); }
   .ah-mine { border-left: 3px solid var(--ink); padding-left: 8px; }
-  .af-empty, #afList, #agList, #ahList, #rebunAh { font-size: 0.8rem; color: var(--ink-soft); }
+  .af-empty, #afList, #agList, #ahList, #rebunAh, #takashiAh {font-size: 0.8rem; color: var(--ink-soft); }
   /* 礼文の票(ah-38) */
   .rb-sub { font-size: 0.78rem; font-weight: 600; color: var(--ink); margin: 8px 0 4px; }
   .rb-job { margin-bottom: 6px; }
@@ -83,6 +83,10 @@
     <!-- ah-40: 礼文の票をいちばん上に(Takashi 2026-10-19「上の方に持ってきてほしい」) -->
     <div class="af-head">礼文の票</div>
     <div id="rebunAh"></div>
+
+    <!-- ah-44: Takashi の番(3件以下なら全 aX の未決から足して4件) -->
+    <div class="af-head">Takashi の番</div>
+    <div id="takashiAh"></div>
 
     <div class="new-entry-card">
       <div class="new-entry-title">新規スレッドを追加</div>
@@ -123,7 +127,7 @@
 
   <script>window.AA_AUTH_EVENT = "m3-login-success";</script>
   <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202610191850"></script>
+  <script type="module" src="app.js?v=202610200330"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/m3", "lastUpdated", "最終更新");
