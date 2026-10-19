@@ -57,12 +57,13 @@
   .rb-sub { font-size: 0.78rem; font-weight: 600; color: var(--ink); margin: 8px 0 4px; }
   .rb-job { margin-bottom: 6px; }
   .rb-stale { border-left: 3px solid #c0392b; padding-left: 8px; color: #c0392b; }
+  .rb-more { margin: 4px 0 14px; }
+  .rb-more summary { font-size: 0.74rem; color: var(--ink-soft); cursor: pointer; margin-bottom: 6px; }
 </style>
 </head>
 <body>
   <p><a href="../../">← 戻る</a></p>
   <h1>路歴 / メモ</h1>
-  <p class="lede" style="font-size:0.8rem;color:var(--ink-soft);">メモを書く・読む・閉じるページ。2026-10-10 から書き先は af(「ほぼba」、本人だけが読める Firestore)。af の準備が済むまでは今までどおり ba に書きます。</p>
   <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: —</p>
 
 <!-- LOGIN_GATE:START -->
@@ -80,14 +81,12 @@
 
   <div id="content" style="display:none;">
     <!-- ah-40: 礼文の票をいちばん上に(Takashi 2026-10-19「上の方に持ってきてほしい」) -->
-    <div class="af-head">礼文の票(ah・礼文に絞った見え方、読むだけ)</div>
+    <div class="af-head">礼文の票</div>
     <div id="rebunAh"></div>
 
     <div class="new-entry-card">
       <div class="new-entry-title">新規スレッドを追加</div>
-      <div class="new-entry-sub">by=takashi に固定。番号(af-N)は自動。</div>
-
-      <label class="lane-form-label">分類(ba-32の規約・いずれか1つ)</label>
+      <label class="lane-form-label">分類</label>
       <div class="cls-radio">
         <label><input type="radio" name="newCls" value="案件"><span>案件</span></label>
         <label><input type="radio" name="newCls" value="確定仕様"><span>確定仕様</span></label>
@@ -115,16 +114,16 @@
     <div class="af-head">開いているもの <span id="afCount"></span></div>
     <div id="afList"></div>
 
-    <div class="af-head">家人のやったあと(ag・新しい順20件、読むだけ)</div>
+    <div class="af-head">家人のやったあと</div>
     <div id="agList"></div>
 
-    <div class="af-head">作業票(ah・済んでいないもの、次が Takashi の票が先頭、読むだけ)</div>
+    <div class="af-head">作業票</div>
     <div id="ahList"></div>
   </div>
 
   <script>window.AA_AUTH_EVENT = "m3-login-success";</script>
   <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202610191220"></script>
+  <script type="module" src="app.js?v=202610191850"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/m3", "lastUpdated", "最終更新");

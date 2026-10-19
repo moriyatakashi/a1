@@ -107,16 +107,23 @@ test("m3: ah は済んでいない票を、次が Takashi の票から読むだ�
 
 // ah-38: 礼文に絞った見え方。印が止まった作業中は目立たせる・回っている票・済んだ票
 test("m3: 礼文の票に、握っている票(印が古い印つき)・回っている票・済んだ票が読むだけで出る", async () => {
-  const { rb, buttons, stale, first } = await openM3({}, async (page) => {
+  const { rb, more, open, buttons, stale, first, lede } = await openM3({}, async (page) => {
     await page.waitForFunction(() => /最近済んだ票/.test(document.getElementById("rebunAh").textContent));
-    return { rb: await page.textContent("#rebunAh"), buttons: await page.locator("#rebunAh button").count(), stale: await page.locator("#rebunAh .rb-stale").count(),
-      first: await page.evaluate(() => [...document.getElementById("content").children].find((c) => c.id)?.id) };
+    return { rb: await page.textContent("#rebunAh"), more: await page.textContent("#rebunAh details.rb-more"),
+      open: await page.evaluate(() => document.querySelector("#rebunAh details.rb-more").open),
+      buttons: await page.locator("#rebunAh button").count(), stale: await page.locator("#rebunAh .rb-stale").count(),
+      first: await page.evaluate(() => [...document.getElementById("content").children].find((c) => c.id)?.id),
+      lede: await page.locator("p.lede").count() };
   });
   assert.equal(first, "rebunAh"); // ah-40: ログイン後の中身のいちばん上(フォームより前)
   assert.match(rb, /^たかしさん待ち 1 · 窓を開けば進む 0 · 礼文が進めている 1/); // ah-40: 3つの数も頭に
-  assert.match(rb, /ah-1 · 落ちた · 握って - · 最後の印 .*止まっているかも/);
+  assert.match(rb, /ah-1 · 落ちた · 印が.*止まっているかも/);
   assert.match(rb, /ah-2 · 渡し先待ち · 次:Takashi/);
-  assert.match(rb, /ah-3 · 済/);
+  // ah-42: 握ってからの時間・最近済んだ票は「くわしく」にたたむ(閉じた状態で出す)。ページ頭の説明文は無い
+  assert.equal(open, false);
+  assert.match(more, /ah-1 · 握って - · 最後の印/);
+  assert.match(more, /ah-3 · 済/);
+  assert.equal(lede, 0);
   assert.ok(stale >= 1);
   assert.equal(buttons, 0);
 });

@@ -145,23 +145,27 @@ function renderRebun(all) {
   if (!box) return;
   const { holding, assigned, done } = rebunView(all);
   box.textContent = "";
-  const part = (head, rows) => {
-    box.append(el("div", { class: "rb-sub" }, head));
-    if (!rows.length) box.append(el("p", { class: "af-empty" }, "なし"));
+  // ah-42: 家人向けの細かい情報(cron の最後の回・握ってからの時間・最近済んだ票)は下にたたむ
+  const more = el("details", { class: "rb-more" }, el("summary", {}, "くわしく"));
+  const part = (head, rows, to = box) => {
+    to.append(el("div", { class: "rb-sub" }, head));
+    if (!rows.length) to.append(el("p", { class: "af-empty" }, "なし"));
     for (const [meta, title, cls] of rows) {
-      box.append(el("div", { class: "af-item" + (cls ? " " + cls : "") }, el("div", { class: "af-meta" }, meta), el("div", { class: "af-title" }, title || "(タイトルなし)")));
+      to.append(el("div", { class: "af-item" + (cls ? " " + cls : "") }, el("div", { class: "af-meta" }, meta), el("div", { class: "af-title" }, title || "(タイトルなし)")));
     }
   };
   part("握っている票(作業中)", holding.map((t) => [
-    [`ah-${t.seq}`, t.view, `握って ${ago(t.claimedMin)}`, `最後の印 ${ago(t.beatMin)}`, t.stale ? `印が${STALE_MIN}分より古い(止まっているかも)` : ""].filter(Boolean).join(" · "),
+    [`ah-${t.seq}`, t.view, t.stale ? `印が${STALE_MIN}分より古い(止まっているかも)` : ""].filter(Boolean).join(" · "),
     t.title, t.stale ? "rb-stale" : ""]));
   part("礼文に回っている票", assigned.map((t) => [[`ah-${t.seq}`, t.state || "待ち", `次:${who(t.next)}`].join(" · "), t.title, t.next === "takashi" ? "ah-mine" : ""]));
-  part(`最近済んだ票(${done.length}件)`, done.map((t) => [[`ah-${t.seq}`, "済", hm(t.doneAt)].join(" · "), t.title]));
+  box.append(more);
+  for (const t of holding) more.append(el("div", { class: "af-meta" }, [`ah-${t.seq}`, `握って ${ago(t.claimedMin)}`, `最後の印 ${ago(t.beatMin)}`].join(" · ")));
+  part(`最近済んだ票(${done.length}件)`, done.map((t) => [[`ah-${t.seq}`, "済", hm(t.doneAt)].join(" · "), t.title]), more);
   fetchTicketJob().then((j) => {
     if (!j) return;
     const ok = Date.parse(j.okAt || "") || 0, ng = Date.parse(j.ngAt || "") || 0;
     const line = ng > ok ? `票の cron の最後の回: ${hm(j.ngAt)} うまくいかなかった${j.ngNote ? `(${j.ngNote})` : ""}` : `票の cron の最後の回: ${hm(j.okAt)} うまくいった`;
-    box.prepend(el("div", { class: "af-meta rb-job" + (ng > ok ? " rb-stale" : "") }, line));
+    more.querySelector("summary").after(el("div", { class: "af-meta rb-job" + (ng > ok ? " rb-stale" : "") }, line));
   });
 }
 
