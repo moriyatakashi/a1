@@ -112,9 +112,11 @@ async function renderAh() {
   }
   renderRebun(all);
   box.textContent = "";
-  // ah-37: 頭に3つの数(b1/run ah list の頭と同じ分け方)
+  // ah-37: 頭に3つの数(b1/run ah list の頭と同じ分け方)。ah-40: 上に移した礼文の票の頭にも同じ行
   const n = ahCounts(all);
-  box.append(el("div", { class: "af-meta ah-counts" }, AH_GROUPS.map((g) => `${g} ${n[g]}`).join(" · ")));
+  const counts = AH_GROUPS.map((g) => `${g} ${n[g]}`).join(" · ");
+  box.append(el("div", { class: "af-meta ah-counts" }, counts));
+  if (rb) rb.prepend(el("div", { class: "af-meta ah-counts" }, counts));
   if (!items.length) { box.append(el("p", { class: "af-empty" }, "まだありません")); return; }
   for (const t of items) {
     const meta = [`ah-${t.seq}`, t.state || "待ち", `次:${who(t.next)}`, t.holder ? `握り:${who(t.holder)}` : ""]
