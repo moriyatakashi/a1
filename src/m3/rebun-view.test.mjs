@@ -1,7 +1,7 @@
 // ah-38(2026-10-19): m3 の「礼文の票」の分け方。握っている・回っている・最近済んだ、印が30分より古い作業中は stale
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ahCounts, ahGroup, rebunView } from "./af-store.js";
+import { ahCounts, ahGroup, ahHeld, rebunView } from "./af-store.js";
 
 const NOW = Date.parse("2026-10-19T00:00:00.000Z");
 const at = (min) => new Date(NOW - min * 60000).toISOString();
@@ -45,4 +45,17 @@ test("ahCounts: 次が Takashi / 利尻・すま / それ以外に分け、落�
   ];
   assert.deepEqual(ahCounts(U, NOW), { "たかしさん待ち": 1, "窓を開けば進む": 3, "礼文が進めている": 1 });
   assert.equal(ahGroup(U[4], NOW), "窓を開けば進む");
+});
+
+// ah-41: 保留は礼文の票にも3つの数にも出さず、保留の区画に。見直す日(日本の日付)を過ぎたら late
+test("ahHeld: 保留は数えず礼文の票にも出さない。見直す日を過ぎたものは late", () => {
+  const H = [
+    { seq: 18, title: "睡眠", state: "保留", owner: "rebun", next: "", holdUntil: "af-48 で決まったら", holdReview: "2026-11-02" },
+    { seq: 2, title: "古い保留", state: "保留", owner: "rebun", next: "", holdUntil: "x", holdReview: "2026-10-18" },
+    { seq: 3, title: "今日が見直す日", state: "保留", owner: "rebun", next: "", holdUntil: "x", holdReview: "2026-10-19" },
+    { seq: 4, state: "渡し先待ち", owner: "rebun", next: "takashi" },
+  ];
+  assert.deepEqual(ahCounts(H, NOW), { "たかしさん待ち": 1, "窓を開けば進む": 0, "礼文が進めている": 0 });
+  assert.deepEqual(rebunView(H, NOW).assigned.map((t) => t.seq), [4]);
+  assert.deepEqual(ahHeld(H, NOW).map((t) => [t.seq, t.late]), [[2, true], [3, false], [18, false]]);
 });

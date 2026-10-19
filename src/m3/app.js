@@ -4,7 +4,7 @@
 // 2026-10-10(ab-166 ②): Rules 第1段が出て m3 から af に書けるのを確かめたので、ba(Azure)への逃げ道は外した。
 import "../common/config.js";
 import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
-import { addAfNote, AH_GROUPS, ahCounts, cleanAfTags, createAf, doneAf, fetchAllAh, fetchOpenAf, fetchOpenAh, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN } from "./af-store.js";
+import { addAfNote, AH_GROUPS, ahCounts, ahHeld,cleanAfTags, createAf, doneAf, fetchAllAh, fetchOpenAf, fetchOpenAh, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN } from "./af-store.js";
 
 // af に書く。書けなければ(この端末で Firebase に未ログインなど)そのまま失敗を出す
 async function writeEntry({ title, tags, body }) {
@@ -117,12 +117,22 @@ async function renderAh() {
   const counts = AH_GROUPS.map((g) => `${g} ${n[g]}`).join(" · ");
   box.append(el("div", { class: "af-meta ah-counts" }, counts));
   if (rb) rb.prepend(el("div", { class: "af-meta ah-counts" }, counts));
-  if (!items.length) { box.append(el("p", { class: "af-empty" }, "まだありません")); return; }
+  if (!items.length) box.append(el("p", { class: "af-empty" }, "まだありません"));
   for (const t of items) {
     const meta = [`ah-${t.seq}`, t.state || "待ち", `次:${who(t.next)}`, t.holder ? `握り:${who(t.holder)}` : ""]
       .filter(Boolean).join(" · ");
     box.append(el("div", { class: "af-item" + (t.next === "takashi" ? " ah-mine" : "") },
       el("div", { class: "af-meta" }, meta),
+      el("div", { class: "af-title" }, t.title || "(タイトルなし)")));
+  }
+  // ah-41: 保留の小さな区画(戻す条件・見直す日。見直す日を過ぎたものは目立たせる)
+  const held = ahHeld(all);
+  if (!held.length) return;
+  box.append(el("div", { class: "rb-sub" }, `保留(${held.length}件)`));
+  for (const t of held) {
+    box.append(el("div", { class: "af-item" + (t.late ? " rb-stale" : "") },
+      el("div", { class: "af-meta" }, [`ah-${t.seq}`, `戻す条件:${t.holdUntil || "-"}`, `見直す日:${t.holdReview || "-"}`,
+        t.late ? "見直す日を過ぎた" : ""].filter(Boolean).join(" · ")),
       el("div", { class: "af-title" }, t.title || "(タイトルなし)")));
   }
 }

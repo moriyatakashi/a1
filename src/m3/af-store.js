@@ -28,8 +28,9 @@ export async function fetchRecentAg(n = 20) {
 }
 
 // ah(作業票、持ち場とロック、2026-10-18 b1 ab-193)。m3 からは読むだけ。済んでいない票を、次が Takashi の票を先に
+// 保留(b1 ah-41)は出さない(下の保留の区画に出す)
 export async function fetchOpenAh(now = Date.now(), all = null) {
-  return (all || await fetchAllAh()).map((t) => ahView(t, now)).filter((t) => t.state !== "済")
+  return (all || await fetchAllAh()).map((t) => ahView(t, now)).filter((t) => t.state !== "済" && t.state !== HOLD)
     .sort((a, b) => (b.next === "takashi") - (a.next === "takashi") || (Number(a.seq) || 0) - (Number(b.seq) || 0));
 }
 
@@ -51,7 +52,7 @@ export function rebunView(threads, now = Date.now(), doneN = 5) {
   const mins = (s) => (Number.isFinite(ms(s)) ? Math.floor((now - ms(s)) / 60000) : null);
   const holding = threads.filter((t) => t.state === "作業中" && t.holder === REBUN).sort(bySeq)
     .map((t) => ({ ...t, claimedMin: mins(t.claimedAt), beatMin: mins(t.beatAt), stale: !(mins(t.beatAt) <= STALE_MIN), view: ahView(t, now).state }));
-  const assigned = threads.filter((t) => t.state !== "済" && !(t.state === "作業中" && t.holder === REBUN)
+  const assigned = threads.filter((t) => t.state !== "済" && t.state !== HOLD && !(t.state === "作業中" && t.holder === REBUN)
     && (t.next === REBUN || (t.owner === REBUN && (t.next === "takashi" || !t.next)))).map((t) => ahView(t, now)).sort(bySeq);
   // 済の時刻は欄が無いので、最後の note(finish が【済】を残す)の時刻で並べる
   const done = threads.filter((t) => t.state === "済" && t.owner === REBUN)
@@ -70,8 +71,17 @@ export function ahGroup(t, now = Date.now()) {
 }
 export function ahCounts(threads, now = Date.now()) {
   const n = Object.fromEntries(AH_GROUPS.map((g) => [g, 0]));
-  for (const t of threads) if (t.state !== "済") n[ahGroup(t, now)] += 1;
+  for (const t of threads) if (t.state !== "済" && t.state !== HOLD) n[ahGroup(t, now)] += 1;
   return n;
+}
+
+// 保留(b1 ah-41、2026-10-19): 票から外したがなくしていない。戻す条件(holdUntil)と見直す日(holdReview、YYYY-MM-DD)。
+// 見直す日を日本の日付で過ぎたものは late。b1 の run_lock.overdue と同じ決まり
+export const HOLD = "保留";
+export function ahHeld(threads, now = Date.now()) {
+  const today = new Date(now + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  return threads.filter((t) => t.state === HOLD).sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0))
+    .map((t) => ({ ...t, late: !!t.holdReview && t.holdReview < today }));
 }
 
 // 礼文の票の cron の最後の回(jobStatus/ticket、b1 infra/pi/ticket_cron.sh が run job で書く)。読めなければ null
