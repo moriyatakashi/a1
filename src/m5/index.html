@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>m5 / 現在地マップ</title>
+<title>現在地マップ</title>
 <link rel="icon" href="favicon.ico">
 <link rel="stylesheet" href="../common/base.css?v=1">
 <style>
@@ -19,7 +19,7 @@
 </head>
 <body>
   <p><a href="../../">← 戻る</a></p>
-  <h1>路歴（m5） / 現在地マップ</h1>
+  <h1>路歴 / 現在地マップ</h1>
   <p style="font-size:0.8rem;color:var(--ink-soft);">実座標のgeojsonをメルカトル投影で描画し、GPSで取得した現在地の都道府県をRay castingで判定・ハイライトする(a2から移設)。外部API・CDNは使わず完全ローカル。2本指(PCはCtrl+ホイール)か＋−で拡大、ドラッグで移動できる。沖縄県は別枠(inset)で描画。</p>
   <div id="map-root"><svg id="map" viewBox="0 0 760 760"></svg></div>
   <script type="module">
@@ -90,5 +90,10 @@
       }, () => {});
     }).catch(() => { svg.innerHTML = '<text x="380" y="380" fill="#aaa" text-anchor="middle" font-size="16">地図の読み込みに失敗しました</text>'; });
   </script>
+  <!-- ah-45(af-2): 番号は家人向けのたたんだ所にだけ置く(ac-35) -->
+  <details style="font-size:0.8rem;color:var(--ink-soft);margin-top:24px;">
+    <summary>家人向け</summary>
+    <p>番号: m5</p>
+  </details>
 </body>
 </html>
