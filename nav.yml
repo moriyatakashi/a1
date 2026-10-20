@@ -5,13 +5,13 @@ categories:
         desc: 日々記録
         href: src/m1/
       - code: m2
-        desc: 訪問地図・予定
+        desc: 訪問地図
         href: src/m2/
       - code: m3
         desc: メモ
         href: src/m3/
       - code: m4
-        desc: レーダーチャート
+        desc: 台帳の計器
         href: src/m4/
       - code: m5
         desc: 現在地マップ
