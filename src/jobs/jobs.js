@@ -14,6 +14,9 @@ export const CHECKS = [
   // 通常版 PDF が読める量(30ページ)に収まったか。中身が前日と同じ日は PDF を作らず記録も無いので、3日空いたら「来ていない」
   { id: "dopdf-pages", name: "PDFのページ数", when: "礼文 毎日 PDF のとき(30ページまで)", everyHours: 72, source: "job", ngLabel: "問題あり" },
   { id: "video", name: "動画", when: "礼文 毎日 PDF のあと", everyHours: 24, source: "job" },
+  // サインイン切れの見張り(b1 infra/pi/login_watch.sh、af-30)。切れていたら ng、見張りが動かなければ late
+  { id: "login-rebunrc", name: "礼文のサインイン", when: "礼文 毎日 3:05", everyHours: 24, source: "job" },
+  { id: "login-pi2rc", name: "天売のサインイン", when: "天売 毎日 3:05", everyHours: 24, source: "job" },
   { id: "backup", name: "バックアップ", when: "GitHub 毎日 4:00", everyHours: 24, source: "gh", workflow: "balog-backup.yml" },
   { id: "cost-weekly", name: "課金の指数", when: "礼文 毎週月曜 2:55", everyHours: 168, source: "job" },
 ];
