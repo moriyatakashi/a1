@@ -75,6 +75,14 @@ export async function showTodayPanel(body, { now = new Date() } = {}) {
   let todayText = "取得できませんでした";
   if (today.status === "fulfilled") {
     todayText = today.value ? `${today.value.score}点` : "まだ入っていません";
+    // 日々記録の点を足した分が分かるように出す(b1 ah-55 の4)。足す分が無ければ今までどおり
+    if (today.value) {
+      try {
+        const { dailyBonus, bonusText, loadBonusWeights } = await import("./daily-bonus.js");
+        const b = dailyBonus(today.value, await loadBonusWeights());
+        if (b.total) todayText = `${Math.round((today.value.score + b.total) * 10) / 10}点(${bonusText(today.value.score, b)})`;
+      } catch (e) { /* 足さずに出す */ }
+    }
   }
 
   let weekText = "取得できませんでした";

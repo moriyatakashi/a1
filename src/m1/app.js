@@ -9,6 +9,7 @@ import { todayStr } from "../common/utils.js";
 import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX, SCORE_SOFT_MAX,
   fetchCheckItems, fetchItemShelf, saveCheckItems, checkScore, MARKS, markOf, saveTrip } from "../common/score-store.js";
 import { SLOTS, currentPos, fetchNearby, triangleKm2 } from "./trips.js";
+import { DEFAULT_BONUS_WEIGHTS, dailyBonus, bonusText, loadBonusWeights } from "../common/daily-bonus.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -363,7 +364,18 @@ function initTrips() {
       row.textContent = `3点の面積 ${area.toFixed(2)} km²`;
       elList.appendChild(row);
     }
+    // 日々記録の点(b1 ah-55)。scores.score は書き換えず、足した分を出すだけ
+    const todayRow = (_scoreRows || []).find((r) => r.date === today);
+    const bonus = dailyBonus({ trips, areaKm2: area }, weights);
+    if (todayRow && typeof todayRow.score === "number" && bonus.total) {
+      const row = document.createElement("div");
+      row.className = "trip-row trip-bonus";
+      row.textContent = `今日 ${Math.round((todayRow.score + bonus.total) * 10) / 10}点(${bonusText(todayRow.score, bonus)})`;
+      elList.appendChild(row);
+    }
   }
+  let weights = DEFAULT_BONUS_WEIGHTS;
+  loadBonusWeights().then((w) => { weights = w; render(); });
 
   async function record(slot, kind, btn) {
     if (!window.__credential) {
