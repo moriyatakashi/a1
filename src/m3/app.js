@@ -27,14 +27,18 @@ function el(tag, attrs = {}, ...kids) {
 }
 
 // b1 ah-52: 長い本文はたたんで出し、「開く」で全部。開いた状態は覚えない(描き直すとたたまれている)
+// 開いたら「たたむ」。たたむとそのスレ(.af-item)の頭に戻る
 function bodyEl(text) {
   const { short, cut } = clipBody(text);
   const box = el("div", { class: "af-body" }, cut ? short + "…" : short);
   if (!cut) return box;
+  let open = false;
   const btn = el("button", { type: "button", class: "af-fold" }, "開く");
   btn.addEventListener("click", () => {
-    box.firstChild.textContent = text;
-    btn.remove();
+    open = !open;
+    box.firstChild.textContent = open ? text : short + "…";
+    btn.textContent = open ? "たたむ" : "開く";
+    if (!open) (box.closest(".af-item") || box).scrollIntoView({ block: "start" });
   });
   box.append(" ", btn);
   return box;
