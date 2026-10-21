@@ -53,3 +53,13 @@ test("weekScore: 毎日スコア + 閉じた点 + 加点。週の境目は日本
   assert.equal(r.weekStart, "2026-10-05");
   assert.equal(r.weekEnd, "2026-10-11");
 });
+
+test("weekScore: 日々記録の点(b1 ah-55)は dailyScoreSum に足す。週の外の日は数えない", () => {
+  const r = weekScore("2026-W41", {
+    scores: { "2026-10-05": 80, "2026-10-06": 70 },
+    bonuses: { "2026-10-05": 7.5, "2026-10-06": 2.1, "2026-10-04": 9 },
+  });
+  assert.equal(r.dailyBonusSum, 9.6);
+  assert.equal(r.dailyScoreSum, 159.6);
+  assert.equal(r.weekScore, 159.6);
+});

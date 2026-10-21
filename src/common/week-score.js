@@ -77,10 +77,14 @@ const inWeek = (iso, b) => {
 
 // inputs: { scores: {"YYYY-MM-DD": 点}, pointEvents: [{createdAt, points}], rules: [{effectiveFrom, difficultyPoints}], closes: [{at, difficulty}] }
 // 返す形は Azure の /api/weekly-scores/{週} と同じ(m4・今日パネルがそのまま使える)
-export function weekScore(weekKey, { scores = {}, pointEvents = [], rules = [], closes = [] } = {}) {
+// bonuses: {"YYYY-MM-DD": 日々記録の点}(b1 ah-55、daily-bonus.js)。scores.score に書き戻さず、ここで足す(仮決め Q1)。
+// dailyScoreSum は足したあとの値、そのうち日々記録の分が dailyBonusSum
+export function weekScore(weekKey, { scores = {}, bonuses = {}, pointEvents = [], rules = [], closes = [] } = {}) {
   const b = weekBounds(weekKey);
   const dates = Array.from({ length: 7 }, (_, i) => addDays(b.monday, i));
-  const dailyScoreSum = dates.reduce((s, d) => s + (Number(scores[d]) || 0), 0);
+  const round1 = (x) => Math.round(x * 10) / 10;
+  const dailyBonusSum = round1(dates.reduce((s, d) => s + (Number(bonuses[d]) || 0), 0));
+  const dailyScoreSum = round1(dates.reduce((s, d) => s + (Number(scores[d]) || 0), 0) + dailyBonusSum);
   const active = ruleAt(rules, b.monday);
   const latest = ruleAt(rules, "9999-12-31");
   const breakdown = { low: 0, normal: 0, high: 0 };
@@ -96,7 +100,7 @@ export function weekScore(weekKey, { scores = {}, pointEvents = [], rules = [], 
   const pointEventSum = pointEvents.reduce((s, e) => s + (inWeek(e.createdAt, b) ? Number(e.points) || 0 : 0), 0);
   return {
     year: b.year, week: b.week, weekKey, weekStart: b.monday, weekEnd: addDays(b.monday, 6),
-    dailyScoreSum, closeCount, closeValue, closeValueAsOfLatest, breakdownByDifficulty: breakdown, pointEventSum,
+    dailyScoreSum, dailyBonusSum, closeCount, closeValue, closeValueAsOfLatest, breakdownByDifficulty: breakdown, pointEventSum,
     weekScore: dailyScoreSum + closeValue + pointEventSum,
     weekScoreAsOfLatest: dailyScoreSum + closeValueAsOfLatest + pointEventSum,
     calculatedAt: null,
@@ -112,8 +116,11 @@ async function loadInputs() {
     await Promise.all([import(SDK), import("./firebase.js")]);
   await ensureReadLogin();
   const all = (name) => guardRead(() => getDocs(collection(db, name))).then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })));
-  const [scoreDocs, pointEvents, ruleDocs] = await Promise.all([all("scores"), all("pointEvents"), all("scoringRules")]);
+  const [scoreDocs, pointEvents, ruleDocs, { dailyBonus, loadBonusWeights }] =
+    await Promise.all([all("scores"), all("pointEvents"), all("scoringRules"), import("./daily-bonus.js")]);
   const scores = Object.fromEntries(scoreDocs.map((d) => [d.id, d.score]));
+  const weights = await loadBonusWeights();
+  const bonuses = Object.fromEntries(scoreDocs.map((d) => [d.id, dailyBonus(d, weights).total]));
   const rules = ruleDocs.map((d) => ({ effectiveFrom: d.id, difficultyPoints: d.difficultyPoints || {} }));
   const closes = [];
   // 旧 ba の close(凍結した写し baArchive/closes。読めなければ数えない)
@@ -129,7 +136,7 @@ async function loadInputs() {
       if (t.doneAt) closes.push({ at: t.doneAt, difficulty: DEFAULT_DIFFICULTY });
     }
   } catch (e) { /* 数えない */ }
-  return { scores, pointEvents, rules, closes };
+  return { scores, bonuses, pointEvents, rules, closes };
 }
 
 export function loadWeekInputs() {
