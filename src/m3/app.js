@@ -4,7 +4,7 @@
 // 2026-10-10(ab-166 ②): Rules 第1段が出て m3 から af に書けるのを確かめたので、ba(Azure)への逃げ道は外した。
 import "../common/config.js";
 import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
-import { addAfNote, AH_GROUPS, ahCounts, ahHeld,cleanAfTags, createAf, doneAf, fetchAllAh, fetchOpenAf, fetchOpenAh, fetchOpenOf, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN, TAKASHI_MIN, takashiView } from "./af-store.js";
+import { addAfNote, AH_GROUPS, ahCounts, ahHeld,cleanAfTags, createAf, doneAf, fetchAllAh, fetchOpenAe, fetchOpenAf, fetchOpenAh, fetchOpenOf, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN, TAKASHI_MIN, takashiView } from "./af-store.js";
 
 // af に書く。書けなければ(この端末で Firebase に未ログインなど)そのまま失敗を出す
 async function writeEntry({ title, tags, body }) {
@@ -84,6 +84,30 @@ async function renderAg() {
     const related = Array.isArray(t.related) && t.related.length ? "関連 " + t.related.join(",") : "";
     const meta = [`ag-${t.seq}`, (t.createdAt || "").slice(0, 10), t.by || "", related, notes ? `note ${notes}` : ""]
       .filter(Boolean).join(" · ");
+    const row = el("div", { class: "af-item" },
+      el("div", { class: "af-meta" }, meta),
+      el("div", { class: "af-title" }, t.title || "(タイトルなし)"));
+    if (t.body) row.append(el("div", { class: "af-body" }, t.body));
+    box.append(row);
+  }
+}
+
+// 2026-10-22(b1 af-25): ae(目標)は家人が書き、Takashi はここで読むだけ。期限の近い順
+async function renderAe() {
+  const box = document.getElementById("aeList");
+  if (!box) return;
+  box.textContent = "読み込み中…";
+  let items;
+  try {
+    items = await fetchOpenAe();
+  } catch (e) {
+    box.textContent = isDenied(e) ? "まだ読めません(この端末で未ログイン)" : "読めませんでした: " + (e.message || e);
+    return;
+  }
+  box.textContent = "";
+  if (!items.length) { box.append(el("p", { class: "af-empty" }, "まだありません(目標は家人に言うと ae に立ちます)")); return; }
+  for (const t of items) {
+    const meta = [`ae-${t.seq}`, t.dueDate ? `期限 ${t.dueDate}` : "期限なし"].join(" · ");
     const row = el("div", { class: "af-item" },
       el("div", { class: "af-meta" }, meta),
       el("div", { class: "af-title" }, t.title || "(タイトルなし)"));
@@ -232,6 +256,7 @@ function initNewEntryForm() {
     }
   });
   renderList();
+  renderAe();
   renderAg();
   renderAh();
 }

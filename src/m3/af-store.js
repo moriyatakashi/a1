@@ -27,6 +27,16 @@ export async function fetchRecentAg(n = 20) {
     .sort((a, b) => (Number(b.seq) || 0) - (Number(a.seq) || 0)).slice(0, n);
 }
 
+// ae(目標、2026-10-22 b1 af-25)。m3 からは読むだけ(書くのは家人)。済んでいないものを、期限の近い順(期限なしは後ろ)に
+export async function fetchOpenAe() {
+  const [{ collection, getDocs }, { db, ensureReadLogin, guardRead }] = await load();
+  await ensureReadLogin();
+  const snap = await guardRead(() => getDocs(collection(db, "aeThreads")));
+  return sortGoals(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((t) => !t.done));
+}
+export const sortGoals = (ts) => [...ts].sort((a, b) =>
+  (a.dueDate || "9999").localeCompare(b.dueDate || "9999") || (Number(a.seq) || 0) - (Number(b.seq) || 0));
+
 // ah(作業票、持ち場とロック、2026-10-18 b1 ab-193)。m3 からは読むだけ。済んでいない票を、次が Takashi の票を先に
 // 保留(b1 ah-41)は出さない(下の保留の区画に出す)
 export async function fetchOpenAh(now = Date.now(), all = null) {
