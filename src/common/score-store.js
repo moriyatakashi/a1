@@ -35,6 +35,13 @@ export async function saveScore(date, score, note, check) {
   await setDoc(doc(db, "scores", date), data, { merge: true });
 }
 
+// 1日3回の記録(b1 ah-51)。scores/{日付}.trips.{slot} に1つずつ merge で足す(ほかの欄は触らない)。
+// Rules は score が数であることを求めるので、その日のスコアを一度保存してから(画面側で確かめる)。
+export async function saveTrip(date, slot, rec, extra = {}) {
+  await ensureFirebaseLogin();
+  await setDoc(doc(db, "scores", date), { trips: { [slot]: rec }, ...extra }, { merge: true });
+}
+
 // --- チェック項目(2026-10-03、ab-43) ---
 // 棚 scoreItems/{id} = {text, createdAt, by}(消さずに貯めて使い回す)、今の項目 scoreConfig/current = {items: [{id, text}], at, by}。
 // 家人(利尻など)は b1/run score items set で、Takashi は m1 の画面から入れ替える。

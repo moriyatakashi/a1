@@ -36,6 +36,10 @@
   .check-marks .mark[aria-pressed="true"] { background: #1f6feb; border-color: #1f6feb; color: #fff; font-weight: 700; }
   .check-edit-btn { background: none; border: 1px solid var(--line); color: inherit; border-radius: 6px; padding: 3px 10px; font-size: 0.78rem; cursor: pointer; }
   .check-empty { color: var(--ink-soft); font-size: 0.85rem; padding: 4px 0; }
+  .trip-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 0.92rem; flex-wrap: wrap; }
+  .trip-label { min-width: 7em; font-weight: 600; }
+  .trip-info { color: var(--ink-soft); font-size: 0.82rem; }
+  .trip-near { width: 100%; font-size: 0.8rem; color: var(--ink-soft); margin: 2px 0 4px 1em; }
   .check-line { fill: none; stroke: #e0a040; stroke-width: 2; stroke-dasharray: 5 4; }
   .check-dot { fill: var(--paper); stroke: #e0a040; stroke-width: 2; }
 
@@ -135,6 +139,13 @@
       <div class="score-saved" id="scoreSaved"></div>
     </div>
 
+    <!-- b1 ah-51(2026-10-22): 1日3回の記録。scores/{日付}.trips に欄を足す -->
+    <div class="section" id="tripSection">
+      <div class="section-title">今日の3回</div>
+      <div id="tripList"></div>
+      <div class="score-saved" id="tripSaved"></div>
+    </div>
+
     <div id="scoreChartSection" style="display:none;">
       <div class="chart-wrap">
         <svg id="scoreSvg" viewBox="0 0 680 300"></svg>
@@ -152,7 +163,7 @@
 
   <script>window.AA_AUTH_EVENT = "m1-login-success";</script><!-- ab-162: 公開の閲覧モードをやめた(本人がログインしたときだけ中身を出す) -->
   <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202610081200"></script>
+  <script type="module" src="app.js?v=202610220800"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/m1", "lastUpdated", "最終更新");

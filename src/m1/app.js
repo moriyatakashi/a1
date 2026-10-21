@@ -7,7 +7,8 @@ import { todayStr } from "../common/utils.js";
 // ab-24(2026-09-29、方式B): 毎日スコアの正本は Firestore ab01-9f35a の scores/{日付}。
 // 読み書きとログインは common/score-store.js(a2/x4 と共用、2026-10-02 に切り出し)。
 import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX, SCORE_SOFT_MAX,
-  fetchCheckItems, fetchItemShelf, saveCheckItems, checkScore, MARKS, markOf } from "../common/score-store.js";
+  fetchCheckItems, fetchItemShelf, saveCheckItems, checkScore, MARKS, markOf, saveTrip } from "../common/score-store.js";
+import { SLOTS } from "./trips.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -324,6 +325,70 @@ function initScoreInput() {
   loadTodayScore();
 }
 
+// 1日3回の記録(b1 ah-51)。押した時刻を scores/{今日}.trips に残す。
+function initTrips() {
+  const today = todayStr();
+  const elList = document.getElementById("tripList");
+  const elSaved = document.getElementById("tripSaved");
+  let trips = {};
+
+  function render() {
+    elList.innerHTML = "";
+    for (const s of SLOTS) {
+      const row = document.createElement("div");
+      row.className = "trip-row";
+      const label = document.createElement("span");
+      label.className = "trip-label";
+      label.textContent = s.label;
+      row.appendChild(label);
+      for (const kind of s.kinds || [null]) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "check-edit-btn";
+        b.textContent = kind || "記録";
+        b.addEventListener("click", () => record(s.id, kind, b));
+        row.appendChild(b);
+      }
+      const info = document.createElement("span");
+      info.className = "trip-info";
+      const t = trips[s.id];
+      info.textContent = t ? `${t.kind ? t.kind + " " : ""}${t.at.slice(11, 16)}` : "まだ";
+      row.appendChild(info);
+      elList.appendChild(row);
+    }
+  }
+
+  async function record(slot, kind, btn) {
+    if (!window.__credential) {
+      elSaved.textContent = "保存にはログインが必要です";
+      if (window.aaShowLoginGate) window.aaShowLoginGate();
+      return;
+    }
+    if (!(_scoreRows || []).some((r) => r.date === today)) {
+      elSaved.textContent = "先に今日のスコアを一度保存してください";
+      return;
+    }
+    btn.disabled = true;
+    try {
+      const d = new Date();
+      const at = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19); // 端末の時刻
+      const rec = { at, ...(kind ? { kind } : {}) };
+      await saveTrip(today, slot, rec);
+      trips = { ...trips, [slot]: rec };
+      render();
+      elSaved.textContent = "✓ 記録しました";
+      setTimeout(() => elSaved.textContent = "", 2000);
+    } catch (e) {
+      elSaved.textContent = saveErrorText(e);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  render();
+  fetchScore(today).then((d) => { trips = (d && d.trips) || {}; render(); }).catch((e) => console.warn("3回の記録を読めませんでした", e));
+}
+
 // 開いたときに読んだ scores(読めなかったら null)。保存後の描き直しに使い回す(ab-97)。
 let _scoreRows = null;
 async function load(cached = null) {
@@ -359,6 +424,7 @@ async function load(cached = null) {
 // まだ未ログインならこれまで通りm1-login-successイベントを待つ(通常のログインボタン操作に対応)。
 function onLoginSuccess() {
   initScoreInput();
+  initTrips();
   load();
 }
 
