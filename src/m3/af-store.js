@@ -173,4 +173,12 @@ export function cleanAfTags(tags) {
   return (tags || []).map((t) => String(t).replace(/^#/, "").trim()).filter((t) => t && !/[\s,]/.test(t) && t.length <= 30).slice(0, 10);
 }
 
-export const isDenied = (e) => !!e && (e.code === "permission-denied" || /PERMISSION_DENIED|insufficient permissions/i.test(e.message || ""));
+// b1 ah-52: 一覧の本文は先頭3行か200字の短いほうまで。cut が true なら続きがある(台帳の中身は変えない)
+export const CLIP_LINES = 3, CLIP_CHARS = 200;
+export function clipBody(text) {
+  const s = String(text || "");
+  const short = s.split("\n").slice(0, CLIP_LINES).join("\n").slice(0, CLIP_CHARS);
+  return { short, cut: short.length < s.length };
+}
+
+export const isDenied =(e) => !!e && (e.code === "permission-denied" || /PERMISSION_DENIED|insufficient permissions/i.test(e.message || ""));

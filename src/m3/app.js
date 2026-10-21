@@ -4,7 +4,7 @@
 // 2026-10-10(ab-166 ②): Rules 第1段が出て m3 から af に書けるのを確かめたので、ba(Azure)への逃げ道は外した。
 import "../common/config.js";
 import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
-import { addAfNote, AH_GROUPS, ahCounts, ahHeld,cleanAfTags, createAf, doneAf, fetchAllAh, fetchOpenAe, fetchOpenAf, fetchOpenAh, fetchOpenOf, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN, TAKASHI_MIN, takashiView } from "./af-store.js";
+import { addAfNote, AH_GROUPS, ahCounts, ahHeld, cleanAfTags, clipBody, createAf, doneAf, fetchAllAh, fetchOpenAe, fetchOpenAf, fetchOpenAh, fetchOpenOf, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN, TAKASHI_MIN, takashiView } from "./af-store.js";
 
 // af に書く。書けなければ(この端末で Firebase に未ログインなど)そのまま失敗を出す
 async function writeEntry({ title, tags, body }) {
@@ -24,6 +24,20 @@ function el(tag, attrs = {}, ...kids) {
   }
   n.append(...kids);
   return n;
+}
+
+// b1 ah-52: 長い本文はたたんで出し、「開く」で全部。開いた状態は覚えない(描き直すとたたまれている)
+function bodyEl(text) {
+  const { short, cut } = clipBody(text);
+  const box = el("div", { class: "af-body" }, cut ? short + "…" : short);
+  if (!cut) return box;
+  const btn = el("button", { type: "button", class: "af-fold" }, "開く");
+  btn.addEventListener("click", () => {
+    box.firstChild.textContent = text;
+    btn.remove();
+  });
+  box.append(" ", btn);
+  return box;
 }
 
 async function renderList() {
@@ -47,7 +61,7 @@ async function renderList() {
     const row = el("div", { class: "af-item", "data-id": t.id },
       el("div", { class: "af-meta" }, meta),
       el("div", { class: "af-title" }, t.title || "(タイトルなし)"));
-    if (t.body) row.append(el("div", { class: "af-body" }, t.body));
+    if (t.body) row.append(bodyEl(t.body));
     if (t.tags && t.tags.length) row.append(el("div", { class: "af-tags" }, t.tags.map((x) => "#" + x).join(" ")));
     const msg = el("span", { class: "af-msg" });
     row.append(el("div", { class: "af-actions" },
@@ -87,7 +101,7 @@ async function renderAg() {
     const row = el("div", { class: "af-item" },
       el("div", { class: "af-meta" }, meta),
       el("div", { class: "af-title" }, t.title || "(タイトルなし)"));
-    if (t.body) row.append(el("div", { class: "af-body" }, t.body));
+    if (t.body) row.append(bodyEl(t.body));
     box.append(row);
   }
 }
@@ -111,7 +125,7 @@ async function renderAe() {
     const row = el("div", { class: "af-item" },
       el("div", { class: "af-meta" }, meta),
       el("div", { class: "af-title" }, t.title || "(タイトルなし)"));
-    if (t.body) row.append(el("div", { class: "af-body" }, t.body));
+    if (t.body) row.append(bodyEl(t.body));
     box.append(row);
   }
 }

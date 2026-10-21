@@ -1,7 +1,7 @@
 // ah-38(2026-10-19): m3 の「礼文の票」の分け方。握っている・回っている・最近済んだ、印が30分より古い作業中は stale
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ahCounts, ahGroup, ahHeld, rebunView, sortGoals, takashiView } from "./af-store.js";
+import { ahCounts, ahGroup, ahHeld, clipBody, rebunView, sortGoals, takashiView } from "./af-store.js";
 
 const NOW = Date.parse("2026-10-19T00:00:00.000Z");
 const at = (min) => new Date(NOW - min * 60000).toISOString();
@@ -89,4 +89,12 @@ test("takashiView: 3件以下なら ab・ac・af・ah の未決から古い順�
 test("sortGoals は期限の近い順で、期限なしは後ろ", () => {
   const ts = [{ seq: 4 }, { seq: 3, dueDate: "2026-12-31" }, { seq: 2, dueDate: "2026-11-01" }, { seq: 1, dueDate: "2026-12-31" }];
   assert.deepEqual(sortGoals(ts).map((t) => t.seq), [2, 1, 3, 4]);
+});
+
+// b1 ah-52: 一覧の本文は先頭3行か200字の短いほう。短ければ切らない
+test("clipBody は3行か200字の短いほうで切り、続きがあれば cut", () => {
+  assert.deepEqual(clipBody("a\nb\nc\nd"), { short: "a\nb\nc", cut: true });
+  assert.deepEqual(clipBody("x".repeat(250)), { short: "x".repeat(200), cut: true });
+  assert.deepEqual(clipBody("a\nb\nc"), { short: "a\nb\nc", cut: false });
+  assert.deepEqual(clipBody(""), { short: "", cut: false });
 });
