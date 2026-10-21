@@ -8,7 +8,7 @@ import { todayStr } from "../common/utils.js";
 // 読み書きとログインは common/score-store.js(a2/x4 と共用、2026-10-02 に切り出し)。
 import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX, SCORE_SOFT_MAX,
   fetchCheckItems, fetchItemShelf, saveCheckItems, checkScore, MARKS, markOf, saveTrip } from "../common/score-store.js";
-import { SLOTS, currentPos } from "./trips.js";
+import { SLOTS, currentPos, fetchNearby } from "./trips.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -380,10 +380,26 @@ function initTrips() {
       render();
       elSaved.textContent = "✓ 記録しました";
       setTimeout(() => elSaved.textContent = "", 2000);
+      if (pos) showNearby(slot, pos);
     } catch (e) {
       elSaved.textContent = saveErrorText(e);
     } finally {
       btn.disabled = false;
+    }
+  }
+
+  // 近くの場所は出すだけで残さない(押したときだけ OSM に聞く)
+  async function showNearby(slot, pos) {
+    const row = elList.children[SLOTS.findIndex((s) => s.id === slot)];
+    const box = document.createElement("div");
+    box.className = "trip-near";
+    box.textContent = "近くを探しています…";
+    row.appendChild(box);
+    try {
+      const list = await fetchNearby(pos);
+      box.textContent = list.length ? list.map((x) => `${x.kind === "コメダ" ? "☕" : "📍"}${x.name} ${x.km.toFixed(1)}km`).join(" / ") : "近くに見つかりませんでした";
+    } catch (e) {
+      box.textContent = "近くの場所を読めませんでした";
     }
   }
 
