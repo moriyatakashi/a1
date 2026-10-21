@@ -4,7 +4,9 @@
 // 2026-10-10(ab-166 ②): Rules 第1段が出て m3 から af に書けるのを確かめたので、ba(Azure)への逃げ道は外した。
 import "../common/config.js";
 import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
-import { addAfNote, AH_GROUPS, ahCounts, ahHeld, cleanAfTags, clipBody, createAf, doneAf, fetchAllAh, fetchOpenAe, fetchOpenAf, fetchOpenAh, fetchOpenOf, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN, TAKASHI_MIN, takashiView } from "./af-store.js";
+import { addAfNote, AH_GROUPS, ahCounts, ahHeld, cleanAfTags, clipBody, createAf, doneAf, fetchAllAh, fetchOpenAe, fetchOpenAf, fetchOpenAh, fetchOpenOf, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN, TAKASHI_MIN, takashiView } from "./af-store.js?v=202610220810";
+// b1 ah-53: af-store.js にも版を付ける。app.js だけ新しく af-store.js が古いキャッシュだと、足した export(clipBody)が無くて m3 全体が止まる
+// af-store.js の export を足したり変えたりしたら、この ?v= と index.html の app.js?v= を一緒に上げる
 
 // af に書く。書けなければ(この端末で Firebase に未ログインなど)そのまま失敗を出す
 async function writeEntry({ title, tags, body }) {
