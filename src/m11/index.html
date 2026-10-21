@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../common/config.js?v=202607160712"></script>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>どこまで読んだ</title>
+<link rel="stylesheet" href="../common/base.css?v=202607141905">
+<style>
+  /* b1 ah-47(2026-10-22): 作品を選ぶ → 話 +1 → 残す。片手・数タップ(ac-35) */
+  .works { display: flex; flex-direction: column; gap: 8px; }
+  .work { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--ink); text-align: left; font-size: 1rem; cursor: pointer; touch-action: manipulation; }
+  .work .wt { font-weight: 700; }
+  .work .wm { font-size: 0.85rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .add { margin-top: 12px; width: 100%; padding: 12px; border: 1px dashed var(--line); border-radius: 12px; background: transparent; color: var(--ink); font-size: 1rem; cursor: pointer; }
+  .editor h2 { font-size: 1.1rem; margin: 0 0 10px; }
+  .editor input[type=text] { width: 100%; box-sizing: border-box; padding: 10px; font-size: 1rem; border: 1px solid var(--line); border-radius: 8px; }
+  .row { display: grid; grid-template-columns: 2.5em 3.5em 1fr 3.5em; gap: 8px; align-items: center; margin: 12px 0; }
+  .row label { font-weight: 700; }
+  .row input { width: 100%; box-sizing: border-box; padding: 10px 4px; font-size: 1.4rem; text-align: center; border: 1px solid var(--line); border-radius: 8px; font-variant-numeric: tabular-nums; }
+  .row button { padding: 14px 0; font-size: 1.1rem; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); touch-action: manipulation; }
+  .row button.up { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+  .place { margin: 12px 0; }
+  .place label { font-size: 0.85rem; color: var(--ink-soft); }
+  .acts { display: flex; gap: 8px; margin-top: 14px; }
+  .acts button { flex: 1; padding: 14px; font-size: 1.05rem; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--ink); }
+  .acts #save { flex: 2; background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+  .msg, .done { font-size: 0.85rem; color: var(--ink-soft); min-height: 1.2em; }
+  .empty { font-size: 0.85rem; color: var(--ink-soft); }
+  .note { font-size: 0.72rem; color: var(--ink-soft); margin-top: 18px; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>路歴 / どこまで読んだ</h1>
+  <p id="lastUpdated" style="font-size:0.8rem;color:#aaa;">最終更新: 2026-10-22 JST</p>
+
+<!-- LOGIN_GATE:START -->
+  <div id="login-gate">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
+    <div class="g_id_signin"></div>
+    <p id="status">未ログイン(ログインすると読んだ作品が出ます)</p>
+  </div>
+<!-- LOGIN_GATE:END -->
+
+  <div id="content" style="display:none;">
+    <p class="done" id="done" aria-live="polite"></p>
+    <div id="list">
+      <div class="works" id="works" aria-label="最近読んだ作品(押すと続きを残す)"></div>
+      <button class="add" id="add" type="button">+ 作品</button>
+    </div>
+    <div class="editor" id="editor" hidden>
+      <h2 id="edName"></h2>
+      <input type="text" id="edTitle" maxlength="60" placeholder="作品名" hidden>
+      <div class="row">
+        <label for="ch">話</label>
+        <button type="button" id="chDown" aria-label="話を1つ戻す">−</button>
+        <input type="number" id="ch" inputmode="numeric" min="0" max="9999">
+        <button type="button" class="up" id="chUp" aria-label="話を1つ進める">+1</button>
+      </div>
+      <div class="row">
+        <label for="vol">巻</label>
+        <button type="button" id="volDown" aria-label="巻を1つ戻す">−</button>
+        <input type="number" id="vol" inputmode="numeric" min="0" max="9999">
+        <button type="button" class="up" id="volUp" aria-label="巻を1つ進める">+1</button>
+      </div>
+      <div class="place">
+        <label for="place">どこで読んだ</label>
+        <input type="text" id="place" maxlength="60" placeholder="例: スーパー銭湯">
+      </div>
+      <div class="acts">
+        <button type="button" id="cancel">やめる</button>
+        <button type="button" id="save">残す</button>
+      </div>
+      <p class="msg" id="msg" aria-live="polite"></p>
+    </div>
+    <p class="note">作品を押すと前回の巻・話が入ります。「+1」で進めて「残す」。日付は今日、場所は前回のものが入ります。記録は足すだけで、前のものは消えません。</p>
+  </div>
+
+  <script>window.AA_AUTH_EVENT = "m11-login-success";</script>
+  <script src="../common/auth.js?v=202607201000"></script>
+  <script type="module" src="app.js?v=202610220230"></script>
+  <script type="module">
+    import { applyLastUpdated } from "../common/last-updated.js";
+    applyLastUpdated("src/m11", "lastUpdated", "最終更新");
+  </script>
+</body>
+</html>

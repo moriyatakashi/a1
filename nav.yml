@@ -32,6 +32,10 @@ categories:
         desc: 歩数(週ごとの棒、押すと日ごと)
         href: src/m10/
         stage: beta
+      - code: m11
+        desc: どこまで読んだ(漫画の巻・話を片手で残す)
+        href: src/m11/
+        stage: beta
   - label: 学ぶ
     items:
       - code: m7
