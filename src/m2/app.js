@@ -47,9 +47,19 @@ function toScreen(x, y) {
   return [x * view.scale + view.tx, y * view.scale + view.ty];
 }
 
-async function fetchGeo(path) {
-  const r = await fetch(path);
-  return r.json();
+// 地図データは開いている間は変わらないので、1回読んだものを使い回す(保存のあとの描き直しで読み直さない、b1 af-20 の1)。
+// 失敗したものは覚えない(次の描き直しで読み直す)
+const _geoCache = new Map();
+function fetchGeo(path) {
+  if (!_geoCache.has(path)) {
+    const p = fetch(path).then((r) => {
+      if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
+      return r.json();
+    });
+    p.catch(() => _geoCache.delete(path));
+    _geoCache.set(path, p);
+  }
+  return _geoCache.get(path);
 }
 
 function makeProjector(features, points, W, H, padding = 20) {
