@@ -8,7 +8,7 @@ import { todayStr } from "../common/utils.js";
 // 読み書きとログインは common/score-store.js(a2/x4 と共用、2026-10-02 に切り出し)。
 import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX, SCORE_SOFT_MAX,
   fetchCheckItems, fetchItemShelf, saveCheckItems, checkScore, MARKS, markOf, saveTrip } from "../common/score-store.js";
-import { SLOTS } from "./trips.js";
+import { SLOTS, currentPos } from "./trips.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -352,7 +352,7 @@ function initTrips() {
       const info = document.createElement("span");
       info.className = "trip-info";
       const t = trips[s.id];
-      info.textContent = t ? `${t.kind ? t.kind + " " : ""}${t.at.slice(11, 16)}` : "まだ";
+      info.textContent = t ? `${t.kind ? t.kind + " " : ""}${t.at.slice(11, 16)}${typeof t.lat === "number" ? "" : "(位置なし)"}` : "まだ";
       row.appendChild(info);
       elList.appendChild(row);
     }
@@ -372,7 +372,9 @@ function initTrips() {
     try {
       const d = new Date();
       const at = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19); // 端末の時刻
-      const rec = { at, ...(kind ? { kind } : {}) };
+      elSaved.textContent = "位置を取っています…";
+      const pos = await currentPos();
+      const rec = { at, ...(kind ? { kind } : {}), ...(pos || {}) };
       await saveTrip(today, slot, rec);
       trips = { ...trips, [slot]: rec };
       render();

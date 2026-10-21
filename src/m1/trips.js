@@ -7,3 +7,15 @@ export const SLOTS = [
   { id: "station", label: "行きの駅" },
   { id: "office", label: "出社 / 帰社前", kinds: ["出社", "帰社前"] },
 ];
+
+// 位置は小数3けた(緯度で約110m、経度で約90m)に丸めて残す。家の位置がそのまま残らないように(仮決め Q4)
+export const roundPos = (lat, lng) => ({ lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 });
+
+// 押したときの位置。取れなければ null(位置なしで記録だけ残す)
+export function currentPos(geo = globalThis.navigator && navigator.geolocation) {
+  if (!geo) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    geo.getCurrentPosition((p) => resolve(roundPos(p.coords.latitude, p.coords.longitude)), () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+  });
+}
