@@ -19,6 +19,18 @@ export function distKm(a, b) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+// その日の3点でできる三角形の面積(km²、小数2けた、仮決め Q6)。3点の位置がそろっていなければ null。
+// 3点の中心まわりで平面に開いて(数十km までなら差は小さい)、靴ひもの式で出す
+export function triangleKm2(trips) {
+  const pts = ["home", "station", "office"].map((k) => trips && trips[k]);
+  if (!pts.every((p) => p && typeof p.lat === "number" && typeof p.lng === "number")) return null;
+  const lat0 = pts.reduce((s, p) => s + p.lat, 0) / 3;
+  const kx = 111.32 * Math.cos(lat0 * Math.PI / 180), ky = 110.57;
+  const [a, b, c] = pts.map((p) => ({ x: p.lng * kx, y: p.lat * ky }));
+  const area = Math.abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) / 2;
+  return Math.round(area * 100) / 100;
+}
+
 // 近くの観光地とコメダ珈琲(仮決め Q5: 鍵の要らない OpenStreetMap の Overpass を、押したときだけ呼ぶ)
 const OVERPASS = "https://overpass-api.de/api/interpreter";
 export function overpassQuery({ lat, lng }) {

@@ -8,7 +8,7 @@ import { todayStr } from "../common/utils.js";
 // 読み書きとログインは common/score-store.js(a2/x4 と共用、2026-10-02 に切り出し)。
 import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX, SCORE_SOFT_MAX,
   fetchCheckItems, fetchItemShelf, saveCheckItems, checkScore, MARKS, markOf, saveTrip } from "../common/score-store.js";
-import { SLOTS, currentPos, fetchNearby } from "./trips.js";
+import { SLOTS, currentPos, fetchNearby, triangleKm2 } from "./trips.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -356,6 +356,13 @@ function initTrips() {
       row.appendChild(info);
       elList.appendChild(row);
     }
+    const area = triangleKm2(trips);
+    if (area !== null) {
+      const row = document.createElement("div");
+      row.className = "trip-row";
+      row.textContent = `3点の面積 ${area.toFixed(2)} km²`;
+      elList.appendChild(row);
+    }
   }
 
   async function record(slot, kind, btn) {
@@ -375,8 +382,10 @@ function initTrips() {
       elSaved.textContent = "位置を取っています…";
       const pos = await currentPos();
       const rec = { at, ...(kind ? { kind } : {}), ...(pos || {}) };
-      await saveTrip(today, slot, rec);
-      trips = { ...trips, [slot]: rec };
+      const next = { ...trips, [slot]: rec };
+      const area = triangleKm2(next); // 3点そろったら、その日の記録と同じところに面積も残す(仮決め Q2)
+      await saveTrip(today, slot, rec, area === null ? {} : { areaKm2: area });
+      trips = next;
       render();
       elSaved.textContent = "✓ 記録しました";
       setTimeout(() => elSaved.textContent = "", 2000);
