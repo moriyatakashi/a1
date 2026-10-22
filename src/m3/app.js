@@ -4,7 +4,7 @@
 // 2026-10-10(ab-166 ②): Rules 第1段が出て m3 から af に書けるのを確かめたので、ba(Azure)への逃げ道は外した。
 import "../common/config.js";
 import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
-import { addAfNote, AH_GROUPS, ahCounts, ahHeld, cleanAfTags, clipBody, createAf, doneAf, fetchAllAh, fetchOpenAe, fetchOpenAf, fetchOpenAh, fetchOpenOf, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN, TAKASHI_MIN, takashiView } from "./af-store.js?v=202610220810";
+import { addAfNote, AH_GROUPS, ahCounts, ahHeld, ahOrder, cleanAfTags, clipBody, createAf, doneAf, fetchAllAh, fetchOpenAe, fetchOpenAf, fetchOpenAh, fetchOpenOf, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN, TAKASHI_MIN, takashiView } from "./af-store.js?v=202610221955";
 // b1 ah-53: af-store.js にも版を付ける。app.js だけ新しく af-store.js が古いキャッシュだと、足した export(clipBody)が無くて m3 全体が止まる
 // af-store.js の export を足したり変えたりしたら、この ?v= と index.html の app.js?v= を一緒に上げる
 
@@ -203,7 +203,7 @@ function renderRebun(all) {
   part("握っている票(作業中)", holding.map((t) => [
     [`ah-${t.seq}`, t.view, t.stale ? `印が${STALE_MIN}分より古い(止まっているかも)` : ""].filter(Boolean).join(" · "),
     t.title, t.stale ? "rb-stale" : ""]));
-  part("礼文に回っている票", assigned.map((t) => [[`ah-${t.seq}`, t.state || "待ち", `次:${who(t.next)}`].join(" · "), t.title, t.next === "takashi" ? "ah-mine" : ""]));
+  part("礼文に回っている票(順の小さい順)", assigned.map((t) => [[`ah-${t.seq}`, t.state || "待ち", `次:${who(t.next)}`, `順:${ahOrder(t)}`].join(" · "), t.title, t.next === "takashi" ? "ah-mine" : ""]));
   box.append(more);
   for (const t of holding) more.append(el("div", { class: "af-meta" }, [`ah-${t.seq}`, `握って ${ago(t.claimedMin)}`, `最後の印 ${ago(t.beatMin)}`].join(" · ")));
   part(`最近済んだ票(${done.length}件)`, done.map((t) => [[`ah-${t.seq}`, "済", hm(t.doneAt)].join(" · "), t.title]), more);

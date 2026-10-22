@@ -57,13 +57,20 @@ const REBUN = "rebun";
 export const STALE_MIN = 30;
 const ms = (s) => Date.parse(s || "");
 const lastNoteAt = (t) => Math.max(0, ...(Array.isArray(t.noteMeta) ? t.noteMeta.map((m) => ms(m && m.createdAt) || 0) : []));
+// 票の順(b1 ah-54)。小さいほど礼文の cron が先に拾う。欄が無い・整数でなければ 50。aa-lane の欄は文字で入る(b1 run_lock.order と同じ)
+export const AH_ORDER = 50;
+export function ahOrder(t) {
+  const n = Number(t && t.order);
+  return t && t.order !== "" && t.order != null && Number.isInteger(n) ? n : AH_ORDER;
+}
 export function rebunView(threads, now = Date.now(), doneN = 5) {
   const bySeq = (a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0);
+  const byOrder = (a, b) => ahOrder(a) - ahOrder(b) || bySeq(a, b); // pickable と同じ並び
   const mins = (s) => (Number.isFinite(ms(s)) ? Math.floor((now - ms(s)) / 60000) : null);
   const holding = threads.filter((t) => t.state === "作業中" && t.holder === REBUN).sort(bySeq)
     .map((t) => ({ ...t, claimedMin: mins(t.claimedAt), beatMin: mins(t.beatAt), stale: !(mins(t.beatAt) <= STALE_MIN), view: ahView(t, now).state }));
   const assigned = threads.filter((t) => t.state !== "済" && t.state !== HOLD && !(t.state === "作業中" && t.holder === REBUN)
-    && (t.next === REBUN || (t.owner === REBUN && (t.next === "takashi" || !t.next)))).map((t) => ahView(t, now)).sort(bySeq);
+    && (t.next === REBUN || (t.owner === REBUN && (t.next === "takashi" || !t.next)))).map((t) => ahView(t, now)).sort(byOrder);
   // 済の時刻は欄が無いので、最後の note(finish が【済】を残す)の時刻で並べる
   const done = threads.filter((t) => t.state === "済" && t.owner === REBUN)
     .sort((a, b) => lastNoteAt(b) - lastNoteAt(a) || bySeq(b, a)).slice(0, doneN)

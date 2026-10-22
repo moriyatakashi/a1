@@ -1,7 +1,7 @@
 // ah-38(2026-10-19): m3 の「礼文の票」の分け方。握っている・回っている・最近済んだ、印が30分より古い作業中は stale
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ahCounts, ahGroup, ahHeld, clipBody, rebunView, sortGoals, noTakashiTodo, takashiView } from "./af-store.js";
+import { ahCounts, ahGroup, ahHeld, ahOrder, clipBody, rebunView, sortGoals, noTakashiTodo, takashiView } from "./af-store.js";
 
 const NOW = Date.parse("2026-10-19T00:00:00.000Z");
 const at = (min) => new Date(NOW - min * 60000).toISOString();
@@ -24,6 +24,18 @@ test("rebunView: 握っている票は礼文が holder の作業中だけ。印�
 
 test("rebunView: 回っている票は次が礼文、または持ち主が礼文で次が Takashi のもの", () => {
   assert.deepEqual(rebunView(T, NOW).assigned.map((t) => t.seq), [3, 4]);
+});
+
+// ah-54: 回っている票は順(order、文字で入る)の小さい順、同じなら古い順。欄が無い・数でなければ 50
+test("rebunView: 回っている票は順の小さい順に並ぶ", () => {
+  const U = [
+    { seq: 1, state: "待ち", next: "rebun" },
+    { seq: 2, state: "待ち", next: "rebun", order: "10" },
+    { seq: 3, state: "待ち", next: "rebun", order: "x" },
+    { seq: 4, state: "待ち", next: "rebun", order: "70" },
+    { seq: 5, state: "待ち", next: "rebun", order: "0" },
+  ];
+  assert.deepEqual(rebunView(U, NOW).assigned.map((t) => [t.seq, ahOrder(t)]), [[5, 0], [2, 10], [1, 50], [3, 50], [4, 70]]);
 });
 
 test("rebunView: 最近済んだ票は持ち主が礼文の済を、最後の note の新しい順に", () => {
