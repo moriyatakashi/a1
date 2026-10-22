@@ -273,7 +273,7 @@ function initScoreInput() {
     let data = null;
     try {
       data = await fetchScore(today);
-      if (data) {
+      if (data && typeof data.score === "number") { // 記録だけの日(ah-56)は score が無い → まだ保存していない扱い
         setScore(data.score);
         elNoteInput.value = data.note || "";
         elBtnSaveScore.textContent = "更新";
@@ -383,10 +383,7 @@ function initTrips() {
       if (window.aaShowLoginGate) window.aaShowLoginGate();
       return;
     }
-    if (!(_scoreRows || []).some((r) => r.date === today)) {
-      elSaved.textContent = "先に今日のスコアを一度保存してください";
-      return;
-    }
+    // スコアを保存する前でも押せる(b1 ah-56 の Rules で、score の無い日も trips・areaKm2 は書ける)
     btn.disabled = true;
     try {
       const d = new Date();

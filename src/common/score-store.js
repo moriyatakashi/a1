@@ -36,7 +36,7 @@ export async function saveScore(date, score, note, check) {
 }
 
 // 1日3回の記録(b1 ah-51)。scores/{日付}.trips.{slot} に1つずつ merge で足す(ほかの欄は触らない)。
-// Rules は score が数であることを求めるので、その日のスコアを一度保存してから(画面側で確かめる)。
+// スコアを保存する前でも書ける(Rules は score の無い日に trips・areaKm2 だけを許す、b1 ah-56)。
 export async function saveTrip(date, slot, rec, extra = {}) {
   await ensureFirebaseLogin();
   await setDoc(doc(db, "scores", date), { trips: { [slot]: rec }, ...extra }, { merge: true });
