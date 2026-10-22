@@ -4,7 +4,7 @@
 // 2026-10-10(ab-166 ②): Rules 第1段が出て m3 から af に書けるのを確かめたので、ba(Azure)への逃げ道は外した。
 import "../common/config.js";
 import { CLASSIFICATIONS, parseTags } from "../common/utils.js";
-import { addAfNote, AH_GROUPS, ahCounts, ahHeld, ahOrder, cleanAfTags, clipBody, createAf, doneAf, fetchAllAh, fetchOpenAe, fetchOpenAf, fetchOpenAh, fetchOpenOf, fetchRecentAg, fetchTicketJob, isDenied, rebunView, STALE_MIN, TAKASHI_MIN, takashiView } from "./af-store.js?v=202610221955";
+import { addAfNote, AH_GROUPS, ahCounts, ahHeld, ahOrder, cleanAfTags, clipBody, createAf, doneAf, fetchAllAh, fetchOpenAe, fetchOpenAf, fetchOpenAh, fetchOpenOf, fetchRecentAg, fetchTicketJob, goalTree, isDenied, rebunView, STALE_MIN, TAKASHI_MIN, takashiView } from "./af-store.js?v=202610230130";
 // b1 ah-53: af-store.js にも版を付ける。app.js だけ新しく af-store.js が古いキャッシュだと、足した export(clipBody)が無くて m3 全体が止まる
 // af-store.js の export を足したり変えたりしたら、この ?v= と index.html の app.js?v= を一緒に上げる
 
@@ -126,9 +126,9 @@ async function renderAe() {
   }
   box.textContent = "";
   if (!items.length) { box.append(el("p", { class: "af-empty" }, "まだありません(目標は家人に言うと ae に立ちます)")); return; }
-  for (const t of items) {
-    const meta = [`ae-${t.seq}`, t.dueDate ? `期限 ${t.dueDate}` : "期限なし"].join(" · ");
-    const row = el("div", { class: "af-item" },
+  for (const t of goalTree(items)) { // ah-73: 親の下に子を字下げして出す
+    const meta = [`ae-${t.seq}`, t.dueDate ? `期限 ${t.dueDate}` : "期限なし", t.depth ? `親 ${t.parent}` : ""].filter(Boolean).join(" · ");
+    const row = el("div", { class: "af-item", style: `margin-left: ${t.depth * 1.5}em` },
       el("div", { class: "af-meta" }, meta),
       el("div", { class: "af-title" }, t.title || "(タイトルなし)"));
     if (t.body) row.append(bodyEl(t.body));

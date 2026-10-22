@@ -1,7 +1,7 @@
 // ah-38(2026-10-19): m3 の「礼文の票」の分け方。握っている・回っている・最近済んだ、印が30分より古い作業中は stale
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ahCounts, ahGroup, ahHeld, ahOrder, clipBody, rebunView, sortGoals, noTakashiTodo, takashiView } from "./af-store.js";
+import { ahCounts, ahGroup, ahHeld, ahOrder, clipBody, goalTree, rebunView, sortGoals, noTakashiTodo, takashiView } from "./af-store.js";
 
 const NOW = Date.parse("2026-10-19T00:00:00.000Z");
 const at = (min) => new Date(NOW - min * 60000).toISOString();
@@ -101,6 +101,19 @@ test("takashiView: 3件以下なら ab・ac・af・ah の未決から古い順�
 test("sortGoals は期限の近い順で、期限なしは後ろ", () => {
   const ts = [{ seq: 4 }, { seq: 3, dueDate: "2026-12-31" }, { seq: 2, dueDate: "2026-11-01" }, { seq: 1, dueDate: "2026-12-31" }];
   assert.deepEqual(sortGoals(ts).map((t) => t.seq), [2, 1, 3, 4]);
+});
+
+// ah-73: 目標の木。[seq, depth] の並びで見る
+test("goalTree: 親の下に子、兄弟は期限順、親が無い子は上、輪でも一度ずつ", () => {
+  for (const [why, ts, want] of [
+    ["親の下に子(10/23 の形)", [{ seq: 3 }, { seq: 4 }, { seq: 7, parent: "ae-4" }, { seq: 9, parent: "ae-3" }, { seq: 10, parent: "ae-4", dueDate: "2026-11-01" }],
+      [[3, 0], [9, 1], [4, 0], [10, 1], [7, 1]]],
+    ["孫まで", [{ seq: 1 }, { seq: 2, parent: "ae-1" }, { seq: 3, parent: "ae-2" }], [[1, 0], [2, 1], [3, 2]]],
+    ["親が開いていない子は上", [{ seq: 5, parent: "ae-99" }, { seq: 6, parent: "" }], [[5, 0], [6, 0]]],
+    ["自分が親・輪", [{ seq: 1, parent: "ae-1" }, { seq: 2, parent: "ae-3" }, { seq: 3, parent: "ae-2" }], [[1, 0], [2, 0], [3, 1]]],
+  ]) {
+    assert.deepEqual(goalTree(ts).map((t) => [t.seq, t.depth]), want, why);
+  }
 });
 
 // b1 ah-52: 一覧の本文は先頭3行か200字の短いほう。短ければ切らない

@@ -36,6 +36,31 @@ export async function fetchOpenAe() {
 }
 export const sortGoals = (ts) => [...ts].sort((a, b) =>
   (a.dueDate || "9999").localeCompare(b.dueDate || "9999") || (Number(a.seq) || 0) - (Number(b.seq) || 0));
+// 目標の木(b1 ah-73): parent("ae-4" の形)の下に子を並べ、depth を付けた一列にする。並びは兄弟の中で sortGoals。
+// 親が開いた ae に無い子(親が済・番号ちがい)はいちばん上に出す。輪になっていても一度ずつしか出さない
+export function goalTree(ts) {
+  const bySeq = new Map(ts.map((t) => [`ae-${t.seq}`, t]));
+  const kids = new Map();
+  const roots = [];
+  for (const t of ts) {
+    const p = typeof t.parent === "string" ? t.parent.trim() : "";
+    if (p && p !== `ae-${t.seq}` && bySeq.has(p)) (kids.get(p) || kids.set(p, []).get(p)).push(t);
+    else roots.push(t);
+  }
+  const out = [];
+  const seen = new Set();
+  const walk = (list, depth) => {
+    for (const t of sortGoals(list)) {
+      if (seen.has(t.seq)) continue;
+      seen.add(t.seq);
+      out.push({ ...t, depth });
+      walk(kids.get(`ae-${t.seq}`) || [], depth + 1);
+    }
+  };
+  walk(roots, 0);
+  walk(ts.filter((t) => !seen.has(t.seq)), 0); // 輪の中だけにあるもの
+  return out;
+}
 
 // ah(作業票、持ち場とロック、2026-10-18 b1 ab-193)。m3 からは読むだけ。済んでいない票を、次が Takashi の票を先に
 // 保留(b1 ah-41)は出さない(下の保留の区画に出す)
