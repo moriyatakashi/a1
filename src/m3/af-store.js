@@ -98,13 +98,25 @@ export function ahHeld(threads, now = Date.now()) {
 // ah は済・保留でない)から古い順に足して TAKASHI_MIN 件にする。足した分は fill。ag は閉じない台帳なので入れない。
 // 出すだけで台帳の next は書き換えない(Takashi 10/20 選択)。open は { ab: [...], ac: [...], af: [...] }
 export const TAKASHI_MIN = 4;
+// 未決から足すとき、Takashi のやることが無い票は飛ばす(b1 ah-65、af-52)。今ある ab の欄だけで見る:
+// 待つ日(waitUntil、YYYY-MM-DD)が日本の日付で先のもの、待つ日のあとに家人が見るだけのもの(waitFor に家人の名があり Takashi の名が無い)。
+// 見分けられないものは飛ばさない
+const KAJIN = /礼文|利尻|すま|天売/;
+const TAKASHI = /Takashi|たかし|タカシ/i;
+export function noTakashiTodo(t, now = Date.now()) {
+  if (!t.waitUntil) return false;
+  const today = new Date(now + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  if (t.waitUntil > today) return true;
+  const f = t.waitFor || "";
+  return KAJIN.test(f) && !TAKASHI.test(f);
+}
 export function takashiView(ah, open = {}, now = Date.now(), n = TAKASHI_MIN) {
   const live = ah.map((t) => ahView(t, now)).filter((t) => t.state !== "済" && t.state !== HOLD);
   const asAh = (t) => ({ ...t, key: `ah-${t.seq}`, who: t.owner });
   const mine = live.filter((t) => t.next === "takashi").sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0)).map(asAh);
   if (mine.length >= n) return mine;
   const pool = [
-    ...Object.entries(open).flatMap(([p, ts]) => (ts || []).filter((t) => !t.done).map((t) => ({ ...t, key: `${p}-${t.seq}`, who: t.by }))),
+    ...Object.entries(open).flatMap(([p, ts]) => (ts || []).filter((t) => !t.done && !noTakashiTodo(t, now)).map((t) => ({ ...t, key: `${p}-${t.seq}`, who: t.by }))),
     ...live.filter((t) => t.next !== "takashi").map(asAh),
   ].sort((a, b) => (ms(a.createdAt) || Infinity) - (ms(b.createdAt) || Infinity) || a.key.localeCompare(b.key));
   return [...mine, ...pool.slice(0, n - mine.length).map((t) => ({ ...t, fill: true }))];

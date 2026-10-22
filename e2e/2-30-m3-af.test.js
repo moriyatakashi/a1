@@ -48,7 +48,12 @@ const AH = {
 };
 
 // ah-44: Takashi の番に足す未決(ab・ac)。ag は足さない
-const AB = { b1: { title: "古い連絡", done: false, by: "claude-pc", createdAt: "2026-09-01T00:00:00.000Z", seq: 5 } };
+// ah-65: 待つ日のあとに家人が見るだけの票(b0)と待つ日が先の票(b2)は足さない
+const AB = {
+  b0: { title: "見張りだけ", done: false, by: "claude-pc", createdAt: "2026-08-01T00:00:00.000Z", seq: 4, waitUntil: "2026-10-01", waitFor: "CI が通るか礼文が見る" },
+  b1: { title: "古い連絡", done: false, by: "claude-pc", createdAt: "2026-09-01T00:00:00.000Z", seq: 5 },
+  b2: { title: "先の待ち", done: false, by: "claude-pc", createdAt: "2026-08-02T00:00:00.000Z", seq: 6, waitUntil: "2099-01-01" },
+};
 const AC = { c1: { title: "決まったこと", done: false, by: "claude-mobile", createdAt: "2026-10-01T00:00:00.000Z", seq: 25 } };
 
 async function openM3({ denyAf = false } = {}, act) {
@@ -118,6 +123,7 @@ test("m3: Takashi の番に次が Takashi の票と、未決から足した分�
   assert.match(tk, /^ah-2 · 持ち主:礼文Takashi に頼む/);
   assert.match(tk, /ab-5 · 持ち主:利尻 · 未決から古い連絡.*ac-25 · 持ち主:すま · 未決から決まったこと.*af-1 · 持ち主:Takashi · 未決から前からあるメモ/);
   assert.doesNotMatch(tk, /ag-|済んだ/);
+  assert.doesNotMatch(tk, /見張りだけ|先の待ち/); // ah-65
   assert.equal(buttons, 0);
 });
 

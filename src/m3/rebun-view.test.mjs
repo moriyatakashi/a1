@@ -1,7 +1,7 @@
 // ah-38(2026-10-19): m3 の「礼文の票」の分け方。握っている・回っている・最近済んだ、印が30分より古い作業中は stale
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ahCounts, ahGroup, ahHeld, clipBody, rebunView, sortGoals, takashiView } from "./af-store.js";
+import { ahCounts, ahGroup, ahHeld, clipBody, rebunView, sortGoals, noTakashiTodo, takashiView } from "./af-store.js";
 
 const NOW = Date.parse("2026-10-19T00:00:00.000Z");
 const at = (min) => new Date(NOW - min * 60000).toISOString();
@@ -97,4 +97,17 @@ test("clipBody は3行か200字の短いほうで切り、続きがあれば cut
   assert.deepEqual(clipBody("x".repeat(250)), { short: "x".repeat(200), cut: true });
   assert.deepEqual(clipBody("a\nb\nc"), { short: "a\nb\nc", cut: false });
   assert.deepEqual(clipBody(""), { short: "", cut: false });
+});
+
+// ah-65(af-52): 未決から足すとき、待つ日が先の票・待つ日のあとに家人が見るだけの票は飛ばす。見分けられないものは飛ばさない
+test("takashiView: 待つ日が先・家人の見張りだけの ab は足さない", () => {
+  const ab = [
+    { seq: 105, title: "見張り", done: false, createdAt: "2026-09-01T00:00:00.000Z", waitUntil: "2026-10-18", waitFor: "10/19 以降に CI が通るか礼文が見る" },
+    { seq: 106, title: "先の待ち", done: false, createdAt: "2026-09-02T00:00:00.000Z", waitUntil: "2026-10-20" },
+    { seq: 107, title: "Takashi が見る", done: false, createdAt: "2026-09-03T00:00:00.000Z", waitUntil: "2026-10-18", waitFor: "Takashi と礼文で見る" },
+    { seq: 108, title: "待ちなし", done: false, createdAt: "2026-09-04T00:00:00.000Z", waitFor: "礼文が見る" },
+    { seq: 109, title: "来た・何を待つか無し", done: false, createdAt: "2026-09-05T00:00:00.000Z", waitUntil: "2026-10-19" },
+  ];
+  assert.deepEqual(ab.map((t) => noTakashiTodo(t, NOW)), [true, true, false, false, false]);
+  assert.deepEqual(takashiView([], { ab }, NOW).map((t) => t.key), ["ab-107", "ab-108", "ab-109"]);
 });
