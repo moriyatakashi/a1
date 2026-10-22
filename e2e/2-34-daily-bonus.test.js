@@ -1,7 +1,7 @@
 // b1 ah-55(ah-51 の5): 日々記録の点。記録は1回2点・最大6点、面積は 2km² で満点3点(上限あり)、小数1けた。
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dailyBonus, bonusText, mergeWeights, DEFAULT_BONUS_WEIGHTS } from "../src/common/daily-bonus.js";
+import { dailyBonus, bonusText, mergeWeights, DEFAULT_BONUS_WEIGHTS, parseWeightInputs } from "../src/common/daily-bonus.js";
 
 test("dailyBonus: 記録は1つ2点、面積は ÷2×3 で上限3点", () => {
   assert.deepEqual(dailyBonus(null), { record: 0, area: 0, total: 0 });
@@ -23,4 +23,13 @@ test("bonusText: 足した分が分かる形。無ければ空", () => {
   assert.equal(bonusText(98, { record: 6, area: 1.5, total: 7.5 }), "スコア 98 ＋記録 6 ＋面積 1.5");
   assert.equal(bonusText(98, { record: 2, area: 0, total: 2 }), "スコア 98 ＋記録 2");
   assert.equal(bonusText(98, { record: 0, area: 0, total: 0 }), "");
+});
+
+test("parseWeightInputs: 0〜100 の数だけ、空の欄は書かない(ah-56 の4)", () => {
+  assert.deepEqual(parseWeightInputs({ recordPoints: "3", recordMax: "", areaFullKm2: " 1.5 ", areaMax: "0" }),
+    { weights: { recordPoints: 3, areaFullKm2: 1.5, areaMax: 0 } });
+  assert.deepEqual(parseWeightInputs({}), { weights: {} });
+  assert.ok(parseWeightInputs({ recordMax: "-1" }).error.includes("記録の上限"));
+  assert.ok(parseWeightInputs({ areaMax: "101" }).error);
+  assert.ok(parseWeightInputs({ recordPoints: "abc" }).error);
 });

@@ -40,8 +40,33 @@ export function bonusText(score, b) {
   return parts.join(" ");
 }
 
+// 画面の欄(m1「重みを変える」)の文字を、scoreConfig/weights に書く形にする(b1 ah-56 の4)。
+// Rules と同じく 0〜100 の数だけ。空の欄は書かない。だめな欄があれば { error } を返す
+export const WEIGHT_LABELS = { recordPoints: "記録1回の点", recordMax: "記録の上限", areaFullKm2: "満点の面積 km²", areaMax: "面積の上限" };
+export function parseWeightInputs(inputs) {
+  const out = {};
+  for (const k of Object.keys(DEFAULT_BONUS_WEIGHTS)) {
+    const s = String((inputs && inputs[k]) ?? "").trim();
+    if (s === "") continue;
+    const v = Number(s);
+    if (!Number.isFinite(v) || v < 0 || v > 100) return { error: `${WEIGHT_LABELS[k]}は 0〜100 の数にしてください` };
+    out[k] = v;
+  }
+  return { weights: out };
+}
+
 // ---- 読み込み(ブラウザ)。scoreConfig/weights が無い・読めないときは既定値 ----
 let weightsPromise = null;
+
+// 書くのは Takashi 本人のみ(Rules の isTakashi)。merge なので、空にした欄は前の値のまま
+export async function saveBonusWeights(weights) {
+  const [{ doc, setDoc }, { db, ensureFirebaseLogin }] = await Promise.all([
+    import("https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js"), import("./firebase.js")]);
+  await ensureFirebaseLogin();
+  await setDoc(doc(db, "scoreConfig", "weights"), { ...weights, at: new Date().toISOString(), by: "takashi" }, { merge: true });
+  weightsPromise = null; // 次の loadBonusWeights で読み直す
+  return loadBonusWeights();
+}
 
 export function loadBonusWeights() {
   if (!weightsPromise) {

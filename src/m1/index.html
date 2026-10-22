@@ -144,6 +144,13 @@
       <div class="section-title">今日の3回</div>
       <div id="tripList"></div>
       <div class="score-saved" id="tripSaved"></div>
+      <!-- b1 ah-56 の4: 日々記録の点の重み。Firestore の scoreConfig/weights -->
+      <button type="button" class="check-edit-btn" id="btnEditWeights">重みを変える</button>
+      <div id="weightEdit" style="display:none;">
+        <div id="weightInputs"></div>
+        <button type="button" class="check-edit-btn" id="btnSaveWeights">重みを保存</button>
+        <span class="score-saved" id="weightsSaved"></span>
+      </div>
     </div>
 
     <div id="scoreChartSection" style="display:none;">

@@ -9,7 +9,8 @@ import { todayStr } from "../common/utils.js";
 import { fetchScore, fetchAllScores, saveScore, saveErrorText, SCORE_MIN, SCORE_MAX, SCORE_SOFT_MAX,
   fetchCheckItems, fetchItemShelf, saveCheckItems, checkScore, MARKS, markOf, saveTrip } from "../common/score-store.js";
 import { SLOTS, currentPos, fetchNearby, triangleKm2 } from "./trips.js";
-import { DEFAULT_BONUS_WEIGHTS, dailyBonus, bonusText, loadBonusWeights } from "../common/daily-bonus.js";
+import { DEFAULT_BONUS_WEIGHTS, dailyBonus, bonusText, loadBonusWeights,
+  WEIGHT_LABELS, parseWeightInputs, saveBonusWeights } from "../common/daily-bonus.js";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -376,6 +377,52 @@ function initTrips() {
   }
   let weights = DEFAULT_BONUS_WEIGHTS;
   loadBonusWeights().then((w) => { weights = w; render(); });
+
+  // 重みを変える(b1 ah-56 の4)。欄は今の値で埋め、既定値を薄く出す
+  const elWeightEdit = document.getElementById("weightEdit");
+  const elWeightInputs = document.getElementById("weightInputs");
+  const elWeightsSaved = document.getElementById("weightsSaved");
+  document.getElementById("btnEditWeights").addEventListener("click", () => {
+    const open = elWeightEdit.style.display === "none";
+    elWeightEdit.style.display = open ? "" : "none";
+    if (!open) return;
+    elWeightInputs.innerHTML = "";
+    for (const [k, label] of Object.entries(WEIGHT_LABELS)) {
+      const row = document.createElement("label");
+      row.className = "trip-row";
+      const name = document.createElement("span");
+      name.className = "trip-label";
+      name.textContent = label;
+      const input = document.createElement("input");
+      input.type = "number"; input.min = "0"; input.max = "100"; input.step = "any"; input.inputMode = "decimal";
+      input.dataset.key = k;
+      input.value = String(weights[k]);
+      input.placeholder = `既定 ${DEFAULT_BONUS_WEIGHTS[k]}`;
+      row.append(name, input);
+      elWeightInputs.appendChild(row);
+    }
+  });
+  document.getElementById("btnSaveWeights").addEventListener("click", async (ev) => {
+    if (!window.__credential) {
+      elWeightsSaved.textContent = "保存にはログインが必要です";
+      if (window.aaShowLoginGate) window.aaShowLoginGate();
+      return;
+    }
+    const inputs = Object.fromEntries([...elWeightInputs.querySelectorAll("input")].map((i) => [i.dataset.key, i.value]));
+    const parsed = parseWeightInputs(inputs);
+    if (parsed.error) { elWeightsSaved.textContent = parsed.error; return; }
+    ev.currentTarget.disabled = true;
+    try {
+      weights = await saveBonusWeights(parsed.weights);
+      render();
+      elWeightsSaved.textContent = "✓ 保存しました";
+      setTimeout(() => elWeightsSaved.textContent = "", 2000);
+    } catch (e) {
+      elWeightsSaved.textContent = saveErrorText(e);
+    } finally {
+      document.getElementById("btnSaveWeights").disabled = false;
+    }
+  });
 
   async function record(slot, kind, btn) {
     if (!window.__credential) {
