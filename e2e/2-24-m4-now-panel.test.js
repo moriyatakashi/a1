@@ -86,7 +86,13 @@ test("m4: 今の状態(開いている件数・返事待ち・最後の動きが
     const page = await browser.newPage();
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     // ab-162: Firebase にログインしていれば ab を ID トークン付きで読む(Rules を本人だけに絞る準備)
-    await routeFirebaseStub(page, {}, baArchiveOf(BA)); // ab-166: 旧 ba は Firestore の写しから
+    // b1 ah-78: ah は段階ごと(H4 は印が2時間より古い作業中=落ちた、H5 は済で数えない)、af は開いているもの、ae は済んでいないもの
+    const fresh = new Date().toISOString();
+    await routeFirebaseStub(page, {}, { ...baArchiveOf(BA),
+      ahThreads: { H1: { seq: 1, state: "待ち" }, H2: { seq: 2, state: "待ち" }, H3: { seq: 3, state: "作業中", beatAt: fresh },
+        H4: { seq: 4, state: "作業中", beatAt: daysAgo(1), owner: "rebun" }, H5: { seq: 5, state: "済" }, H6: { seq: 6, state: "渡し先待ち" } },
+      afThreads: { F1: { seq: 1, done: false }, F2: { seq: 2, done: true } },
+      aeThreads: { E1: { seq: 1, done: false }, E2: { seq: 2, done: false }, E3: { seq: 3, done: true } } });
     await page.addInitScript(() => { window.__fsSignedIn = true; });
     const abAuth = [];
     await page.route(/firestore\.googleapis\.com\//, (route) => {
@@ -106,7 +112,9 @@ test("m4: 今の状態(開いている件数・返事待ち・最後の動きが
     assert.ok(abAuth.length > 0 && abAuth.every((h) => h === "Bearer test-id-token"), "ab を ID トークン付きで読んでいない");
     const text = (await page.textContent("#nowPanel")).replace(/\s+/g, "");
     assert.match(text, /ab開いている3件/, "A1・A2・A4(A3は済み)");
-    assert.doesNotMatch(text, /ba開いている|ba-/,"ba は出さない(b1 ah-78)");
+    assert.doesNotMatch(text, /ba開いている|ba-/, "ba は出さない(b1 ah-78)");
+    assert.match(text, /af開いている1件ae的2件/, "af は F1 だけ、ae は E1・E2");
+    assert.deepEqual(await page.locator("#nowPanel .now-ah").allTextContents(), ["待ち 2", "作業中 1", "渡し先待ち 1", "落ちた 1"], "ah の段階ごと(済は数えない)");
     assert.deepEqual(await page.locator("#nowPanel .now-chip").allTextContents(), ["すま 2", "礼文 1"], "A3(済み)は数えない");
     const stale = (await page.locator("#nowPanel .now-stale li").allTextContents()).map((s) => s.replace(/\s+/g, ""));
     assert.deepEqual(stale, ["ab-2寝ている件30日前", "ab-4返事がほしい件10日前", "ab-1動いている古い件2日前"],

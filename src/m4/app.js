@@ -72,6 +72,21 @@ async function fetchAcStale() {
     .slice(0, AC_STALE_COUNT);
 }
 
+// b1 ah-78: 今の状態に ah(票の段階ごとの数)・af(開いている数)・ae(済んでいない的の数)を足す。読むのは m3 と同じ道具
+const AH_STATES = ["待ち", "作業中", "渡し先待ち", "落ちた"];
+async function fetchLedgers() {
+  const m = await import("../m3/af-store.js");
+  const [ah, af, ae] = await Promise.all([
+    m.fetchAllAh().catch((e) => { console.warn("ah を読めませんでした", e); return null; }),
+    m.fetchOpenAf().catch((e) => { console.warn("af を読めませんでした", e); return null; }),
+    m.fetchOpenAe().catch((e) => { console.warn("ae を読めませんでした", e); return null; }),
+  ]);
+  const now = Date.now();
+  const ahN = ah && Object.fromEntries(AH_STATES.map((s) => [s, 0]));
+  (ah || []).map((t) => m.ahView(t, now)).forEach((t) => { if (t.state in ahN) ahN[t.state]++; });
+  return { ah: ahN, af: af && af.length, ae: ae && ae.length };
+}
+
 // ab のスレッドを {threadId, root, entries} の形にそろえる
 async function fetchAbThreads() {
   const docs = await fsListDocs(AB_FS);
@@ -405,10 +420,15 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
-function renderNow(threads, acStale = []) {
+function renderNow(threads, acStale = [], ledgers = {}) {
   const el = document.getElementById("nowPanel");
   const abOpen = threads.filter((t) => t.status !== "closed");
-  if (!abOpen.length) { el.style.display = "none"; return; }
+  if (!abOpen.length && !ledgers.ah) { el.style.display = "none"; return; }
+
+  // 落ちた(印が2時間止まった作業中)は 0 なら出さない
+  const ahHtml = ledgers.ah ? AH_STATES.filter((s) => s !== "落ちた" || ledgers.ah[s])
+    .map((s) => `<span class="now-ah">${s} ${ledgers.ah[s]}</span>`).join("") : '<span class="now-soft">読めない</span>';
+  const count = (n) => (n == null ? '<span class="now-soft">読めない</span>' : `<b>${n}</b> 件`);
 
   const waiting = new Map();
   abOpen.filter((t) => t.needsReply).forEach((t) => {
@@ -441,7 +461,10 @@ function renderNow(threads, acStale = []) {
     `<span class="now-seq">${a.ref}</span>${escapeHtml(a.what)}<span class="now-soft">${escapeHtml(a.title)}</span></li>`).join("");
 
   el.innerHTML = `
-    <div class="now-row"><span class="now-label">ab 開いている</span><b>${abOpen.length}</b> 件</div>
+    <div class="now-row"><span class="now-label">ab 開いている</span><b>${abOpen.length}</b> 件
+      <span class="now-label now-gap">af 開いている</span>${count(ledgers.af)}
+      <span class="now-label now-gap">ae 的</span>${count(ledgers.ae)}</div>
+    <div class="now-row"><span class="now-label">ah 票</span>${ahHtml}</div>
     <div class="now-row"><span class="now-label">返事待ち(ab)</span>${waitingHtml}</div>
     ${waitHtml ? `<div class="now-label">待ち(ab)</div><ul class="now-list now-wait">${waitHtml}</ul>` : ""}
     <div class="now-label">最後の動きが古い ab</div>
@@ -646,13 +669,14 @@ async function load() {
   const emptyEl = document.getElementById("radarEmpty");
 
   try {
-    // ab と ac を並べて取ってから1回だけ描く
-    const [abThreads, acStale] = await Promise.all([
+    // ab・ac・ah/af/ae を並べて取ってから1回だけ描く
+    const [abThreads, acStale, ledgers] = await Promise.all([
       fetchAbThreads().catch((e) => { console.warn("ab を読めませんでした", e); return []; }),
       fetchAcStale().catch((e) => { console.warn("ac を読めませんでした", e); return []; }),
+      fetchLedgers().catch((e) => { console.warn("ah・af・ae を読めませんでした", e); return {}; }),
     ]);
     currentThreads = abThreads;
-    renderNow(currentThreads, acStale);
+    renderNow(currentThreads, acStale, ledgers);
     render();
     weeklyScores = await fetchWeeklyScores();
     if (currentView === "weekly") render();
