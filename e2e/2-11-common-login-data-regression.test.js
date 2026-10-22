@@ -52,8 +52,11 @@ const PAGES = {
     routes: {},
     firebase: {},
     firebaseOthers: baArchiveOf(BA_FIXTURE),
-    // 2026-09-30: m4 は ab(Firestore abThreads)も読む。ここでは空で返す(ネットワークに出さない)
-    routeRegex: [[/firestore\.googleapis\.com\//, () => ({ status: 200, body: {} })]],
+    // 2026-09-30: m4 は ab(Firestore abThreads)も読む(ネットワークに出さない)。
+    // 2026-10-23(b1 ah-78): m4 は ba を読まなくなったので、ab を1件返す(ac にも同じものが返るが数には効かない)
+    routeRegex: [[/firestore\.googleapis\.com\//, () => ({ status: 200, body: { documents: [{ name: "x/abThreads/A1", fields: {
+      by: { stringValue: "claude-pc" }, createdAt: { stringValue: "2026-10-01T00:00:00+00:00" }, seq: { integerValue: "1" },
+      title: { stringValue: "regression" }, noteMeta: { arrayValue: {} } } }] } })]],
     async assertLoaded(page) {
       await page.waitForFunction(() => document.querySelectorAll("#radarSvg polygon").length > 0);
     },

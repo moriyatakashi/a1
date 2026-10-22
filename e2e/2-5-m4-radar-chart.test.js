@@ -3,6 +3,7 @@
 // (2) 分類別タブ: スレッド内で最後に見つかった分類タグ(4分類)がそのスレッドの分類になる
 //     (同スレッド内で分類タグが後から上書きされた場合は新しい方を採用)。
 // (3) 2026-09-30: ab(Firestore abThreads + notes)も合わせて数える。投稿者別は合算、分類別・月次は「ab(連絡)」。
+// (4) 2026-10-23(b1 ah-78): ba は読まない。分類別タブは外した。下の ba の fixture は置いたまま、数えないことを確かめる。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
@@ -97,18 +98,10 @@ async function checkBc(abRoutes, expectedNoteFetches) {
     const posterRows = await page.locator("#radarTableBody tr").allTextContents();
     assert.deepEqual(
       posterRows.map((r) => r.replace(/\s+/g, "")),
-      ["利尻3", "Takashi1", "すま3", "天売1"],
-      "投稿者別(軸名は家人の名前、ab-45): claude-pc=T1,T3,A1(3) / takashi=T1(1) / claude-mobile=T2,T3,A2(3) / claude-teuri=A1(1)"
+      ["利尻1", "天売1", "すま1"],
+      "投稿者別(軸名は家人の名前、ab-45): ab だけ数える(ah-78、ba の写しは読まない)。claude-pc=A1 / claude-teuri=A1 / claude-mobile=A2"
     );
-
-    await page.click('.view-tab[data-view="classification"]');
-    await page.waitForFunction(() => document.getElementById("radarTableHead").textContent.includes("分類"));
-    const clsRows = await page.locator("#radarTableBody tr").allTextContents();
-    assert.deepEqual(
-      clsRows.map((r) => r.replace(/\s+/g, "")),
-      ["案件1", "確定仕様0", "気づき1", "保留論点1", "旧仕様0", "記録0", "ab(連絡)2"],
-      "分類別: T1は気づき(後から上書き)、T2は案件、T3は保留論点、ab は A1・A2 の2件"
-    );
+    assert.equal(await page.locator('.view-tab[data-view="classification"]').count(), 0, "ba だけの分類別タブは外した(ah-78)");
 
     await page.click('.view-tab[data-view="monthly"]');
     await page.waitForFunction(() => document.getElementById("radarTableHead").textContent.includes("ab(連絡)"));

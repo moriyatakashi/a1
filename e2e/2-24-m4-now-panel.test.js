@@ -106,7 +106,7 @@ test("m4: 今の状態(開いている件数・返事待ち・最後の動きが
     assert.ok(abAuth.length > 0 && abAuth.every((h) => h === "Bearer test-id-token"), "ab を ID トークン付きで読んでいない");
     const text = (await page.textContent("#nowPanel")).replace(/\s+/g, "");
     assert.match(text, /ab開いている3件/, "A1・A2・A4(A3は済み)");
-    assert.match(text, /ba開いている2件/, "B1とB5(B2は閉じた、B3・B4は無効、B5は無効を戻した)");
+    assert.doesNotMatch(text, /ba開いている|ba-/,"ba は出さない(b1 ah-78)");
     assert.deepEqual(await page.locator("#nowPanel .now-chip").allTextContents(), ["すま 2", "礼文 1"], "A3(済み)は数えない");
     const stale = (await page.locator("#nowPanel .now-stale li").allTextContents()).map((s) => s.replace(/\s+/g, ""));
     assert.deepEqual(stale, ["ab-2寝ている件30日前", "ab-4返事がほしい件10日前", "ab-1動いている古い件2日前"],

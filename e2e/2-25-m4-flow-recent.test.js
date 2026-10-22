@@ -99,20 +99,19 @@ test("m4: 待ち・最近の動き・流れ・投稿者の名前(ab-45)", async 
 
     const recent = squash(await page.locator("#nowPanel .now-recent li").allTextContents())
       .map((s) => s.replace(/^\d+\/\d+\d\d:\d\d/, ""));
-    assert.equal(recent.length, 8);
-    assert.deepEqual(recent.slice(0, 6), ["利尻ab-3note×2えー3", "利尻ab-2済みえー2", "天売ab-1立てたえー1", "Takashiba-2閉じたべー2", "Takashiba-3無効にしたべー3", "利尻ba-3立てたべー3"],
-      "新しい順。A1 のタイトル直しは出さない");
+    assert.deepEqual(recent, ["利尻ab-3note×2えー3", "利尻ab-2済みえー2", "天売ab-1立てたえー1", "利尻ab-3立てたえー3", "利尻ab-2立てたえー2"],
+      "新しい順。A1 のタイトル直しは出さない。ba は出さない(b1 ah-78)");
 
     await page.click('.view-tab[data-view="flow"]');
     const rows = await page.locator("#radarTableBody tr").evaluateAll((trs) => trs.map((tr) => [...tr.cells].map((c) => c.textContent)));
     assert.equal(rows.length, 14);
     const sum = (i) => rows.reduce((s, r) => s + Number(r[i]), 0);
-    assert.equal(sum(1), 3, "開いた: B1・A1・A3(B3 は無効、B2・A2 は14日より前)");
-    assert.equal(sum(2), 2, "片付いた: B2(閉じた)・A2(済み)");
+    assert.equal(sum(1), 2, "開いた: A1・A3(A2 は14日より前、ba は数えない)");
+    assert.equal(sum(2), 1, "片付いた: A2(済み)");
 
     await page.click('.view-tab[data-view="poster"]');
     const names = await page.locator("#radarTableBody tr td:first-child").allTextContents();
-    assert.deepEqual(names.sort(), ["Takashi", "すま", "利尻", "天売"].sort());
+    assert.deepEqual(names.sort(), ["利尻", "天売"].sort());
   } finally {
     await browser.close();
     server.close();

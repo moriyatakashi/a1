@@ -1,18 +1,14 @@
-// app.js — m4(baレーダーチャート、旧bc・k2)。baの生ログを読み、
-// (1)投稿者別: 投稿者3人を軸にした参加スレッド数、
-// (2)分類別: ba-32規約の4分類(案件/確定仕様/気づき/保留論点)ごとのスレッド数
-// をタブ切り替えでレーダーチャート表示する。読み取り専用。
-// 2026-09-30(Takashi依頼): ba だけでなく ab(家人たちの連絡用、Firestore abThreads)も集計に入れる。
-// 投稿者別は ba と ab のスレッドを合わせて数え、分類別・月別には ab に分類が無いので「ab(連絡)」を1つ足す。
+// app.js — m4(台帳の計器、旧bc・k2)。ab(家人たちの連絡用、Firestore abThreads)を読み、
+// 投稿者別・週次得点・月次集計・流れをタブ切り替えで出す。読み取り専用。
+// b1 ah-78(af-63): 台帳が ba → ab → ah・af・ae と移ったので、ba(凍結した写し)は読まない。ba だけの分類別タブも外した。
 // config.jsを自分でimportする(ba-9追補)。HTML側の<script>読込に依存しないため、
 // 旧index.htmlがキャッシュされた端末でも壊れない(2026-07-16の表示不具合の恒久対策)。
 import "../common/config.js";
-import { CLASSIFICATIONS, findClassification } from "../common/utils.js";
 // ab は Firestore(ab01-9f35a)の abThreads とサブコレクション notes。Rules で誰でも読めるので匿名の REST GET。
 const AB_FS = "https://firestore.googleapis.com/v1/projects/ab01-9f35a/databases/(default)/documents/abThreads";
 const AC_FS = AB_FS.replace(/abThreads$/, "acThreads"); // ac(決まったこと)。閉じない代わりに reviewedAt(最終見直し日)を持つ
 const AB_LABEL = "ab(連絡)";
-const CATEGORIES = [...CLASSIFICATIONS, AB_LABEL]; // 分類別・月別の軸(ba の分類 + ab)
+const CATEGORIES = [AB_LABEL]; // 月次の積み上げの段(ba の分類は外した、ah-78)
 
 // ab-162(2026-10-10): いずれ Rules の ab の読みを本人だけに絞るので、Firebase にログインしていれば
 // その ID トークンを付けて読む(Rules は request.auth で本人と分かる)。ログインしていなければ今までどおり匿名。
@@ -76,7 +72,7 @@ async function fetchAcStale() {
     .slice(0, AC_STALE_COUNT);
 }
 
-// ab のスレッドを groupThreads と同じ形({threadId, root, entries})にそろえる。source:"ab" で見分ける。
+// ab のスレッドを {threadId, root, entries} の形にそろえる
 async function fetchAbThreads() {
   const docs = await fsListDocs(AB_FS);
   return Promise.all(docs.map(async (d) => {
@@ -93,28 +89,6 @@ async function fetchAbThreads() {
   }));
 }
 
-// ba/app.jsのgroupThreadsを踏襲(status判定・PartitionKeyグルーピングのロジックを合わせるため)。
-function groupThreads(items) {
-  const byThread = new Map();
-  items.forEach((it) => {
-    if (!byThread.has(it.threadId)) byThread.set(it.threadId, []);
-    byThread.get(it.threadId).push(it);
-  });
-
-  const threads = [];
-  byThread.forEach((entries, threadId) => {
-    entries.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    const root = entries.find((e) => e.id === threadId) || entries[0];
-    let status = "open";
-    entries.forEach((e) => {
-      if (e.type === "status" && e.status) status = e.status;
-    });
-    threads.push({ threadId, root, entries, status });
-  });
-
-  return threads;
-}
-
 // 投稿者3人の判定基準: 全エントリのby(発言したら参加扱い)。
 // 値: そのby(投稿者)が関わったスレッド数(open/closed問わず全部含む)。
 function computePosterCounts(threads) {
@@ -125,20 +99,6 @@ function computePosterCounts(threads) {
     posters.forEach((by) => {
       counts.set(by, (counts.get(by) || 0) + 1);
     });
-  });
-
-  return counts;
-}
-
-// 分類別の判定基準: スレッド内のnoteエントリでtagsに4分類のいずれかが付いたもののうち、
-// 最も新しいcreatedAtのものを「そのスレッドの現在の分類」とする
-// (ba-32運用: 分類の訂正・バックフィルは新しいnoteの追記で上書きする方式のため)。
-function computeClassificationCounts(threads) {
-  const counts = new Map(CATEGORIES.map((c) => [c, 0]));
-
-  threads.forEach((thread) => {
-    const latest = threadClassification(thread);
-    if (latest) counts.set(latest, counts.get(latest) + 1);
   });
 
   return counts;
@@ -296,7 +256,7 @@ function drawWeeklyBars(svg, weeks) {
 // ba-159: 「今のルールなら」列。当時の値(weekScore)と今のルールで見た値
 // (weekScoreAsOfLatest)が違う週だけ薄く強調して、基準ずらしの影響が一目で分かるようにする。
 function renderWeeklyTable(theadRow, tbody, weeks) {
-  theadRow.innerHTML = "<th>週(月曜)</th><th>日次</th><th>クローズ</th><th>加点(ba-165)</th><th>合計</th><th>今のルールなら</th>";
+  theadRow.innerHTML = "<th>週(月曜)</th><th>日次</th><th>クローズ</th><th>加点</th><th>合計</th><th>今のルールなら</th>";
   tbody.innerHTML = weeks.slice().reverse().map((w) => {
     const changed = w.weekScoreAsOfLatest !== w.weekScore;
     const asOfCell = changed
@@ -312,10 +272,8 @@ function renderWeeklyTable(theadRow, tbody, weeks) {
   }).join("");
 }
 
-// --- 月次集計(ba生ログを月別×分類別に集計)------------------------------------
-// monthly-scores API(ba-165③)が未稼働のため、baの生ログを月別に集計して積み上げ棒で描く。
-// 各スレッドを root の作成月に計上し、分類(ba-32/ba-181の6分類)ごとに積み上げる。
-// 分類はcomputeClassificationCountsと同じく「最新のnoteに付いた分類」を採用する。
+// --- 月次集計(ab を月別に数える)------------------------------------
+// 各スレッドを root の作成月に計上し、CATEGORIES の段ごとに積み上げる。
 const MONTH_COUNT = 6;
 const MONTH_CLASS_COLORS = ["#6cf", "#5aa06a", "#c98a3a", "#a678d0", "#d06a6a", "#7a9ab0", "#c8c060"]; // 最後が ab
 
@@ -330,17 +288,8 @@ function monthsBack(n) {
   return out;
 }
 
-// スレッドの現在分類(computeClassificationCountsと同じ判定: 最新のnoteに付いた分類)
-// ab のスレッドは分類を持たないので AB_LABEL。
-function threadClassification(thread) {
-  if (thread.source === "ab") return AB_LABEL;
-  let latest = null; // entriesはcreatedAt昇順ソート済みなので、最後に見つかったものが最新
-  thread.entries.forEach((e) => {
-    const found = findClassification(e.tags);
-    if (found) latest = found;
-  });
-  return latest;
-}
+// ab のスレッドは分類を持たないので段は AB_LABEL の1つだけ
+const threadClassification = () => AB_LABEL;
 
 // monthKeys(YYYY-MM配列) × 分類 の集計。範囲外の月・分類無しスレッドは無視する。
 function computeMonthlyClassification(threads, monthKeys) {
@@ -431,16 +380,10 @@ const VIEWS = {
     labelHeader: "投稿者",
     valueHeader: "投稿数(スレッド数・クローズ含む)",
   },
-  classification: {
-    compute: computeClassificationCounts,
-    labelHeader: "分類",
-    valueHeader: "スレッド数",
-  },
 };
 
 // --- 今の状態(2026-10-03、ab-45): 累計のチャートだけだと「今どうなっているか」が見えないので、上に置く ---
 // ab: 開いている件数、返事待ち(返事が要る・済んでいない)の宛先ごとの数、最後の動きが古い順の5件。
-// ba: 開いている件数(Takashi が無効にしたものは除く)。ba の古い open は ab へ移していく途中(ab-45 の時点で約55件)。
 const AB_TO_NAMES = { all: "みんな", rishiri: "利尻", suma: "すま", rebun: "礼文", teuri: "天売" };
 // 投稿者名(by)→家人の名前。b1 の ai_family.json の ba_lane / aa_lane と同じ対応(変えたらここも直す)
 const BY_NAMES = { "claude-pc": "利尻", "claude-mobile": "すま", "claude-pi": "礼文", "claude-teuri": "天売", takashi: "Takashi" };
@@ -458,22 +401,14 @@ function daysSince(iso) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
 }
 
-function isBaVoided(thread) {
-  // ba の void は最後に付いたものが効く(value=true で無効)。
-  // 7月の古い void(迷子スレッドの取り消し4件)は value を持たない。これも無効として数える(value=false だけが戻す)
-  const voids = thread.entries.filter((e) => e.type === "void");
-  return voids.length > 0 && voids[voids.length - 1].value !== false;
-}
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
 function renderNow(threads, acStale = []) {
   const el = document.getElementById("nowPanel");
-  const abOpen = threads.filter((t) => t.source === "ab" && t.status !== "closed");
-  const baOpen = threads.filter((t) => t.source !== "ab" && t.status !== "closed" && !isBaVoided(t));
-  if (!abOpen.length && !baOpen.length) { el.style.display = "none"; return; }
+  const abOpen = threads.filter((t) => t.status !== "closed");
+  if (!abOpen.length) { el.style.display = "none"; return; }
 
   const waiting = new Map();
   abOpen.filter((t) => t.needsReply).forEach((t) => {
@@ -506,15 +441,14 @@ function renderNow(threads, acStale = []) {
     `<span class="now-seq">${a.ref}</span>${escapeHtml(a.what)}<span class="now-soft">${escapeHtml(a.title)}</span></li>`).join("");
 
   el.innerHTML = `
-    <div class="now-row"><span class="now-label">ab 開いている</span><b>${abOpen.length}</b> 件
-      <span class="now-label now-gap">ba 開いている</span><b>${baOpen.length}</b> 件</div>
+    <div class="now-row"><span class="now-label">ab 開いている</span><b>${abOpen.length}</b> 件</div>
     <div class="now-row"><span class="now-label">返事待ち(ab)</span>${waitingHtml}</div>
     ${waitHtml ? `<div class="now-label">待ち(ab)</div><ul class="now-list now-wait">${waitHtml}</ul>` : ""}
     <div class="now-label">最後の動きが古い ab</div>
     <ol class="now-stale">${staleHtml}</ol>
     ${acStale.length ? `<div class="now-label">見直しが古い ac</div><ol class="now-ac">${acStale.map((a) =>
       `<li><span class="now-seq">ac-${a.seq}</span>${escapeHtml(a.title)}<span class="now-soft">${daysSince(a.reviewedAt)}日前</span></li>`).join("")}</ol>` : ""}
-    <div class="now-label">最近の動き(ba・ab)</div>
+    <div class="now-label">最近の動き(ab)</div>
     <ul class="now-list now-recent">${recentHtml}</ul>`;
   el.style.display = "";
 }
@@ -527,24 +461,17 @@ function whenLabel(iso) {
   return `${mdLabel(j.slice(0, 10))} ${j.slice(11, 16)}`;
 }
 
-// --- 最近の動き: ba・ab の書き込みを新しい順に。タイトルを直しただけの自動 note は出さない ---
-const BA_KIND = { new: "立てた", note: "note", correction: "訂正", link: "リンク", gist: "gist", retitle: "タイトル変更", react: "反応" };
+// --- 最近の動き: ab の書き込みを新しい順に。タイトルを直しただけの自動 note は出さない ---
 function activities(threads) {
   const out = [];
   threads.forEach((t) => {
-    const ab = t.source === "ab";
-    const ref = `${ab ? "ab" : "ba"}-${t.root.seq}`;
+    const ref = `ab-${t.root.seq}`;
     const title = t.root.title || "";
     t.entries.forEach((e) => {
       if (!e.createdAt || e.retitle) return;
-      let what;
-      if (ab) what = e === t.root ? "立てた" : "note";
-      else if (e.type === "status") what = e.status === "closed" ? "閉じた" : "開け直した";
-      else if (e.type === "void") what = e.value ? "無効にした" : "無効を戻した";
-      else what = BA_KIND[e.type] || e.type || "note";
-      out.push({ at: e.createdAt, by: e.by, ref, what, title });
+      out.push({ at: e.createdAt, by: e.by, ref, what: e === t.root ? "立てた" : "note", title });
     });
-    if (ab && t.status === "closed" && t.doneAt) out.push({ at: t.doneAt, by: t.doneBy, ref, what: "済み", title });
+    if (t.status === "closed" && t.doneAt) out.push({ at: t.doneAt, by: t.doneBy, ref, what: "済み", title });
   });
   return out;
 }
@@ -565,8 +492,7 @@ function recentActivities(threads) {
 }
 
 // --- 流れ: 日ごとに開いた件数と片付いた件数(直近14日) ---
-// 開いた = ab・ba のスレッドを立てた日。片付いた = ab は済みにした日、ba は最後に閉じた日(今も閉じているものだけ)。
-// ba で無効にしたもの(打ち間違い等)はどちらにも数えない。
+// 開いた = ab を立てた日。片付いた = ab を済みにした日。
 const FLOW_DAYS = 14;
 const C_OPEN = "#6cf";
 const C_DONE = "#5aa06a";
@@ -577,17 +503,11 @@ function daysBack(n) {
   return out;
 }
 
-function closedAt(t) {
-  if (t.status !== "closed") return "";
-  if (t.source === "ab") return t.doneAt;
-  const st = t.entries.filter((e) => e.type === "status");
-  return st.length ? st[st.length - 1].createdAt : "";
-}
+const closedAt = (t) => (t.status === "closed" ? t.doneAt : "");
 
 function computeFlow(threads, dayKeys) {
   const data = new Map(dayKeys.map((k) => [k, { opened: 0, closed: 0 }]));
   threads.forEach((t) => {
-    if (t.source !== "ab" && isBaVoided(t)) return;
     const o = t.root.createdAt;
     if (o && data.has(jstDate(o))) data.get(jstDate(o)).opened++;
     const c = closedAt(t);
@@ -726,14 +646,12 @@ async function load() {
   const emptyEl = document.getElementById("radarEmpty");
 
   try {
-    // ba と ab を並べて取ってから1回だけ描く。ab が読めなくても ba だけで描く。
-    const [items, abThreads, acStale] = await Promise.all([
-      // ab-166(2026-10-11): 旧 ba は凍結した写し(Firestore baArchive)から読む。Azure は読まない
-      import("../common/ba-archive.js").then((m) => m.loadBaArchiveEntries()).catch((e) => { console.warn("旧 ba の写しを読めませんでした", e); return []; }),
+    // ab と ac を並べて取ってから1回だけ描く
+    const [abThreads, acStale] = await Promise.all([
       fetchAbThreads().catch((e) => { console.warn("ab を読めませんでした", e); return []; }),
       fetchAcStale().catch((e) => { console.warn("ac を読めませんでした", e); return []; }),
     ]);
-    currentThreads = [...groupThreads(items), ...abThreads];
+    currentThreads = abThreads;
     renderNow(currentThreads, acStale);
     render();
     weeklyScores = await fetchWeeklyScores();
