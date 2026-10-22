@@ -39,8 +39,8 @@
   .now-gap { margin-left: 12px; }
   .now-chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 0.78rem; }
   .now-soft { color: var(--ink-soft); font-size: 0.75rem; margin-left: 6px; }
-  .now-stale { margin: 4px 0 0; padding-left: 1.4em; }
-  .now-stale li { margin: 3px 0; overflow-wrap: anywhere; }
+  .now-stale, .now-ac { margin: 4px 0 0; padding-left: 1.4em; }
+  .now-stale li, .now-ac li { margin: 3px 0; overflow-wrap: anywhere; }
   .now-came { font-weight: 700; }
   .now-list { margin: 4px 0 0; padding-left: 0; list-style: none; }
   .now-list li { margin: 3px 0; overflow-wrap: anywhere; }
@@ -97,7 +97,7 @@
 
   <script>window.AA_AUTH_EVENT = "m4-login-success";</script><!-- ab-162: 公開の閲覧モードをやめた(本人がログインしたときだけ中身を出す) -->
   <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202610100800"></script>
+  <script type="module" src="app.js?v=202610221830"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/m4", "lastUpdated", "最終更新");

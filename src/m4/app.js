@@ -10,6 +10,7 @@ import "../common/config.js";
 import { CLASSIFICATIONS, findClassification } from "../common/utils.js";
 // ab は Firestore(ab01-9f35a)の abThreads とサブコレクション notes。Rules で誰でも読めるので匿名の REST GET。
 const AB_FS = "https://firestore.googleapis.com/v1/projects/ab01-9f35a/databases/(default)/documents/abThreads";
+const AC_FS = AB_FS.replace(/abThreads$/, "acThreads"); // ac(決まったこと)。閉じない代わりに reviewedAt(最終見直し日)を持つ
 const AB_LABEL = "ab(連絡)";
 const CATEGORIES = [...CLASSIFICATIONS, AB_LABEL]; // 分類別・月別の軸(ba の分類 + ab)
 
@@ -62,6 +63,15 @@ function fsNoteMeta(doc) {
     const m = v.mapValue?.fields || {};
     return { by: m.by?.stringValue || "", createdAt: m.createdAt?.stringValue || "", retitle: m.retitle?.booleanValue === true };
   });
+}
+
+// ah-58(af-15 の案4): ac を見直しが古い順に。読むだけ
+async function fetchAcStale() {
+  return (await fsListDocs(AC_FS))
+    .map((d) => ({ seq: fsInt(d, "seq"), title: fsStr(d, "title"), reviewedAt: fsStr(d, "reviewedAt") || fsStr(d, "createdAt") }))
+    .filter((a) => a.reviewedAt)
+    .sort((a, b) => a.reviewedAt.localeCompare(b.reviewedAt))
+    .slice(0, AC_STALE_COUNT);
 }
 
 // ab のスレッドを groupThreads と同じ形({threadId, root, entries})にそろえる。source:"ab" で見分ける。
@@ -435,6 +445,7 @@ const BY_NAMES = { "claude-pc": "利尻", "claude-mobile": "すま", "claude-pi"
 const byName = (by) => BY_NAMES[by] || by;
 const STALE_COUNT = 5;
 const RECENT_COUNT = 8;
+const AC_STALE_COUNT = 3;
 
 // タイトルを直しただけの自動 note(ab-edit が残す「タイトルを変えた(旧: …)」)は動きに数えない
 function lastActivity(thread) {
@@ -456,7 +467,7 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
-function renderNow(threads) {
+function renderNow(threads, acStale = []) {
   const el = document.getElementById("nowPanel");
   const abOpen = threads.filter((t) => t.source === "ab" && t.status !== "closed");
   const baOpen = threads.filter((t) => t.source !== "ab" && t.status !== "closed" && !isBaVoided(t));
@@ -499,6 +510,8 @@ function renderNow(threads) {
     ${waitHtml ? `<div class="now-label">待ち(ab)</div><ul class="now-list now-wait">${waitHtml}</ul>` : ""}
     <div class="now-label">最後の動きが古い ab</div>
     <ol class="now-stale">${staleHtml}</ol>
+    ${acStale.length ? `<div class="now-label">見直しが古い ac</div><ol class="now-ac">${acStale.map((a) =>
+      `<li><span class="now-seq">ac-${a.seq}</span>${escapeHtml(a.title)}<span class="now-soft">${daysSince(a.reviewedAt)}日前</span></li>`).join("")}</ol>` : ""}
     <div class="now-label">最近の動き(ba・ab)</div>
     <ul class="now-list now-recent">${recentHtml}</ul>`;
   el.style.display = "";
@@ -712,13 +725,14 @@ async function load() {
 
   try {
     // ba と ab を並べて取ってから1回だけ描く。ab が読めなくても ba だけで描く。
-    const [items, abThreads] = await Promise.all([
+    const [items, abThreads, acStale] = await Promise.all([
       // ab-166(2026-10-11): 旧 ba は凍結した写し(Firestore baArchive)から読む。Azure は読まない
       import("../common/ba-archive.js").then((m) => m.loadBaArchiveEntries()).catch((e) => { console.warn("旧 ba の写しを読めませんでした", e); return []; }),
       fetchAbThreads().catch((e) => { console.warn("ab を読めませんでした", e); return []; }),
+      fetchAcStale().catch((e) => { console.warn("ac を読めませんでした", e); return []; }),
     ]);
     currentThreads = [...groupThreads(items), ...abThreads];
-    renderNow(currentThreads);
+    renderNow(currentThreads, acStale);
     render();
     weeklyScores = await fetchWeeklyScores();
     if (currentView === "weekly") render();

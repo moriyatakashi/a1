@@ -68,6 +68,16 @@ const AB_ROUTES = {
   [`${FS}/A1/notes`]: { documents: [note(daysAgo(2))] },
   [`${FS}/A2/notes`]: { documents: [note(daysAgo(0), "タイトルを変えた(旧: 寝ている件の古い名前)")] },
 };
+// ah-58: ac は見直しが古い順に3件。C4 は reviewedAt が無いので createdAt(5日前)で並ぶ
+const acDoc = (seq, title, createdAt, reviewedAt) => ({ name: `x/acThreads/C${seq}`, fields: {
+  seq: { integerValue: String(seq) }, title: { stringValue: title }, createdAt: { stringValue: createdAt },
+  ...(reviewedAt ? { reviewedAt: { stringValue: reviewedAt } } : {}) } });
+AB_ROUTES[FS.replace(/abThreads$/, "acThreads")] = { documents: [
+  acDoc(1, "最近見た", daysAgo(90), daysAgo(1)),
+  acDoc(2, "ずっと見ていない", daysAgo(90), daysAgo(40)),
+  acDoc(3, "少し前に見た", daysAgo(90), daysAgo(20)),
+  acDoc(4, "見直しなし", daysAgo(5)),
+] };
 
 test("m4: 今の状態(開いている件数・返事待ち・最後の動きが古い ab)が出る(ab-45)", async () => {
   const server = await serveStatic();
@@ -101,6 +111,8 @@ test("m4: 今の状態(開いている件数・返事待ち・最後の動きが
     const stale = (await page.locator("#nowPanel .now-stale li").allTextContents()).map((s) => s.replace(/\s+/g, ""));
     assert.deepEqual(stale, ["ab-2寝ている件30日前", "ab-4返事がほしい件10日前", "ab-1動いている古い件2日前"],
       "最後の動きが古い順(A1 は note があるので2日前)");
+    const acStale = (await page.locator("#nowPanel .now-ac li").allTextContents()).map((s) => s.replace(/\s+/g, ""));
+    assert.deepEqual(acStale, ["ac-2ずっと見ていない40日前", "ac-3少し前に見た20日前", "ac-4見直しなし5日前"], "ac は見直しが古い順に3件");
   } finally {
     await browser.close();
     server.close();
