@@ -16,17 +16,19 @@ const CATEGORIES = [...CLASSIFICATIONS, AB_LABEL]; // 分類別・月別の軸(b
 
 // ab-162(2026-10-10): いずれ Rules の ab の読みを本人だけに絞るので、Firebase にログインしていれば
 // その ID トークンを付けて読む(Rules は request.auth で本人と分かる)。ログインしていなければ今までどおり匿名。
+// ah-58: ab と ac を並べて読むので、ログインは1回だけにして同じ Promise を返す(先に {} を返すと2本目が匿名になる)
 let _abAuthHeaders = null;
-async function abAuthHeaders() {
-  if (_abAuthHeaders) return _abAuthHeaders;
-  _abAuthHeaders = {};
-  try {
-    const { ensureReadLogin } = await import("../common/firebase.js");
-    const user = await ensureReadLogin();
-    if (user && typeof user.getIdToken === "function") _abAuthHeaders = { Authorization: `Bearer ${await user.getIdToken()}` };
-  } catch (e) {
-    console.warn("ab を読むための Firebase ログインに失敗(匿名で読む)", e);
-  }
+function abAuthHeaders() {
+  _abAuthHeaders ||= (async () => {
+    try {
+      const { ensureReadLogin } = await import("../common/firebase.js");
+      const user = await ensureReadLogin();
+      if (user && typeof user.getIdToken === "function") return { Authorization: `Bearer ${await user.getIdToken()}` };
+    } catch (e) {
+      console.warn("ab を読むための Firebase ログインに失敗(匿名で読む)", e);
+    }
+    return {};
+  })();
   return _abAuthHeaders;
 }
 
