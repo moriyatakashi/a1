@@ -19,6 +19,8 @@ export const CHECKS = [
   { id: "login-pi2rc", name: "天売のサインイン", when: "天売 毎日 3:05", everyHours: 24, source: "job" },
   { id: "backup", name: "バックアップ", when: "GitHub 毎日 4:00", everyHours: 24, source: "gh", workflow: "balog-backup.yml" },
   { id: "cost-weekly", name: "課金の指数", when: "礼文 毎週月曜 2:55", everyHours: 168, source: "job" },
+  // 空きが 10% を切ったら ng(b1/run disk check、af-79)。週1で回す
+  { id: "disk-pc", name: "利尻の空き容量", when: "利尻 毎週月曜", everyHours: 168, source: "job", ngLabel: "空きが少ない" },
 ];
 
 // state: ok / ng(失敗が成功より新しい)/ late(来ているはずの成功が来ていない)/ none(まだ一度も記録が無い)/ unknown(読めなかった)
