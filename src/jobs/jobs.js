@@ -21,6 +21,7 @@ export const CHECKS = [
   { id: "cost-weekly", name: "課金の指数", when: "礼文 毎週月曜 2:55", everyHours: 168, source: "job" },
   // 空きが 10% を切ったら ng(b1/run disk check、af-79)。週1で回す
   { id: "disk-pc", name: "利尻の空き容量", when: "利尻 毎週月曜", everyHours: 168, source: "job", ngLabel: "空きが少ない" },
+  { id: "infra-check", name: "設定の突き合わせ", when: "礼文 毎週日曜 21:20", everyHours: 168, source: "job", ngLabel: "差あり" }, // ac-43
 ];
 
 // state: ok / ng(失敗が成功より新しい)/ late(来ているはずの成功が来ていない)/ none(まだ一度も記録が無い)/ unknown(読めなかった)
