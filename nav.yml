@@ -42,3 +42,12 @@ categories:
         desc: COBOL 入門(例題・四択・その場で動く)
         href: src/m7/
         stage: beta
+  # 2026-11-01(ah-128): 公開して家の外の AI(生駒など)に URL で読ませるもの。検索の巡回が見つけられるようにトップから張る
+  - label: 公開して読ませるもの
+    items:
+      - code: pub-start
+        desc: 家人の最初の読み込み(薄い版)
+        href: pub/start/
+      - code: pub-start2
+        desc: 家人の最初の読み込み(全文・予備)
+        href: pub/start2/
