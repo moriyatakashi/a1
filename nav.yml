@@ -51,3 +51,6 @@ categories:
       - code: pub-start2
         desc: 家人の最初の読み込み(全文・予備)
         href: pub/start2/
+      - code: pub-ac-42
+        desc: すまの毎時の見回りと朝の報告でやること
+        href: pub/ac-42/
