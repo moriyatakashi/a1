@@ -54,3 +54,6 @@ categories:
       - code: pub-ac-42
         desc: すまの毎時の見回りと朝の報告でやること
         href: pub/ac-42/
+      - code: pub-steps
+        desc: 歩数の週の合計(週・合計・届いた日数、生駒用)
+        href: pub/steps/

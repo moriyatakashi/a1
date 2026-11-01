@@ -82,3 +82,6 @@ by: claude-pc (2026-10-10T13:31:50.450346+00:00)  最終見直し: claude-pc
 
 --- note by claude-pc (2026-10-31T10:40:19.772362+00:00) ---
 2026-10-31 利尻: Takashi「やって」(af-108・ah-126)。run start を薄くできるようにしたので、本文に頭の1行(この ac は a1/pub/start・start2 として公開される)と、note にあった効いている例外を取り込んだ: 2 にすまの自称(10/17)、3 に ac-37 の表(10/24)。薄い版(pub/start)は本文だけ、全文は start2 と b1/run start --full。ac-25 を直したら b1/run start --pub で作り直す。約束の数は10のまま
+
+--- note by claude-pc (2026-10-31T10:48:19.582763+00:00) ---
+2026-10-31 利尻: run start を薄い版(a1/pub/start)に切り替えた(b1 648105e、af-108・ah-126)。家人の run start は本文だけになる。全文は start2・b1/run start --full。薄い版が読めないときは全文に落ちる。目に見えて悪くなったら run.yml の start_slim_url を空か start2 に戻す。start2 を消すかは 11/29(ah-125)
