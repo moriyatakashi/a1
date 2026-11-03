@@ -136,3 +136,14 @@ test("takashiView: 待つ日が先・家人の見張りだけの ab は足さな
   assert.deepEqual(ab.map((t) => noTakashiTodo(t, NOW)), [true, true, false, false, false]);
   assert.deepEqual(takashiView([], { ab }, NOW).map((t) => t.key), ["ab-107", "ab-108", "ab-109"]);
 });
+
+// ah-150: tags に「寝かせ」がある af は開けたまま、未決から足すときは飛ばす
+test("takashiView: 寝かせの af は足さない", () => {
+  const af = [
+    { seq: 13, title: "micro:bit", done: false, createdAt: "2026-10-10T00:00:00.000Z", tags: ["寝かせ"] },
+    { seq: 18, title: "PDF 長考", done: false, createdAt: "2026-10-10T00:01:00.000Z", tags: ["メモ", "#寝かせ"] },
+    { seq: 20, title: "ふつう", done: false, createdAt: "2026-10-11T00:00:00.000Z", tags: ["メモ"] },
+    { seq: 21, title: "tags なし", done: false, createdAt: "2026-10-12T00:00:00.000Z" },
+  ];
+  assert.deepEqual(takashiView([], { af }, NOW).map((t) => t.key), ["af-20", "af-21"]);
+});

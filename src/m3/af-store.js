@@ -142,13 +142,16 @@ export function noTakashiTodo(t, now = Date.now()) {
   const f = t.waitFor || "";
   return KAJIN.test(f) && !TAKASHI.test(f);
 }
+// 寝かせ(b1 ah-150、2026-11-03 Takashi): tags に「寝かせ」があるものは開けたまま、未決から足すときだけ飛ばす
+export const NEKASE = "寝かせ";
+export const isNekase = (t) => Array.isArray(t.tags) && t.tags.some((x) => String(x).replace(/^#/, "").trim() === NEKASE);
 export function takashiView(ah, open = {}, now = Date.now(), n = TAKASHI_MIN) {
   const live = ah.map((t) => ahView(t, now)).filter((t) => t.state !== "済" && t.state !== HOLD);
   const asAh = (t) => ({ ...t, key: `ah-${t.seq}`, who: t.owner });
   const mine = live.filter((t) => t.next === "takashi").sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0)).map(asAh);
   if (mine.length >= n) return mine;
   const pool = [
-    ...Object.entries(open).flatMap(([p, ts]) => (ts || []).filter((t) => !t.done && !noTakashiTodo(t, now)).map((t) => ({ ...t, key: `${p}-${t.seq}`, who: t.by }))),
+    ...Object.entries(open).flatMap(([p, ts]) => (ts || []).filter((t) => !t.done && !noTakashiTodo(t, now) && !isNekase(t)).map((t) => ({ ...t, key: `${p}-${t.seq}`, who: t.by }))),
     ...live.filter((t) => t.next !== "takashi").map(asAh),
   ].sort((a, b) => (ms(a.createdAt) || Infinity) - (ms(b.createdAt) || Infinity) || a.key.localeCompare(b.key));
   return [...mine, ...pool.slice(0, n - mine.length).map((t) => ({ ...t, fill: true }))];
