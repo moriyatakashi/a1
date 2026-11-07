@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../common/config.js?v=202607160712"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>7つの関門</title>
+<link rel="stylesheet" href="../common/base.css?v=202607141905">
+<style>
+  /* 2026-11-08(b1 ah-163): 7つの関門。トップの札から来る。読むだけ。色は Redmine の一覧に寄せる */
+  .gate { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; margin-bottom: 10px; background: var(--paper); }
+  .gate.red { border-left-color: #d64545; }
+  .gate.orange { border-left-color: #d9822b; }
+  .gate.faint { opacity: 0.55; }
+  .gate-head { display: flex; gap: 10px; align-items: baseline; padding: 10px 12px; cursor: pointer; }
+  .gate-no { font-weight: 700; color: var(--ink-soft); min-width: 1.2em; }
+  .gate-title { flex: 1; font-weight: 600; font-size: 0.9rem; }
+  .gate-n { font-size: 0.72rem; color: var(--ink-soft); white-space: nowrap; }
+  .gate.red .gate-n { color: #d64545; }
+  .gate.orange .gate-n { color: #d9822b; }
+  .kids { list-style: none; margin: 0; padding: 0 12px 10px 34px; }
+  .kid { display: flex; gap: 8px; align-items: baseline; font-size: 0.8rem; padding: 4px 0; border-top: 1px solid var(--cat-line, var(--line)); }
+  .kid-key { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.72rem; color: var(--ink-soft); min-width: 4.5em; }
+  .kid-title { flex: 1; }
+  .kid-due { font-size: 0.7rem; color: var(--ink-soft); white-space: nowrap; }
+  .kid.red .kid-due, .kid.red .kid-key { color: #d64545; font-weight: 700; }
+  .kid.orange .kid-due, .kid.orange .kid-key { color: #d9822b; font-weight: 700; }
+  .kid.none { color: var(--ink-soft); }
+  .empty, .note { font-size: 0.8rem; color: var(--ink-soft); }
+  .note { margin-top: 18px; font-size: 0.72rem; }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>路歴 / 7つの関門</h1>
+  <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: —</p>
+
+<!-- LOGIN_GATE:START -->
+  <div id="login-gate">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
+    <div class="g_id_signin"></div>
+    <p id="status">未ログイン(ログインすると関門が出ます)</p>
+  </div>
+<!-- LOGIN_GATE:END -->
+
+  <div id="content" style="display:none;">
+    <div id="gates"><p class="empty">読んでいます…</p></div>
+    <p class="note">関門(bc)を押すと、その下の票(ah・af・ae)が出ます。つなぎは各票の関連の欄の bc-番号。どの関門も指していない ae は「もろもろ」に出ます。赤は子に期日超えがあるもの、オレンジは期日が3日以内のものだけのもの、薄いのは子が0件のもの。</p>
+  </div>
+
+  <script>window.AA_AUTH_EVENT = "bc-login-success";</script>
+  <script src="../common/auth.js?v=202607201000"></script>
+  <script type="module" src="app.js?v=202611081200"></script>
+  <script type="module">
+    import { applyLastUpdated } from "../common/last-updated.js";
+    applyLastUpdated("src/bc", "lastUpdated", "最終更新");
+  </script>
+</body>
+</html>

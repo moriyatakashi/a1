@@ -78,6 +78,12 @@
     .job-alert[hidden] { display: none; }
     .job-alert-text { flex: 1; min-width: 0; }
     .job-alert a { white-space: nowrap; }
+    /* 2026-11-08(b1 ah-163): 7つの関門への札。処理の1行と同じ大きさで、いつも出す */
+    .gate-link {
+      display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 4px 10px;
+      font-size: 0.8rem; border: 1px solid var(--line); border-radius: 6px; text-decoration: none;
+    }
+    .gate-link span { flex: 1; }
     .weather { margin: 0 0 12px; font-size: 0.85rem; }
     .weather[hidden] { display: none; }
     /* ah-149: 家のリンク。押しやすい大きさの札を横に並べる */
@@ -113,6 +119,7 @@
   </div>
   <div id="content" style="display:none;">
   <div id="jobAlert" class="job-alert" role="status" hidden></div>
+  <a class="gate-link" href="src/bc/"><span>7つの関門</span>›</a>
   <p id="weather" class="weather" hidden></p>
   <!-- ah-149(2026-11-03): 家の中だけで開くページへの1押し。アドレスは Firestore にあり、読めないときは出さない -->
   <section id="homeLinks" class="home-links" hidden></section>
