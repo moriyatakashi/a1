@@ -10,6 +10,9 @@ categories:
       - code: m3
         desc: メモ
         href: src/m3/
+      - code: m12
+        desc: メモ2(bb に書く)
+        href: src/m12/
       - code: m4
         desc: 台帳の計器
         href: src/m4/

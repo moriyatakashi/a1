@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="../common/config.js?v=202608161200"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メモ2</title>
+<link rel="stylesheet" href="../common/base.css?v=202607141905">
+<style>
+  /* m3 と同じ見た目(2026-11-07)。使う分だけ写した */
+  .new-entry-card {
+    border: 1px solid var(--line); border-top: 3px solid var(--accent);
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; background: var(--paper);
+  }
+  .new-entry-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 2px; }
+  .lane-form-label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.65rem;
+    color: var(--ink-soft); display: block; margin: 8px 0 4px;
+  }
+  .field-input, .field-textarea {
+    width: 100%; font-size: 0.85rem; padding: 7px 9px; border: 1px solid var(--line);
+    border-radius: 5px; background: var(--input-bg); color: var(--ink); font-family: inherit; box-sizing: border-box;
+  }
+  .field-textarea { resize: vertical; min-height: 92px; }
+  .new-entry-submit {
+    margin-top: 10px; font-size: 0.8rem; padding: 8px 16px; border: 1px solid var(--accent);
+    border-radius: 6px; background: transparent; color: var(--accent); font-weight: 600; cursor: pointer;
+  }
+  .post-result { font-size: 0.78rem; color: var(--ink-soft); margin-top: 8px; min-height: 1.2em; }
+  .af-head { font-weight: 700; font-size: 0.9rem; margin: 4px 0 8px; }
+  .af-item { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; background: var(--paper); }
+  .af-meta { font-size: 0.68rem; color: var(--ink-soft); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .af-title { font-weight: 600; font-size: 0.88rem; margin: 2px 0; }
+  .af-body { font-size: 0.8rem; white-space: pre-wrap; color: var(--ink); margin-top: 4px; }
+  .af-fold { font-size: 0.72rem; padding: 2px 10px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--ink-soft); cursor: pointer; }
+  .af-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .af-btn { font-size: 0.74rem; padding: 5px 12px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; }
+  .af-msg { font-size: 0.72rem; color: var(--ink-soft); }
+  .af-empty, #bbList { font-size: 0.8rem; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+  <p><a href="../../">← 戻る</a></p>
+  <h1>路歴 / メモ2</h1>
+  <p id="lastUpdated" style="font-size:0.8rem;color:var(--ink-soft);">最終更新: —</p>
+
+<!-- LOGIN_GATE:START -->
+  <div id="login-gate">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <div id="g_id_onload"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+    <script>document.getElementById('g_id_onload').setAttribute('data-client_id', window.AA_GOOGLE_CLIENT_ID);</script>
+    <div class="g_id_signin"></div>
+    <p id="status">未ログイン(ログインすると bb の記入フォームが表示されます)</p>
+  </div>
+<!-- LOGIN_GATE:END -->
+
+  <div id="content" style="display:none;">
+    <div class="new-entry-card">
+      <div class="new-entry-title">bb に書く</div>
+      <label class="lane-form-label">タイトル</label>
+      <input class="field-input" id="newTitle" type="text">
+
+      <label class="lane-form-label">本文(任意)</label>
+      <textarea class="field-textarea" id="newBody"></textarea>
+
+      <button class="new-entry-submit" type="button" id="btnAdd">追加する</button>
+      <div class="post-result" id="postResult"></div>
+    </div>
+
+    <div class="af-head">開いているもの <span id="bbCount"></span></div>
+    <div id="bbList"></div>
+  </div>
+
+  <script>window.AA_AUTH_EVENT = "m12-login-success";</script>
+  <script src="../common/auth.js?v=202607201000"></script>
+  <script type="module" src="app.js?v=202611071500"></script>
+  <script type="module">
+    import { applyLastUpdated } from "../common/last-updated.js";
+    applyLastUpdated("src/m12", "lastUpdated", "最終更新");
+  </script>
+</body>
+</html>
