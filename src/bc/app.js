@@ -28,10 +28,11 @@ async function render() {
   const list = gates(bcs, { ah: ah.filter((t) => t.state !== "済"), af, ae }, today());
   box.textContent = "";
   if (!list.length) { box.append(el("p", { class: "empty" }, "関門はまだありません")); return; }
-  for (const g of list) {
+  list.forEach((g, i) => {
+    // 頭の数字は上からの順。bc の番号は題のあとに(Takashi 11/8)
     const head = el("summary", { class: "gate-head" },
-      el("span", { class: "gate-no" }, String(g.seq)),
-      el("span", { class: "gate-title" }, g.title || "(題なし)"),
+      el("span", { class: "gate-no" }, String(i + 1)),
+      el("span", { class: "gate-title" }, `${g.title || "(題なし)"}(bc-${g.seq})`),
       el("span", { class: "gate-n" }, `${g.kids.length}件${COLOR_WORD[g.color] ? "・" + COLOR_WORD[g.color] : ""}`));
     const kids = el("ul", { class: "kids" });
     for (const k of g.kids) {
@@ -42,7 +43,7 @@ async function render() {
     }
     if (!g.kids.length) kids.append(el("li", { class: "kid none" }, "まだ子がありません"));
     box.append(el("details", { class: `gate ${g.color}`, "data-bc": `bc-${g.seq}` }, head, kids));
-  }
+  });
 }
 
 if (window.__loginState && window.__loginState.loggedIn) render();
