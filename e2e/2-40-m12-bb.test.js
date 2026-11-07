@@ -29,7 +29,13 @@ function serveStatic() {
 
 const BB = {
   b1: { title: "前からあるメモ", body: "本文", kind: "メモ", done: false, by: "claude-pi", createdAt: "2026-11-07T01:00:00.000Z", noteMeta: [], seq: 3 },
+  b3: { title: "redmine:", body: "", kind: "メモ", done: false, by: "takashi", createdAt: "2026-11-07T03:00:00.000Z", noteMeta: [{}, {}], seq: 5 },
   b2: { title: "済んだメモ", body: "", kind: "メモ", done: true, by: "claude-pc", createdAt: "2026-11-07T02:00:00.000Z", noteMeta: [], seq: 2 },
+};
+
+const NOTES = {
+  n1: { body: "【bbjob 返事】遅れ 1 件\n#7 ah-1 遅れた票", by: "claude-pi", createdAt: "2026-11-07T07:40:00.000Z" },
+  n0: { body: "先の note", by: "takashi", createdAt: "2026-11-07T07:00:00.000Z" },
 };
 
 async function openM12({ deny = false } = {}, act) {
@@ -44,7 +50,7 @@ async function openM12({ deny = false } = {}, act) {
     page.on("dialog", (d) => { dialogs.push(d.message()); d.accept(d.type() === "prompt" ? "足したnote" : undefined); });
     await page.route("https://accounts.google.com/gsi/client", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
     if (deny) await page.addInitScript(() => { window.__fsDenyWrite = ["bbThreads", "_meta"]; });
-    await routeFirebaseStub(page, {}, { bbThreads: BB, _meta: { bb_seq: { value: 3 } } });
+    await routeFirebaseStub(page, {}, { bbThreads: BB, _meta: { bb_seq: { value: 5 } }, "bbThreads/b3/notes": NOTES });
     await page.goto(`http://localhost:${server.address().port}/src/m12/`);
     await page.evaluate((cred) => window.handleCredentialResponse({ credential: cred }), FAKE_GOOGLE_CREDENTIAL);
     await page.waitForFunction(() => !/読み込み中/.test(document.getElementById("bbList").textContent));
@@ -66,6 +72,17 @@ test("m12: 開いている bb だけが一覧に出る", async () => {
   assert.deepEqual(errors, []);
 });
 
+test("m12: note の本文が古い順に、返事の改行のまま読める", async () => {
+  const { text, order, errors } = await openM12({}, async (page) => {
+    await page.waitForFunction(() => document.querySelectorAll('.af-item[data-id="b3"] .af-note').length === 2);
+    return { text: await page.textContent('.af-item[data-id="b3"]'),
+      order: await page.$$eval('.af-item[data-id="b3"] .af-note .af-body', (ns) => ns.map((n) => n.textContent)) };
+  });
+  assert.deepEqual(order, ["先の note", "【bbjob 返事】遅れ 1 件\n#7 ah-1 遅れた票"]);
+  assert.match(text, /claude-pi · 11\/7 16:40/);
+  assert.deepEqual(errors, []);
+});
+
 test("m12: 追加すると bb に書き、番号はカウンタの次。種類はメモ、af には書かない", async () => {
   const { result, list, writes, errors } = await openM12({}, async (page) => {
     await page.fill("#newTitle", "山行記: 新しいメモ");
@@ -75,7 +92,7 @@ test("m12: 追加すると bb に書き、番号はカウンタの次。種類�
     await page.waitForFunction(() => /新しいメモ/.test(document.getElementById("bbList").textContent));
     return { result: await page.textContent("#postResult"), list: await page.textContent("#bbList") };
   });
-  assert.match(result, /bb-4/);
+  assert.match(result, /bb-6/);
   assert.match(list, /山行記: 新しいメモ/);
   const t = writes.find((w) => w.col === "bbThreads");
   assert.equal(t.title, "山行記: 新しいメモ");
@@ -83,8 +100,8 @@ test("m12: 追加すると bb に書き、番号はカウンタの次。種類�
   assert.equal(t.kind, "メモ");
   assert.equal(t.by, "takashi");
   assert.equal(t.done, false);
-  assert.equal(t.seq, 4);
-  assert.deepEqual(writes.find((w) => w.col === "_meta"), { col: "_meta", id: "bb_seq", value: 4 });
+  assert.equal(t.seq, 6);
+  assert.deepEqual(writes.find((w) => w.col === "_meta"), { col: "_meta", id: "bb_seq", value: 6 });
   assert.ok(!writes.some((w) => w.col === "afThreads"));
   assert.deepEqual(errors, []);
 });

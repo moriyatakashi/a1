@@ -2,7 +2,7 @@
 // できるのは「書く・読む(開いているもの)・閉じる・note を足す」だけ。書くだけで、書いたものが実行されることはない。
 import "../common/config.js";
 import { clipBody, isDenied } from "../m3/af-store.js";
-import { addBbNote, createBb, doneBb, fetchOpenBb } from "./bb-store.js?v=202611071500";
+import { addBbNote, createBb, doneBb, fetchBbNotes, fetchOpenBb } from "./bb-store.js?v=202611071700";
 
 function el(tag, attrs = {}, ...kids) {
   const n = document.createElement(tag);
@@ -30,6 +30,20 @@ function bodyEl(text) {
   return box;
 }
 
+// note の本文。一覧を先に出して、あとから埋める。読めなければ件数のまま(一覧は止めない)
+const jst = (iso) => new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+function notesEl(id) {
+  const box = el("div", { class: "af-notes" });
+  fetchBbNotes(id).then((notes) => {
+    for (const n of notes) {
+      box.append(el("div", { class: "af-note" },
+        el("div", { class: "af-meta" }, [n.by && n.by !== "takashi" ? n.by : "", n.createdAt ? jst(n.createdAt) : ""].filter(Boolean).join(" · ")),
+        el("div", { class: "af-body" }, n.body || "")));
+    }
+  }).catch(() => { box.append(el("div", { class: "af-msg" }, "note を読めませんでした")); });
+  return box;
+}
+
 async function renderList() {
   const box = document.getElementById("bbList");
   box.textContent = "読み込み中…";
@@ -51,6 +65,7 @@ async function renderList() {
       el("div", { class: "af-meta" }, meta),
       el("div", { class: "af-title" }, t.title || "(タイトルなし)"));
     if (t.body) row.append(bodyEl(t.body));
+    if (notes) row.append(notesEl(t.id));
     const msg = el("span", { class: "af-msg" });
     row.append(el("div", { class: "af-actions" },
       el("button", { type: "button", class: "af-btn", onclick: async () => {

@@ -18,6 +18,14 @@ export async function fetchOpenBb() {
     .sort((a, b) => (Number(b.seq) || 0) - (Number(a.seq) || 0));
 }
 
+// note の本文を古い順で(bbjob の返事もここで読む、af-139)
+export async function fetchBbNotes(id) {
+  const [{ collection, getDocs }, { db, ensureReadLogin, guardRead }] = await load();
+  await ensureReadLogin();
+  const snap = await guardRead(() => getDocs(collection(db, "bbThreads", id, "notes")));
+  return snap.docs.map((d) => d.data()).sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
+}
+
 export async function createBb({ title, body = "" }) {
   const [{ collection, doc, runTransaction }, { db, ensureFirebaseLogin }] = await load();
   await ensureFirebaseLogin();
