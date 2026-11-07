@@ -27,8 +27,12 @@ export function gateColor(kids) {
   return kids.some((k) => k.color === "orange") ? "orange" : "";
 }
 
+// 並び(2026-11-08 Takashi): ①期日超え・期日が近いものが上(赤→オレンジ→ほか) ②同じなら子の多いものが上 ③番号順
+const RANK = { red: 0, orange: 1 };
+const byRank = (x, y) => (RANK[x.color] ?? 2) - (RANK[y.color] ?? 2) || y.kids.length - x.kids.length || x.seq - y.seq;
+
 // gates(bc の開いているもの, { ah, af, ae }(開いているもの), 今日 "YYYY-MM-DD")
-// → [{ seq, title, color, kids: [{ key, title, dueDate, color }] }] 番号順
+// → [{ seq, title, color, kids: [{ key, title, dueDate, color }] }] 並びは byRank
 export function gates(bcs, { ah = [], af = [], ae = [] } = {}, today) {
   const open = [...bcs].sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0));
   const byKey = new Map(open.map((b) => [`bc-${b.seq}`, []]));
@@ -43,6 +47,6 @@ export function gates(bcs, { ah = [], af = [], ae = [] } = {}, today) {
   return open.map((b) => {
     const kids = byKey.get(`bc-${b.seq}`)
       .sort((x, y) => (x.dueDate || "9999").localeCompare(y.dueDate || "9999") || x.key.localeCompare(y.key));
-    return { seq: b.seq, title: b.title || "", color: gateColor(kids), kids };
-  });
+    return { seq: Number(b.seq) || 0, title: b.title || "", color: gateColor(kids), kids };
+  }).sort(byRank);
 }

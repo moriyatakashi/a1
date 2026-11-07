@@ -2,7 +2,7 @@
 // 親(bc)を押すと、子(related に bc-n を持つ ah・af・ae)の番号と題が出る。色の決め方は bc.js。
 import "../common/config.js";
 import { fetchAllAh, fetchOpenOf, isDenied } from "../m3/af-store.js";
-import { gates } from "./bc.js?v=202611081200";
+import { gates } from "./bc.js?v=202611081300";
 
 function el(tag, attrs = {}, ...kids) {
   const n = document.createElement(tag);
@@ -28,9 +28,9 @@ async function render() {
   const list = gates(bcs, { ah: ah.filter((t) => t.state !== "済"), af, ae }, today());
   box.textContent = "";
   if (!list.length) { box.append(el("p", { class: "empty" }, "関門はまだありません")); return; }
-  list.forEach((g, i) => {
+  for (const g of list) {
     const head = el("summary", { class: "gate-head" },
-      el("span", { class: "gate-no" }, String(i + 1)),
+      el("span", { class: "gate-no" }, String(g.seq)),
       el("span", { class: "gate-title" }, g.title || "(題なし)"),
       el("span", { class: "gate-n" }, `${g.kids.length}件${COLOR_WORD[g.color] ? "・" + COLOR_WORD[g.color] : ""}`));
     const kids = el("ul", { class: "kids" });
@@ -42,7 +42,7 @@ async function render() {
     }
     if (!g.kids.length) kids.append(el("li", { class: "kid none" }, "まだ子がありません"));
     box.append(el("details", { class: `gate ${g.color}`, "data-bc": `bc-${g.seq}` }, head, kids));
-  });
+  }
 }
 
 if (window.__loginState && window.__loginState.loggedIn) render();
