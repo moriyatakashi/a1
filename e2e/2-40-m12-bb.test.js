@@ -118,6 +118,21 @@ test("m12: 済みにすると done が立ち、一覧から消える", async () 
   assert.equal(w.doneBy, "takashi");
 });
 
+test("m12: 済みにするは右端に離れていて、押すと確かめが出る", async () => {
+  const { gap, dialogs } = await openM12({}, async (page) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    const row = '.af-item[data-id="b1"] ';
+    const a = await page.locator(row + 'button:has-text("note を足す")').boundingBox();
+    const b = await page.locator(row + 'button:has-text("済みにする")').boundingBox();
+    if (process.env.M12_SHOT) await page.screenshot({ path: process.env.M12_SHOT });
+    await page.click(row + 'button:has-text("済みにする")');
+    await page.waitForFunction(() => !/前からあるメモ/.test(document.getElementById("bbList").textContent));
+    return { gap: b.x - (a.x + a.width) };
+  });
+  assert.ok(gap > 60, `間 ${gap}px`);
+  assert.ok(dialogs.some((d) => /bb-3 を済みにしますか/.test(d)), dialogs.join("|"));
+});
+
 test("m12: note を足すと notes に1件と noteMeta に印", async () => {
   const { writes } = await openM12({}, async (page) => {
     await page.click('.af-item[data-id="b1"] button:has-text("note を足す")');

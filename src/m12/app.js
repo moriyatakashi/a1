@@ -73,11 +73,12 @@ async function renderList() {
         if (!text) return;
         try { await addBbNote(t.id, text); await renderList(); } catch (e) { msg.textContent = "失敗: " + (e.message || e); }
       } }, "note を足す"),
-      el("button", { type: "button", class: "af-btn", onclick: async () => {
+      msg,
+      // 見るだけのつもりで押さないよう、右端に離す(2026-11-07 Takashi)
+      el("button", { type: "button", class: "af-btn af-done", onclick: async () => {
         if (!confirm(`bb-${t.seq} を済みにしますか(消えはしません)`)) return;
         try { await doneBb(t.id); await renderList(); } catch (e) { msg.textContent = "失敗: " + (e.message || e); }
-      } }, "済みにする"),
-      msg));
+      } }, "済みにする")));
     box.append(row);
   }
 }
