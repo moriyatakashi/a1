@@ -12,10 +12,7 @@ export const CHECKS = [
   { id: "summary", name: "テーマのまとめ", when: "礼文 毎日 2:50", everyHours: 24, source: "job" },
   { id: "night-notice", name: "夜の気づき", when: "礼文 毎日 22:00", everyHours: 24, source: "job" }, // af-116。ok の note が「気づきなし」なら山行記は無し
   { id: "steps-pub", name: "生駒の枠1(歩数)", when: "礼文 毎日 0:30", everyHours: 24, source: "job" }, // ah-128
-  { id: "dopdf", name: "PDF", when: "礼文 毎日 3:00", everyHours: 24, source: "job" },
-  // 通常版 PDF が読める量(30ページ)に収まったか。中身が前日と同じ日は PDF を作らず記録も無いので、3日空いたら「来ていない」
-  { id: "dopdf-pages", name: "PDFのページ数", when: "礼文 毎日 PDF のとき(30ページまで)", everyHours: 72, source: "job", ngLabel: "問題あり" },
-  { id: "video", name: "動画", when: "礼文 毎日 PDF のあと", everyHours: 24, source: "job" },
+  // PDF・PDFのページ数・動画は外した(cron は 10/29 に止めた、ah-108。2026-11-07 Takashi)
   // サインイン切れの見張り(b1 infra/pi/login_watch.sh、af-30)。切れていたら ng、見張りが動かなければ late
   { id: "login-rebunrc", name: "礼文のサインイン", when: "礼文 毎日 3:05", everyHours: 24, source: "job" },
   { id: "login-pi2rc", name: "天売のサインイン", when: "天売 毎日 3:05", everyHours: 24, source: "job" },
