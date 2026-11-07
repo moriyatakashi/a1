@@ -17,6 +17,7 @@ export const CHECKS = [
   { id: "login-rebunrc", name: "礼文のサインイン", when: "礼文 毎日 3:05", everyHours: 24, source: "job" },
   { id: "login-pi2rc", name: "天売のサインイン", when: "天売 毎日 3:05", everyHours: 24, source: "job" },
   { id: "backup", name: "バックアップ", when: "GitHub 毎日 4:00", everyHours: 24, source: "gh", workflow: "balog-backup.yml" },
+  { id: "backup-teuri", name: "天売の控え", when: "天売 毎日 3:40、礼文が 6:00 に確かめる", everyHours: 24, source: "job", ngLabel: "届いていない" }, // ah-145
   { id: "cost-weekly", name: "課金の指数", when: "礼文 毎週月曜 2:55", everyHours: 168, source: "job" },
   // 空きが 10% を切ったら ng(b1/run disk check、af-79)。週1で回す
   { id: "disk-pc", name: "利尻の空き容量", when: "利尻 毎週月曜", everyHours: 168, source: "job", ngLabel: "空きが少ない" },
