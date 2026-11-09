@@ -7,12 +7,10 @@ export const GRACE_HOURS = 6; // 決まった時刻から遅れてよい幅(動�
 
 export const CHECKS = [
   { id: "steps", name: "歩数", when: "iPhone 毎晩 23:50", everyHours: 24, source: "steps" },
-  { id: "refill", name: "票の補い", when: "礼文 毎日 2:30", everyHours: 24, source: "job" }, // 補わない日も記録する(ah-28)
   { id: "ab-dump", name: "ab の控え", when: "礼文 毎日 2:40", everyHours: 24, source: "job" },
-  { id: "summary", name: "テーマのまとめ", when: "礼文 毎日 2:50", everyHours: 24, source: "job" },
   { id: "night-notice", name: "夜の気づき", when: "礼文 毎日 22:00", everyHours: 24, source: "job" }, // af-116。ok の note が「気づきなし」なら山行記は無し
-  { id: "steps-pub", name: "生駒の枠1(歩数)", when: "礼文 毎日 0:30", everyHours: 24, source: "job" }, // ah-128
   // PDF・PDFのページ数・動画は外した(cron は 10/29 に止めた、ah-108。2026-11-07 Takashi)
+  // 票の補い・テーマのまとめ・生駒の枠1 は外した(cron も止めた、ah-172。2026-11-09 Takashi)
   // サインイン切れの見張り(b1 infra/pi/login_watch.sh、af-30)。切れていたら ng、見張りが動かなければ late
   { id: "login-rebunrc", name: "礼文のサインイン", when: "礼文 毎日 3:05", everyHours: 24, source: "job" },
   { id: "login-pi2rc", name: "天売のサインイン", when: "天売 毎日 3:05", everyHours: 24, source: "job" },
@@ -20,7 +18,7 @@ export const CHECKS = [
   { id: "backup-teuri", name: "天売の控え", when: "天売 毎日 3:40、礼文が 6:00 に確かめる", everyHours: 24, source: "job", ngLabel: "届いていない" }, // ah-145
   { id: "cost-weekly", name: "課金の指数", when: "礼文 毎週月曜 2:55", everyHours: 168, source: "job" },
   // 空きが 10% を切ったら ng(b1/run disk check、af-79)。週1で回す
-  { id: "disk-pc", name: "利尻の空き容量", when: "利尻 毎週月曜", everyHours: 168, source: "job", ngLabel: "空きが少ない" },
+  { id: "disk-rishiri", name: "利尻の空き容量", when: "利尻 毎週月曜", everyHours: 168, source: "job", ngLabel: "空きが少ない" },
   { id: "infra-check", name: "設定の突き合わせ", when: "礼文 毎週日曜 21:20", everyHours: 168, source: "job", ngLabel: "差あり" }, // ac-43
 ];
 
