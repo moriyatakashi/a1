@@ -26,4 +26,4 @@ npx playwright install --with-deps chromium
 ```
 node --test
 ```
-Node.js組み込みのテストランナーがリポジトリ全体から`*.test.js`を探すため、パス指定は不要。各テストファイルが自前で静的サーバーを起動し、Google認証・API呼び出しは`page.route()`でモックするため、`api/`や`src/`を別途起動しておく必要はない。CIでは`.github/workflows/test.yml`の`test`ジョブで実行される。
+Node.js組み込みのテストランナーがリポジトリ全体から`*.test.js`を探すため、パス指定は不要。各テストファイルが自前で静的サーバーを起動し、Google認証・API呼び出しは`page.route()`でモックするため、`api/`や`src/`を別途起動しておく必要はない。CIでは PR のとき`.github/workflows/test.yml`、main への push のとき`.github/workflows/pages.yml`の`test`ジョブ(公開の前)で実行される。
