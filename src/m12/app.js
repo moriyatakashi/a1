@@ -108,8 +108,4 @@ function init() {
   renderList();
 }
 
-if (window.__loginState && window.__loginState.loggedIn) {
-  init();
-} else {
-  window.addEventListener("m12-login-success", init, { once: true });
-}
+window.aaWhenLoggedIn(init);

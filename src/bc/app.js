@@ -46,5 +46,4 @@ async function render() {
   });
 }
 
-if (window.__loginState && window.__loginState.loggedIn) render();
-else window.addEventListener("bc-login-success", render, { once: true });
+window.aaWhenLoggedIn(render);

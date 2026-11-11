@@ -109,6 +109,14 @@ window.aaShowLoginGate = () => {
   if (gate) gate.style.display = "block";
 };
 
+// ログイン後に一度だけ fn を動かす(各ページの app.js 共通の起動の形、2026-11-12 にまとめた)。
+// app.js(type="module")は auth.js より後に動くので、その時点でログイン済みなら即実行、
+// まだならログインのイベント(AA_AUTH_EVENT)を待つ(issue #8 の案B)。
+window.aaWhenLoggedIn = (fn) => {
+  if (window.__loginState && window.__loginState.loggedIn) fn();
+  else window.addEventListener(LOGIN_EVENT, fn, { once: true });
+};
+
 function renderLogoutLink() {
   createCornerLink("aa-logout-link", "ログアウト", (e) => {
     e.preventDefault();

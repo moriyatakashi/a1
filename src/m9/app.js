@@ -113,8 +113,4 @@ async function onLoginSuccess() {
   render();
 }
 
-if (window.__loginState && window.__loginState.loggedIn) {
-  onLoginSuccess();
-} else {
-  window.addEventListener("m9-login-success", onLoginSuccess, { once: true });
-}
+window.aaWhenLoggedIn(onLoginSuccess);

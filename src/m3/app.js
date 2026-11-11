@@ -282,8 +282,4 @@ function initNewEntryForm() {
   renderAh();
 }
 
-if (window.__loginState && window.__loginState.loggedIn) {
-  initNewEntryForm();
-} else {
-  window.addEventListener("m3-login-success", initNewEntryForm, { once: true });
-}
+window.aaWhenLoggedIn(initNewEntryForm);
