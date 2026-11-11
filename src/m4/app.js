@@ -691,8 +691,4 @@ function onLoginSuccess() {
   load();
 }
 
-if (window.__loginState && window.__loginState.loggedIn) {
-  onLoginSuccess();
-} else {
-  window.addEventListener("m4-login-success", onLoginSuccess, { once: true });
-}
+window.aaWhenLoggedIn(onLoginSuccess);

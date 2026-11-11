@@ -29,8 +29,4 @@ async function onLoginSuccess() {
     <tbody>${items.map(row).join("")}</tbody></table>`;
 }
 
-if (window.__loginState && window.__loginState.loggedIn) {
-  onLoginSuccess();
-} else {
-  window.addEventListener("jobs-login-success", onLoginSuccess, { once: true });
-}
+window.aaWhenLoggedIn(onLoginSuccess);

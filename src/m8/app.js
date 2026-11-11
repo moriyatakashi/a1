@@ -155,8 +155,4 @@ function onLoginSuccess() {
   locate();
 }
 
-if (window.__loginState && window.__loginState.loggedIn) {
-  onLoginSuccess();
-} else {
-  window.addEventListener("m8-login-success", onLoginSuccess, { once: true });
-}
+window.aaWhenLoggedIn(onLoginSuccess);

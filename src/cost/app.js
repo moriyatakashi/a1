@@ -50,8 +50,4 @@ async function onLoginSuccess() {
     : `<p class="empty">まだ指数がありません(礼文が月曜 2:55 に書きます)。</p>`;
 }
 
-if (window.__loginState && window.__loginState.loggedIn) {
-  onLoginSuccess();
-} else {
-  window.addEventListener("cost-login-success", onLoginSuccess, { once: true });
-}
+window.aaWhenLoggedIn(onLoginSuccess);
