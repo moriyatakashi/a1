@@ -1,12 +1,16 @@
 name: test (e2e テスト)
 # 2026-10-07(ab-56): 名前は「ファイル名 (説明)」にそろえる。Actions の一覧が名前順=ファイル名順で並ぶ。旧名: Run tests
 
+# 2026-11-12: main への push では流さない(pages.yml の test が同じテストを公開前に流すので二重になっていた)。PR と手動だけ。
 on:
-  push:
-    branches: ["main"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
+
+concurrency:
+  # PR で続けて push したら古い回を止める
+  group: test-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -18,10 +22,21 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: "24"
+          cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Cache Playwright browser
+        id: pw
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install Playwright browser
+        if: steps.pw.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+      - name: Install Playwright system deps
+        if: steps.pw.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       - name: Run tests
         # テストファイルは e2e/ 配下に置く運用だが、
         # 特定のパスに固定せずリポジトリ全体から *.test.js を探す
