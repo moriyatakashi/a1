@@ -460,7 +460,12 @@ function renderNow(threads, acStale = [], ledgers = {}) {
     `<li><span class="now-soft now-when">${escapeHtml(whenLabel(a.at))}</span>${escapeHtml(byName(a.by))} ` +
     `<span class="now-seq">${a.ref}</span>${escapeHtml(a.what)}<span class="now-soft">${escapeHtml(a.title)}</span></li>`).join("");
 
+  // ah-191(Takashi 11/15「長い」): はじめは畳んで、見出しの1行に数だけ。開いたままは覚えない
+  const num = (n) => (n == null ? "?" : n);
+  const summary = `ab ${abOpen.length}・af ${num(ledgers.af)}・ae ${num(ledgers.ae)}・ah 待ち${ledgers.ah ? num(ledgers.ah["待ち"]) : "?"}`;
+
   el.innerHTML = `
+    <summary class="now-summary">${summary}</summary>
     <div class="now-row"><span class="now-label">ab 開いている</span><b>${abOpen.length}</b> 件
       <span class="now-label now-gap">af 開いている</span>${count(ledgers.af)}
       <span class="now-label now-gap">ae 的</span>${count(ledgers.ae)}</div>
