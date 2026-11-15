@@ -107,6 +107,11 @@ test("m4: 今の状態(開いている件数・返事待ち・最後の動きが
       window.__credential = "test";
       window.dispatchEvent(new Event("m4-login-success"));
     });
+    // ah-191: はじめは畳んで、見出しの1行に数だけ。押すと中身が開く
+    await page.waitForSelector("#nowPanel .now-summary");
+    assert.equal(await page.locator("#nowPanel").evaluate((d) => d.open), false, "はじめは畳んでいる");
+    assert.equal((await page.textContent("#nowPanel .now-summary")).trim(), "ab 3・af 1・ae 2・ah 待ち2");
+    await page.click("#nowPanel .now-summary");
     await page.waitForSelector("#nowPanel .now-stale li");
 
     assert.ok(abAuth.length > 0 && abAuth.every((h) => h === "Bearer test-id-token"), "ab を ID トークン付きで読んでいない");

@@ -91,6 +91,8 @@ test("m4: 待ち・最近の動き・流れ・投稿者の名前(ab-45)", async 
       window.__credential = "test";
       window.dispatchEvent(new Event("m4-login-success"));
     });
+    await page.waitForSelector("#nowPanel .now-summary");
+    await page.click("#nowPanel .now-summary"); // ah-191: はじめは畳んでいる
     await page.waitForSelector("#nowPanel .now-recent li");
 
     const squash = (arr) => arr.map((s) => s.replace(/\s+/g, ""));

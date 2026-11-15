@@ -45,6 +45,8 @@
   .now-list { margin: 4px 0 0; padding-left: 0; list-style: none; }
   .now-list li { margin: 3px 0; overflow-wrap: anywhere; }
   .now-when { margin: 0 8px 0 0; font-family: ui-monospace, Consolas, monospace; }
+  .now-summary { cursor: pointer; font-variant-numeric: tabular-nums; }
+  .now-panel[open] .now-summary { margin-bottom: 8px; }
   .now-seq { font-family: ui-monospace, Consolas, monospace; font-size: 0.75rem; margin-right: 6px; color: var(--accent); }
 </style>
 </head>
@@ -69,7 +71,7 @@
 <!-- LOGIN_GATE:END -->
 
   <div id="content" style="display:none;">
-    <div class="now-panel" id="nowPanel" style="display:none;"></div>
+    <details class="now-panel" id="nowPanel" style="display:none;"></details>
     <div class="view-tabs">
       <button type="button" class="view-tab active" data-view="poster">投稿者別</button>
       <button type="button" class="view-tab" data-view="weekly">週次得点</button>
@@ -98,7 +100,7 @@
 
   <script>window.AA_AUTH_EVENT = "m4-login-success";</script><!-- ab-162: 公開の閲覧モードをやめた(本人がログインしたときだけ中身を出す) -->
   <script src="../common/auth.js?v=202607201000"></script>
-  <script type="module" src="app.js?v=202610221840"></script>
+  <script type="module" src="app.js?v=202611152045"></script>
   <script type="module">
     import { applyLastUpdated } from "../common/last-updated.js";
     applyLastUpdated("src/m4", "lastUpdated", "最終更新");
