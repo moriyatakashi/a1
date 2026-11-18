@@ -13,7 +13,7 @@ export const jstToday = (now = Date.now()) => new Date(now + 9 * 3600000).toISOS
 // 気象庁の forecast JSON から今日の分を抜く。天気が無ければ投げる(=取れなかった扱い)
 export function parseJma(data, today) {
   const ts = (data && data[0] && data[0].timeSeries) || [];
-  const out = { area: "", weather: "", pops: [], max: null, min: null };
+  const out = { date: today, reported: hour(data && data[0] && data[0].reportDatetime) || "", area: "", weather: "", pops: [], max: null, min: null };
 
   const w = ts[0];
   const wi = w ? w.timeDefines.findIndex((t) => day(t) === today) : -1;
@@ -51,10 +51,19 @@ export function parseJma(data, today) {
   return out;
 }
 
+// 何日のどの発表か分かるように「今日 11/19(水)」「5時発表」を添える(昨日の分と紛れないよう、2026-11-19 Takashi)
+const WD = "日月火水木金土";
+const dateLabel = (d) => {
+  if (!d) return "";
+  const [y, m, dd] = d.split("-").map(Number);
+  return ` ${m}/${dd}(${WD[new Date(Date.UTC(y, m - 1, dd)).getUTCDay()]})`;
+};
+
 export function formatWeather(f) {
+  const rep = f.reported ? `、${Number(f.reported)}時発表` : "";
   const temp = (v) => (v == null ? "—" : `${v}℃`);
   const pops = f.pops.length ? "  降水確率 " + f.pops.map((p) => `${p.hour}時 ${p.pop}%`).join(" ") : "";
-  return `今日の天気(東大阪・気象庁の${f.area}の予報): ${f.weather}  最高 ${temp(f.max)} 最低 ${temp(f.min)}${pops}`;
+  return `今日${dateLabel(f.date)}の天気(東大阪・気象庁の${f.area}の予報${rep}): ${f.weather}  最高 ${temp(f.max)} 最低 ${temp(f.min)}${pops}`;
 }
 
 export async function showWeather(el, fetchFn = (u) => fetch(u), now = Date.now()) {
