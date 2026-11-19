@@ -50,3 +50,80 @@ export function gates(bcs, { ah = [], af = [], ae = [] } = {}, today) {
     return { seq: Number(b.seq) || 0, title: b.title || "", color: gateColor(kids), kids };
   }).sort(byRank);
 }
+
+// --- 朝の課題(b1 ah-202): すまが毎朝 bc-4 の notes に書く2種類の頭だけを手がかりに読む ---
+// 【朝の課題】YYYY-MM-DD（発生日 M/D、判定 M/D 朝） の下に「a 題 → 振り先 …」を a・b・c の3行
+// 【課題の判定】YYYY-MM-DD a できた（一言）/ b できない（一言）/ c … ＝ n/3。…
+// 判定の日付は、同じ日付の朝の課題があればそれ、無ければ前の日の朝の課題に付ける(判定は翌朝に書くため)。
+// 同じ朝の課題に判定が2つあれば、あとに書いたほうを使う(書き直し)。
+export const MORNING_BC = 4;
+export const MORNING_DAYS = 7;
+const LETTERS = ["a", "b", "c"];
+const MORNING_HEAD = "【朝の課題】";
+const JUDGE_HEAD = "【課題の判定】";
+
+const prevDay = (iso) => new Date(dayMs(iso) - 86400000).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+
+// 【朝の課題】1件 → { date, origin, judgeOn, items: [{ letter, title, to }] }。崩れていれば null
+export function parseMorning(body) {
+  const lines = String(body || "").split("\n").map((l) => l.trim());
+  const m = (lines[0] || "").match(/^【朝の課題】\s*(\d{4}-\d{2}-\d{2})(.*)$/);
+  if (!m) return null;
+  const origin = (m[2].match(/発生日\s*([\d/-]+)/) || [])[1] || "";
+  const judgeOn = (m[2].match(/判定\s*([\d/-]+)/) || [])[1] || "";
+  const items = [];
+  for (const l of lines.slice(1)) {
+    const r = l.match(/^([abc])\s+(.+?)\s*→\s*(\S+)/);
+    if (r && !items.some((x) => x.letter === r[1])) items.push({ letter: r[1], title: r[2], to: r[3] });
+  }
+  if (LETTERS.some((x) => !items.some((i) => i.letter === x))) return null;
+  items.sort((x, y) => x.letter.localeCompare(y.letter));
+  return { date: m[1], origin, judgeOn, items };
+}
+
+// 【課題の判定】1件 → { date, n, verdicts: { a: { ok, word } … } }。崩れていれば null
+export function parseJudge(body) {
+  const m = String(body || "").trim().match(/^【課題の判定】\s*(\d{4}-\d{2}-\d{2})\s*([\s\S]*)$/);
+  if (!m) return null;
+  const [head] = m[2].split("＝");
+  const verdicts = {};
+  // 区切りは「/」か「／」。一言の中の 11/21 などで割らないよう、次が「b できた」の形のときだけ割る
+  for (const seg of head.split(/\s*[/／]\s*(?=[abc]\s*(?:できた|できない))/)) {
+    const r = seg.trim().match(/^([abc])\s*(できた|できない)\s*(?:[（(]([^）)]*)[）)])?/);
+    if (r && !verdicts[r[1]]) verdicts[r[1]] = { ok: r[2] === "できた", word: (r[3] || "").trim() };
+  }
+  if (LETTERS.some((x) => !verdicts[x])) return null;
+  const n = LETTERS.filter((x) => verdicts[x].ok).length;
+  return { date: m[1], n, verdicts };
+}
+
+// notes(bc-4 の note、{ body, createdAt }) → { latest, unreadable, days }
+// latest: いちばん新しい朝の課題に判定を重ねたもの(items に verdict: { ok, word } か null)
+// unreadable: いちばん新しい【朝の課題】の頭はあるが崩れている
+// days: 直近 MORNING_DAYS 日(today を含む)の朝の課題を古い順に [{ date, n }](判定まちは n: null)
+export function morning(notes, today) {
+  const sorted = [...(notes || [])].sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
+  const heads = sorted.filter((n) => String(n.body || "").trim().startsWith(MORNING_HEAD));
+  const mornings = new Map();
+  for (const n of heads) { const p = parseMorning(n.body); if (p) mornings.set(p.date, p); }
+  const judges = new Map();
+  for (const n of sorted.filter((x) => String(x.body || "").trim().startsWith(JUDGE_HEAD))) {
+    const j = parseJudge(n.body);
+    if (!j) continue;
+    const on = mornings.has(j.date) ? j.date : prevDay(j.date);
+    if (mornings.has(on)) judges.set(on, j);
+  }
+  const lastHead = heads[heads.length - 1];
+  const unreadable = !!lastHead && !parseMorning(lastHead.body);
+  const dates = [...mornings.keys()].sort();
+  const latestDate = dates[dates.length - 1];
+  const latest = unreadable || !latestDate ? null : (() => {
+    const p = mornings.get(latestDate);
+    const j = judges.get(latestDate);
+    return { ...p, n: j ? j.n : null, items: p.items.map((i) => ({ ...i, verdict: j ? j.verdicts[i.letter] : null })) };
+  })();
+  const from = dayMs(today) - (MORNING_DAYS - 1) * 86400000;
+  const days = dates.filter((d) => dayMs(d) >= from && dayMs(d) <= dayMs(today))
+    .map((d) => ({ date: d, n: judges.has(d) ? judges.get(d).n : null }));
+  return { latest, unreadable, days };
+}
